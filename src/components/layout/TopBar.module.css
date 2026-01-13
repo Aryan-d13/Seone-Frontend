@@ -1,0 +1,127 @@
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--topbar-height);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-4);
+    gap: var(--space-4);
+    z-index: var(--z-sticky);
+    padding-left: calc(var(--sidebar-width) + var(--space-4));
+}
+
+/* Mobile Menu Button */
+.menuButton {
+    display: none;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.menuButton:hover {
+    background: var(--glass-bg-hover);
+    color: var(--text-primary);
+}
+
+.menuButton svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* Logo */
+.logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    display: none;
+}
+
+/* Spacer */
+.spacer {
+    flex: 1;
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Icon Button */
+.iconButton {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.iconButton:hover {
+    background: var(--glass-bg-hover);
+    color: var(--text-primary);
+}
+
+.iconButton svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* User Menu */
+.userMenu {
+    position: relative;
+}
+
+.userButton {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-primary-muted);
+    transition: all var(--transition-fast);
+}
+
+.userButton:hover {
+    ring: 2px solid var(--accent-primary);
+}
+
+.userAvatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.userInitial {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--accent-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .topbar {
+        padding-left: var(--space-4);
+    }
+
+    .menuButton {
+        display: flex;
+    }
+
+    .logo {
+        display: block;
+    }
+}
