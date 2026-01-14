@@ -70,3 +70,39 @@ export const getMediaUrl = (path: string): string => {
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     return `${config.media.dataBaseUrl}/${cleanPath}`;
 };
+
+// ============================================
+// PROTOCOL VALIDATION
+// Detect mixed-content WebSocket misconfigurations at startup
+// ============================================
+
+/**
+ * Validate WebSocket protocol matches page security.
+ * Runs once on app init. Logs fatal error if mismatch detected.
+ */
+function validateWsConfig(): void {
+    // Only run in browser
+    if (typeof window === 'undefined') return;
+
+    const isSecurePage = window.location.protocol === 'https:';
+    const isSecureWs = config.ws.baseUrl.startsWith('wss://');
+
+    if (isSecurePage && !isSecureWs) {
+        console.error(
+            '[FATAL CONFIG] Secure page (https) attempting non-secure WebSocket (ws://).\n' +
+            `Current WS URL: ${config.ws.baseUrl}\n` +
+            'Fix NEXT_PUBLIC_WS_URL to use wss:// in production.'
+        );
+    }
+
+    // Optional: warn about insecure WS in production builds
+    if (process.env.NODE_ENV === 'production' && !isSecureWs) {
+        console.warn(
+            '[CONFIG WARNING] WebSocket URL is not secure (wss://).\n' +
+            'This may cause connection failures in production.'
+        );
+    }
+}
+
+// Run validation on module load
+validateWsConfig();

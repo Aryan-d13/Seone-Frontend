@@ -129,6 +129,70 @@ export function clearAuthToken(): void {
     Cookies.remove(config.auth.tokenCookieName);
 }
 
+// ============================================
+// JWT TOKEN UTILITIES
+// Local JWT parsing for expiry checks (no API calls)
+// ============================================
+
+interface JwtPayload {
+    sub?: string;
+    exp?: number;
+    iat?: number;
+    [key: string]: unknown;
+}
+
+/**
+ * Decode JWT payload without signature verification.
+ * Used only for reading claims like expiry; actual validation is backend's job.
+ */
+export function decodeJwtPayload(token: string): JwtPayload | null {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+
+        // Base64url decode the payload (2nd part)
+        const payload = parts[1];
+        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(decoded);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Get token expiry as Date, or null if token is invalid/missing exp.
+ */
+export function getTokenExpiry(token: string): Date | null {
+    const payload = decodeJwtPayload(token);
+    if (!payload?.exp) return null;
+    return new Date(payload.exp * 1000);
+}
+
+/**
+ * Check if token is expired or expiring within buffer.
+ * @param token JWT string
+ * @param bufferSeconds How many seconds before actual expiry to consider it expired (default: 60)
+ */
+export function isTokenExpired(token: string, bufferSeconds: number = 60): boolean {
+    const expiry = getTokenExpiry(token);
+    if (!expiry) return true; // Treat unparseable tokens as expired
+
+    const now = new Date();
+    const bufferMs = bufferSeconds * 1000;
+    return expiry.getTime() - bufferMs <= now.getTime();
+}
+
+/**
+ * Get auth token only if it exists and is not expired.
+ * Returns undefined if no token or token is expired/expiring.
+ */
+export function getValidAuthToken(bufferSeconds: number = 60): string | undefined {
+    const token = getAuthToken();
+    if (!token) return undefined;
+    if (isTokenExpired(token, bufferSeconds)) return undefined;
+    return token;
+}
+
 /**
  * Check if email domain is allowed
  */
@@ -159,7 +223,14 @@ export async function authFetch(
     // Handle token expiry
     if (response.status === 401) {
         clearAuthToken();
+        // Surface message before redirect (temporary UX until toast system exists)
+        if (typeof window !== 'undefined') {
+            alert('Session expired. Please log in again.');
+        }
         window.location.href = '/login';
+        // Throw to prevent further execution during redirect
+        // This eliminates race conditions where React renders with torn-down state
+        throw new Error('Session expired');
     }
 
     return response;

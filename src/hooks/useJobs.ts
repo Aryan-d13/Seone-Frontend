@@ -85,6 +85,7 @@ export function useJobs({ initialPage = 1, pageSize = 10, status }: UseJobsOptio
 
     return {
         ...state,
+        items: state.items ?? [], // Defense-in-depth: ensure items is always an array
         loadMore,
         refresh,
     };

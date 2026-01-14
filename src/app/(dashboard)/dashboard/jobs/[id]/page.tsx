@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useJobStore } from '@/stores/job';
 import { useJobWebSocket } from '@/hooks/useJobWebSocket';
@@ -12,21 +12,22 @@ import { Button } from '@/components/ui/Button';
 import styles from './page.module.css';
 
 interface JobDetailPageProps {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default function JobDetailPage({ params }: JobDetailPageProps) {
     const router = useRouter();
-    const { id } = params;
+    const { id } = use(params);
     const {
         job,
         isLoading,
         error: storeError,
         setJob,
         setError,
-        setLoading
+        setLoading,
+        reset
     } = useJobStore();
 
     // Local state for initial fetch status to handle 403/404 explicitly
@@ -35,6 +36,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     // 1. REST First: Fetch job data
     useEffect(() => {
+        // Clear previous job state before fetching new job
+        reset();
+
         async function fetchJob() {
             setFetchStatus('loading');
             setLoading(true);
@@ -67,7 +71,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         }
 
         fetchJob();
-    }, [id, setJob, setError, setLoading]);
+    }, [id, setJob, setError, setLoading, reset]);
 
     // 2. WebSocket: Connect ONLY if job exists and is active
     // We conditionally render the hook or pass a flag? 
