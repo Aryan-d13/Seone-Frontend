@@ -197,8 +197,8 @@ export function getValidAuthToken(bufferSeconds: number = 60): string | undefine
  * Check if email domain is allowed
  */
 export function isAllowedDomain(email: string): boolean {
-    const domain = email.split('@')[1];
-    return domain === config.auth.allowedDomain;
+    const domain = email.split('@')[1]?.toLowerCase();
+    return (config.auth.allowedDomain as readonly string[]).includes(domain);
 }
 
 /**

@@ -74,12 +74,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }, [id, setJob, setError, setLoading, reset]);
 
     // 2. WebSocket: Connect ONLY if job exists and is active
-    // We conditionally render the hook or pass a flag? 
-    // Hooks can't be conditional. We pass the ID only if we want to connect.
-    // If job is completed/failed, we don't need WS.
     const shouldConnect = fetchStatus === 'success' && job && job.status !== 'completed' && job.status !== 'failed';
-
-    // We pass null to hook to disable connection if not needed
     useJobWebSocket(shouldConnect ? id : '');
 
     if (fetchStatus === 'loading') {
@@ -91,7 +86,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         );
     }
 
-    // 3. Ownership Boundary: Explicit Error UI
     if (fetchStatus === 'error' && fetchError) {
         return (
             <div className={styles.errorContainer}>
@@ -112,20 +106,20 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         <div className={styles.container}>
             <div className={styles.header}>
                 <div className={styles.headerLeft}>
-                    <Button
-                        variant="ghost"
-                        size="sm"
+                    <button
                         onClick={() => router.push('/dashboard/jobs')}
                         className={styles.backButton}
                     >
-                        ← Back
-                    </Button>
-                    <h1 className={styles.title}>Job #{job.id.slice(0, 8)}</h1>
-                </div>
-                <div className={styles.headerRight}>
-                    <span className={`${styles.status} ${styles[job.status]}`}>
-                        {job.status}
-                    </span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <div className={styles.titleWrapper}>
+                        <h1 className={styles.title}>Job #{job.id.slice(0, 8)}</h1>
+                        <span className={`${styles.status} ${styles[job.status]}`}>
+                            {job.status}
+                        </span>
+                    </div>
                 </div>
             </div>
 

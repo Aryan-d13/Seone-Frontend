@@ -30,6 +30,7 @@ export function useJobWebSocket(jobId: string) {
     const setError = useJobStore(state => state.setError);
     const setWsConnected = useJobStore(state => state.setWsConnected);
     const setLastEventAt = useJobStore(state => state.setLastEventAt);
+    const job = useJobStore(state => state.job);
 
     const fetchJob = useCallback(async () => {
         if (!mountedRef.current) return;
@@ -238,6 +239,26 @@ export function useJobWebSocket(jobId: string) {
             }
         };
     }, [connect]);
+
+    // POLLING STRATEGY:
+    // Reconcile with REST every 3 seconds while job is non-terminal.
+    // This ensures we converge to the correct state even if WS events are missed.
+    useEffect(() => {
+        if (!jobId || !mountedRef.current) return;
+
+        // Stop polling if job is in a terminal state
+        const isTerminal = job?.status === 'completed' || job?.status === 'failed' || job?.phase === 'completed' || job?.phase === 'failed';
+        if (isTerminal) return;
+
+        const intervalId = setInterval(() => {
+            if (mountedRef.current) {
+                // console.log('Polling job state...'); // Debug
+                fetchJob();
+            }
+        }, 3000);
+
+        return () => clearInterval(intervalId);
+    }, [jobId, job?.status, job?.phase, fetchJob]);
 
     return {
         isConnected: wsRef.current?.readyState === WebSocket.OPEN

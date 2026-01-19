@@ -35,7 +35,7 @@ export default function LoginPage() {
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
 
             if (!isAllowedDomain(payload.email)) {
-                setError(`Only @${config.auth.allowedDomain} accounts are allowed. You used ${payload.email}`);
+                setError(`Only @${config.auth.allowedDomain.join(', @')} accounts are allowed. You used ${payload.email}`);
                 setIsLoading(false);
                 return;
             }
@@ -134,7 +134,7 @@ export default function LoginPage() {
 
                 {/* Domain Notice */}
                 <p className={styles.notice}>
-                    Only <strong>@{config.auth.allowedDomain}</strong> accounts are permitted
+                    Only <strong>@{config.auth.allowedDomain.join(', @')}</strong> accounts are permitted
                 </p>
             </motion.div>
 

@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { useJobStore } from '@/stores/job';
 import { getMediaUrl } from '@/lib/config';
 import { staggerContainer, listItemVariants } from '@/lib/animations';
-import { Button } from '@/components/ui/Button';
 import styles from './ClipGallery.module.css';
 
 export function ClipGallery() {
@@ -46,17 +45,23 @@ export function ClipGallery() {
                                     preload="metadata"
                                 />
                             </div>
-                            <div className={styles.actions}>
-                                <div className={styles.info}>
-                                    <span className={styles.filename}>{clip.filename}</span>
+                            <div className={styles.overlay}>
+                                <div className={styles.overlayContent}>
+                                    <span className={styles.filename} title={clip.filename}>
+                                        {clip.filename}
+                                    </span>
+                                    <button
+                                        className={styles.downloadButton}
+                                        onClick={() => window.open(videoUrl, '_blank')}
+                                        title="Download Video"
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                            <polyline points="7 10 12 15 17 10" />
+                                            <line x1="12" y1="15" x2="12" y2="3" />
+                                        </svg>
+                                    </button>
                                 </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => window.open(videoUrl, '_blank')}
-                                >
-                                    Download
-                                </Button>
                             </div>
                         </motion.div>
                     );

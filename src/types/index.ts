@@ -36,9 +36,25 @@ export type JobStatus =
     | 'completed'
     | 'failed';
 
+export type JobPhase =
+    | 'queued'
+    | 'downloading'
+    | 'forked'
+    | 'rendering'
+    | 'completed'
+    | 'failed';
+
 export interface Job {
     id: string;
     status: JobStatus;
+    phase?: JobPhase;
+    fork_join?: {
+        fork_entered_at: string | null;
+        join_satisfied_at: string | null;
+        is_forked: boolean;
+        join_satisfied: boolean;
+    };
+    steps?: Record<string, { status: 'pending' | 'running' | 'completed' | 'failed' } | null>;
     progress: number;
     current_step?: string;
     clip_count: number;

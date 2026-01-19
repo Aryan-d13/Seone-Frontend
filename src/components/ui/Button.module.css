@@ -11,6 +11,7 @@
     user-select: none;
     position: relative;
     overflow: hidden;
+    /* Removed line-height: 1 to let flexbox handle vertical sizing naturally */
 }
 
 .button:disabled {
@@ -86,6 +87,9 @@
 
 .spinner {
     position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -115,5 +119,8 @@
 }
 
 .label {
-    display: inline-block;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 100%;
 }
