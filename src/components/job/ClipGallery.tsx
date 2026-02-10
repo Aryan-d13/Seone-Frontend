@@ -13,7 +13,23 @@ export function ClipGallery() {
     // Prioritize liveClips if present (incremental updates), otherwise fall back to job output
     const clips = liveClips.length > 0 ? liveClips : (job?.output?.clips || []);
 
-    if (clips.length === 0) return null;
+    if (clips.length === 0) {
+        if (job?.status === 'failed' || job?.status === 'completed') {
+            return (
+                <div className={styles.emptyError} style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: 'var(--error)',
+                    background: 'var(--error-bg)',
+                    borderRadius: 'var(--radius-md)',
+                    marginTop: '1rem'
+                }}>
+                    <p>No clips were generated for this job.</p>
+                </div>
+            );
+        }
+        return null; // Still in-progress, no clips yet is normal
+    }
 
     return (
         <div className={styles.container}>

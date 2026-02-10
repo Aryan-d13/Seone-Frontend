@@ -36,7 +36,9 @@ export function PipelineTimeline() {
 
     if (rawPhase && rawPhase !== 'queued') {
         if (rawPhase === 'forked') {
-            currentStepId = 'rendering';
+            // Fork/join: transcribe+analyze run in parallel, show "analyzing" as current
+            // (both steps are in-flight, show the later one as active so earlier ones appear done)
+            currentStepId = 'analyzing';
         } else if (STEP_MAPPING[rawPhase]) {
             currentStepId = STEP_MAPPING[rawPhase];
         } else {

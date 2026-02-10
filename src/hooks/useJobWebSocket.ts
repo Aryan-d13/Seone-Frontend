@@ -109,6 +109,11 @@ export function useJobWebSocket(jobId: string) {
 
                     case 'step_started':
                         if (data.payload?.step) {
+                            // Terminal guard: don't process step events after job is terminal
+                            const currentJob = useJobStore.getState().job;
+                            if (currentJob && (currentJob.status === 'completed' || currentJob.status === 'failed')) {
+                                break;
+                            }
                             const step = data.payload.step;
                             let status: import('@/types').JobStatus | undefined;
 
@@ -151,6 +156,19 @@ export function useJobWebSocket(jobId: string) {
 
                     case 'job_completed':
                         if (data.payload?.output) {
+                            const clips = data.payload.output?.clips;
+                            const hasValidClips = Array.isArray(clips) && clips.length > 0;
+
+                            if (!hasValidClips) {
+                                // Completed with no clips = effective failure
+                                updateJob({
+                                    status: 'failed',
+                                    error_message: 'Job completed but produced no clips'
+                                });
+                                ws.close();
+                                break;
+                            }
+
                             updateJob({
                                 status: 'completed',
                                 progress: 100,
