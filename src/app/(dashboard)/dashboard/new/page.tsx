@@ -9,7 +9,7 @@ import { pageVariants, pageTransition } from '@/lib/animations';
 import styles from './page.module.css';
 
 export default function NewJobPage() {
-    const { formData, errors, state, updateField, togglePage, submit, reset } = useJobSubmit();
+    const { formData, errors, state, updateField, selectTemplate, submit, reset } = useJobSubmit();
 
     return (
         <motion.div
@@ -43,9 +43,9 @@ export default function NewJobPage() {
                 {/* Right: Template Selector */}
                 <div className={styles.column}>
                     <TemplateSelector
-                        selectedPages={formData.selectedPages}
-                        onToggle={togglePage}
-                        error={errors.selectedPages}
+                        selectedTemplate={formData.selectedTemplate}
+                        onSelect={selectTemplate}
+                        error={errors.selectedTemplate}
                     />
                 </div>
             </div>
@@ -57,7 +57,7 @@ export default function NewJobPage() {
                 )}
                 {Object.keys(errors).length > 0 && (
                     <div className={styles.submitError}>
-                        {errors.selectedPages ? 'Please select a template' : 'Please fix the errors above'}
+                        {errors.selectedTemplate ? 'Please select a template' : 'Please fix the errors above'}
                     </div>
                 )}
                 <Button
@@ -79,3 +79,4 @@ export default function NewJobPage() {
         </motion.div>
     );
 }
+

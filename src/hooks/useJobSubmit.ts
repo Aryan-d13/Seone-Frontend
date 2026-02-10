@@ -15,7 +15,6 @@ import {
 import { isValidYouTubeUrl } from '@/lib/utils';
 import { authFetch } from '@/services/auth';
 import { endpoints } from '@/lib/config';
-import { usePages } from '@/hooks/usePages';
 
 export function useJobSubmit() {
     const router = useRouter();
@@ -38,15 +37,16 @@ export function useJobSubmit() {
         setErrors(prev => ({ ...prev, [field]: undefined }));
     }, []);
 
-    // Toggle page selection
-    const togglePage = useCallback((pageId: string) => {
+    /**
+     * Select a template (single selection).
+     * If the same template is clicked again, it gets deselected.
+     */
+    const selectTemplate = useCallback((templateRef: string) => {
         setFormData(prev => ({
             ...prev,
-            selectedPages: prev.selectedPages.includes(pageId)
-                ? prev.selectedPages.filter(id => id !== pageId)
-                : [...prev.selectedPages, pageId],
+            selectedTemplate: prev.selectedTemplate === templateRef ? null : templateRef,
         }));
-        setErrors(prev => ({ ...prev, selectedPages: undefined }));
+        setErrors(prev => ({ ...prev, selectedTemplate: undefined }));
     }, []);
 
     // Validate form
@@ -71,15 +71,13 @@ export function useJobSubmit() {
             newErrors.clipCount = `Clip count must be between ${CLIP_COUNT_MIN} and ${CLIP_COUNT_MAX}`;
         }
 
-        if (formData.selectedPages.length === 0) {
-            newErrors.selectedPages = 'Please select at least one template';
+        if (!formData.selectedTemplate) {
+            newErrors.selectedTemplate = 'Please select a template';
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     }, [formData]);
-
-    const { pages } = usePages();
 
     // Submit job
     const submit = useCallback(async () => {
@@ -88,14 +86,7 @@ export function useJobSubmit() {
         setState({ isSubmitting: true, isSuccess: false, error: null, jobId: null });
 
         try {
-            // 1. Map Page IDs to Names (Strict Contract)
-            const selectedPageNames = formData.selectedPages.map(id => {
-                const page = pages.find(p => p.id === id);
-                if (!page) throw new Error(`Invalid template ID: ${id}`);
-                return page.name;
-            });
-
-            // 2. Clamp and Round Duration (Data Correctness)
+            // Clamp and Round Duration (Data Correctness)
             // Convert to minutes, clamp to [0.5, 10], round to 1 decimal
             const minMinutes = Math.min(Math.max(formData.minDuration / 60, 0.5), 10);
             const maxMinutes = Math.min(Math.max(formData.maxDuration / 60, 0.5), 10);
@@ -104,7 +95,7 @@ export function useJobSubmit() {
             const finalMin = Number(Math.min(minMinutes, maxMinutes).toFixed(1));
             const finalMax = Number(Math.max(minMinutes, maxMinutes).toFixed(1));
 
-            // 3. Map Copy Mode & Language (API Alignment)
+            // Map Copy Mode & Language (API Alignment)
             // API expects copy_mode to be 'en' or 'hi' (language code)
             // UI copyMode ('ai'/'ocr') goes to extra_config
             const apiCopyMode = formData.language === 'auto' ? 'en' : formData.language;
@@ -117,7 +108,7 @@ export function useJobSubmit() {
                     min_duration: finalMin,
                     max_duration: finalMax,
                     count: formData.clipCount,
-                    pages: selectedPageNames,
+                    template_ref: formData.selectedTemplate, // NEW: single template reference
                     copy_mode: apiCopyMode,
                     language: null, // As per docs
                     extra_config: {
@@ -145,7 +136,7 @@ export function useJobSubmit() {
                 jobId: null,
             });
         }
-    }, [formData, validate, router, pages]);
+    }, [formData, validate, router]);
 
     // Reset form
     const reset = useCallback(() => {
@@ -159,9 +150,10 @@ export function useJobSubmit() {
         errors,
         state,
         updateField,
-        togglePage,
+        selectTemplate,
         validate,
         submit,
         reset,
     };
 }
+

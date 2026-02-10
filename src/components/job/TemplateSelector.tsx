@@ -1,26 +1,26 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { usePages } from '@/hooks/usePages';
-import { Page } from '@/types/job';
+import { useTemplates } from '@/hooks/useTemplates';
+import { Template } from '@/types/job';
 import { cn } from '@/lib/utils';
 import { staggerContainer, listItemVariants } from '@/lib/animations';
 import styles from './TemplateSelector.module.css';
 
 interface TemplateSelectorProps {
-    selectedPages: string[];
-    onToggle: (pageId: string) => void;
+    selectedTemplate: string | null; // template_ref
+    onSelect: (templateRef: string) => void;
     error?: string;
 }
 
-export function TemplateSelector({ selectedPages, onToggle, error }: TemplateSelectorProps) {
-    const { pages, isLoading, error: fetchError } = usePages();
+export function TemplateSelector({ selectedTemplate, onSelect, error }: TemplateSelectorProps) {
+    const { templates, isLoading, error: fetchError } = useTemplates();
 
     if (isLoading) {
         return (
             <div className={styles.container}>
                 <div className={styles.header}>
-                    <h3 className={styles.title}>Select Templates</h3>
+                    <h3 className={styles.title}>Select Template</h3>
                 </div>
                 <div className={styles.grid}>
                     {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -31,13 +31,13 @@ export function TemplateSelector({ selectedPages, onToggle, error }: TemplateSel
         );
     }
 
-    // Group pages by category
-    const groupedPages = pages.reduce((acc, page) => {
-        const category = page.category || 'Other';
+    // Group templates by category
+    const groupedTemplates = templates.reduce((acc, template) => {
+        const category = template.category || 'Other';
         if (!acc[category]) acc[category] = [];
-        acc[category].push(page);
+        acc[category].push(template);
         return acc;
-    }, {} as Record<string, Page[]>);
+    }, {} as Record<string, Template[]>);
 
     return (
         <motion.div
@@ -47,13 +47,13 @@ export function TemplateSelector({ selectedPages, onToggle, error }: TemplateSel
             transition={{ delay: 0.1 }}
         >
             <div className={styles.header}>
-                <h3 className={styles.title}>Select Templates</h3>
+                <h3 className={styles.title}>Select Template</h3>
                 <p className={styles.subtitle}>
-                    Choose one or more templates for your clips
+                    Choose a template for your clips
                 </p>
-                {selectedPages.length > 0 && (
+                {selectedTemplate && (
                     <span className={styles.selectedCount}>
-                        {selectedPages.length} selected
+                        1 selected
                     </span>
                 )}
             </div>
@@ -61,7 +61,7 @@ export function TemplateSelector({ selectedPages, onToggle, error }: TemplateSel
             {error && <div className={styles.error}>{error}</div>}
             {fetchError && <div className={styles.warning}>Using demo templates</div>}
 
-            {Object.entries(groupedPages).map(([category, categoryPages]) => (
+            {Object.entries(groupedTemplates).map(([category, categoryTemplates]) => (
                 <div key={category} className={styles.categorySection}>
                     <h4 className={styles.categoryTitle}>{category}</h4>
                     <motion.div
@@ -70,24 +70,24 @@ export function TemplateSelector({ selectedPages, onToggle, error }: TemplateSel
                         initial="initial"
                         animate="animate"
                     >
-                        {categoryPages.map((page) => {
-                            const isSelected = selectedPages.includes(page.id);
+                        {categoryTemplates.map((template) => {
+                            const isSelected = selectedTemplate === template.template_ref;
                             return (
                                 <motion.button
-                                    key={page.id}
+                                    key={template.template_ref}
                                     type="button"
                                     className={cn(
                                         styles.card,
                                         isSelected && styles.cardSelected
                                     )}
-                                    onClick={() => onToggle(page.id)}
+                                    onClick={() => onSelect(template.template_ref)}
                                     variants={listItemVariants}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
                                     <div className={styles.cardPreview}>
-                                        {page.thumbnailUrl ? (
-                                            <img src={page.thumbnailUrl} alt={page.name} />
+                                        {template.thumbnailUrl ? (
+                                            <img src={template.thumbnailUrl} alt={template.name} />
                                         ) : (
                                             <div className={styles.cardPlaceholder}>
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -97,11 +97,14 @@ export function TemplateSelector({ selectedPages, onToggle, error }: TemplateSel
                                                 </svg>
                                             </div>
                                         )}
+                                        {template.aspect_ratio && (
+                                            <span className={styles.aspectRatio}>{template.aspect_ratio}</span>
+                                        )}
                                     </div>
                                     <div className={styles.cardInfo}>
-                                        <span className={styles.cardName}>{page.name}</span>
-                                        {page.description && (
-                                            <span className={styles.cardDesc}>{page.description}</span>
+                                        <span className={styles.cardName}>{template.name}</span>
+                                        {template.description && (
+                                            <span className={styles.cardDesc}>{template.description}</span>
                                         )}
                                     </div>
                                     {isSelected && (
@@ -120,3 +123,4 @@ export function TemplateSelector({ selectedPages, onToggle, error }: TemplateSel
         </motion.div>
     );
 }
+

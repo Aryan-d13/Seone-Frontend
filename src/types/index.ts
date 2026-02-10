@@ -68,12 +68,24 @@ export interface Job {
     ws_url?: string;
 }
 
+/**
+ * Render options for controlling output quality/format.
+ * Optional field in job creation payload.
+ */
+export interface RenderOptions {
+    quality?: 'low' | 'medium' | 'high';
+    format?: 'mp4' | 'webm';
+    resolution?: string; // e.g. "1080p", "720p"
+    [key: string]: unknown;
+}
+
 export interface JobCreateRequest {
     url: string;
     min_duration: number; // Minutes
     max_duration: number; // Minutes
     count: number;
-    pages: string[]; // Template names
+    template_ref: string; // e.g. "chaturnath/v1"
+    render_options?: RenderOptions;
     copy_mode: string;
     language: string | null;
     extra_config?: Record<string, unknown> | null;
@@ -86,7 +98,24 @@ export interface JobCreateResponse {
     message: string;
 }
 
-// ---------- Page/Template Types ----------
+// ---------- Template Types ----------
+/**
+ * Template type from GET /api/v1/pages (renderer v1).
+ * template_ref is the canonical identifier for job submission.
+ */
+export interface Template {
+    template_ref: string; // Canonical ID, e.g. "chaturnath/v1"
+    name: string;         // Display name
+    aspect_ratio?: string; // e.g. "9:16", "1:1"
+    description?: string;
+    previewUrl?: string;
+    thumbnailUrl?: string;
+    category?: string;
+}
+
+/**
+ * @deprecated Use Template instead. Kept for backwards compatibility.
+ */
 export interface Page {
     id: string;
     name: string;

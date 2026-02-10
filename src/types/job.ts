@@ -10,9 +10,26 @@ export interface SubmissionFormData {
     clipCount: number;
     language: 'hi' | 'en' | 'auto';
     copyMode: 'ai' | 'ocr' | 'manual';
-    selectedPages: string[];
+    selectedTemplate: string | null; // template_ref, single selection
 }
 
+/**
+ * Template type for job creation UI.
+ * template_ref is the value to submit in JobCreateRequest.
+ */
+export interface Template {
+    template_ref: string; // Canonical ID, e.g. "chaturnath/v1"
+    name: string;
+    slug: string;
+    aspect_ratio?: string;
+    description?: string;
+    thumbnailUrl?: string;
+    category?: string;
+}
+
+/**
+ * @deprecated Use Template instead
+ */
 export interface Page {
     id: string;
     name: string;
@@ -26,7 +43,7 @@ export interface FormErrors {
     youtubeUrl?: string;
     duration?: string;
     clipCount?: string;
-    selectedPages?: string;
+    selectedTemplate?: string;
     general?: string;
 }
 
@@ -45,7 +62,7 @@ export const defaultFormData: SubmissionFormData = {
     clipCount: 3,
     language: 'hi',
     copyMode: 'ai',
-    selectedPages: [],
+    selectedTemplate: null,
 };
 
 // Duration constraints
