@@ -1,0 +1,104 @@
+﻿
+ RUN  v4.0.18 E:/Code/Seone-Frontend
+
+ Γ¥» src/__tests__/useJobSubmit.contract.test.tsx (0 test)
+node.exe : 
+At C:\Program Files\n
+odejs\npx.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (:String   
+ ) [], RemoteExce    
+ption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» 
+Failed Suites 1 
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/__tests__/
+useJobSubmit.contract
+.test.tsx [ src/__tes
+ts__/useJobSubmit.con
+tract.test.tsx ]
+Error: Failed to 
+resolve import 
+"../useJobSubmit" 
+from "src/__tests__/u
+seJobSubmit.contract.
+test.tsx". Does the 
+file exist?
+  Plugin: 
+vite:import-analysis
+  File: E:/Code/Seone
+-Frontend/src/__tests
+__/useJobSubmit.contr
+act.test.tsx:3:0
+  10 |  }));
+  11 |  const 
+__vi_import_0__ = 
+await import("@testin
+g-library/react");
+  12 |  const 
+__vi_import_1__ = 
+await import("../useJ
+obSubmit");
+     |               
+                     
+   ^
+  13 |  const 
+__vi_import_2__ = 
+await import("@/servi
+ces/auth");
+  14 |  
+ Γ¥» TransformPluginC
+ontext._formatLog nod
+e_modules/vite/dist/n
+ode/chunks/config.js:
+28999:43
+ Γ¥» TransformPluginC
+ontext.error node_mod
+ules/vite/dist/node/c
+hunks/config.js:28996
+:14
+ Γ¥» normalizeUrl nod
+e_modules/vite/dist/n
+ode/chunks/config.js:
+27119:18
+ Γ¥» node_modules/vit
+e/dist/node/chunks/co
+nfig.js:27177:32
+ Γ¥» TransformPluginC
+ontext.transform node
+_modules/vite/dist/no
+de/chunks/config.js:2
+7145:4
+ Γ¥» EnvironmentPlugi
+nContainer.transform 
+node_modules/vite/dis
+t/node/chunks/config.
+js:28797:14
+ Γ¥» 
+loadAndTransform node
+_modules/vite/dist/no
+de/chunks/config.js:2
+2670:26
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  11:59:14
+   Duration  1.18s (transform 22ms, setup 130ms, import 0ms, tests 0ms, environment 842ms)
+

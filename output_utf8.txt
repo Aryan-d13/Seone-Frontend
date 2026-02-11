@@ -1,0 +1,10 @@
+﻿
+ RUN  v4.0.18 E:/Code/Seone-Frontend
+
+ Γ£ô src/__tests__/useJobSubmit.payload.test.tsx (1 test) 27ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  11:46:30
+   Duration  2.55s (transform 148ms, setup 257ms, import 424ms, tests 27ms, environment 1.56s)
+

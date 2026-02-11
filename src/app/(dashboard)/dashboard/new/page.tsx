@@ -55,7 +55,7 @@ export default function NewJobPage() {
                 {state.error && (
                     <div className={styles.submitError}>{state.error}</div>
                 )}
-                {Object.keys(errors).length > 0 && (
+                {Object.values(errors).some(Boolean) && (
                     <div className={styles.submitError}>
                         {errors.selectedTemplate ? 'Please select a template' : 'Please fix the errors above'}
                     </div>

@@ -1,0 +1,29 @@
+{
+  "hindi": {
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "min_duration": 1,
+    "max_duration": 2,
+    "count": 5,
+    "template_ref": "template-1",
+    "language_mode": "hi",
+    "copy_language": "hi"
+  },
+  "english": {
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "min_duration": 1,
+    "max_duration": 2,
+    "count": 5,
+    "template_ref": "template-1",
+    "language_mode": "en",
+    "copy_language": "en"
+  },
+  "auto": {
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "min_duration": 1,
+    "max_duration": 2,
+    "count": 5,
+    "template_ref": "template-1",
+    "language_mode": "auto",
+    "copy_language": "en"
+  }
+}

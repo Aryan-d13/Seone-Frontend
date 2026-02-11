@@ -1,0 +1,214 @@
+﻿
+ RUN  v4.0.18 E:/Code/Seone-Frontend
+
+ Γ¥» src/__tests__/useJobSubmit.contract.test.tsx (5 tests | 4 failed) 35ms
+     Γ£ô Invariant: Initial state has NO errors (Banner check) 15ms
+     ├ù Contract: Maps Hindi selection to language_mode=hi 11ms
+     ├ù Contract: Maps English selection to language_mode=en 4ms
+     ├ù Contract: Maps Auto selection to language_mode=auto 2ms
+     ├ù Invariant: Fields are never null 2ms
+node.exe : 
+At C:\Program Files\n
+odejs\npx.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (:String   
+ ) [], RemoteExce    
+ption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ Failed Tests 4 
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/__tests__/
+useJobSubmit.contract
+.test.tsx > Job 
+Payload Contract & 
+Invariants > 
+Contract: Maps Hindi 
+selection to 
+language_mode=hi
+AssertionError: 
+expected undefined 
+to be 'hi' // 
+Object.is equality
+
+[32m- 
+Expected:[39m 
+"hi"
+
+[31m+ 
+Received:[39m 
+undefined
+
+ Γ¥» src/__tests__/us
+eJobSubmit.contract.t
+est.tsx:63:36
+     61| 
+     62|         // 
+Strict Contract 
+Assertions
+     63|         expe
+ct(body.language_mode
+).toBe('hi');
+       |             
+                     
+  ^
+     64|         expe
+ct(body.copy_language
+).toBe('hi'); // 
+Derives from language
+     65| 
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»[1/4]ΓÄ»
+
+ FAIL  src/__tests__/
+useJobSubmit.contract
+.test.tsx > Job 
+Payload Contract & 
+Invariants > 
+Contract: Maps 
+English selection to 
+language_mode=en
+AssertionError: 
+expected undefined 
+to be 'en' // 
+Object.is equality
+
+[32m- 
+Expected:[39m 
+"en"
+
+[31m+ 
+Received:[39m 
+undefined
+
+ Γ¥» src/__tests__/us
+eJobSubmit.contract.t
+est.tsx:89:36
+     87|         
+const body = JSON.par
+se(calls[0][1].body 
+as string);
+     88| 
+     89|         expe
+ct(body.language_mode
+).toBe('en');
+       |             
+                     
+  ^
+     90|         expe
+ct(body.copy_language
+).toBe('en');
+     91|         expe
+ct(body.copy_mode).to
+BeUndefined();
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»[2/4]ΓÄ»
+
+ FAIL  src/__tests__/
+useJobSubmit.contract
+.test.tsx > Job 
+Payload Contract & 
+Invariants > 
+Contract: Maps Auto 
+selection to 
+language_mode=auto
+AssertionError: 
+expected undefined 
+to be 'auto' // 
+Object.is equality
+
+[32m- 
+Expected:[39m 
+"auto"
+
+[31m+ 
+Received:[39m 
+undefined
+
+ Γ¥» src/__tests__/us
+eJobSubmit.contract.t
+est.tsx:107:36
+    105|         
+const body = JSON.par
+se(calls[0][1].body 
+as string);
+    106| 
+    107|         expe
+ct(body.language_mode
+).toBe('auto');
+       |             
+                     
+  ^
+    108|         // 
+Default 
+copy_language for 
+auto should be 'en' 
+(or whatever ΓÇª
+    109|         expe
+ct(body.copy_language
+).toBe('en');
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»[3/4]ΓÄ»
+
+ FAIL  src/__tests__/
+useJobSubmit.contract
+.test.tsx > Job 
+Payload Contract & 
+Invariants > 
+Invariant: Fields 
+are never null
+AssertionError: 
+expected undefined 
+not to be undefined
+ Γ¥» src/__tests__/us
+eJobSubmit.contract.t
+est.tsx:126:40
+    124| 
+    125|         expe
+ct(body.language_mode
+).not.toBeNull();
+    126|         expe
+ct(body.language_mode
+).not.toBeUndefined()
+;
+       |             
+                     
+      ^
+    127|         expe
+ct(body.copy_language
+).not.toBeNull();
+    128|         expe
+ct(body.copy_language
+).not.toBeUndefined()
+;
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+ΓÄ»ΓÄ»ΓÄ»[4/4]ΓÄ»
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed (5)
+   Start at  12:09:06
+   Duration  1.43s (transform 108ms, setup 116ms, import 262ms, tests 35ms, environment 837ms)
+

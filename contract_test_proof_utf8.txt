@@ -1,0 +1,49 @@
+﻿
+ RUN  v4.0.18 E:/Code/Seone-Frontend
+
+stdout | src/__tests__/useJobSubmit.contract.test.tsx > Job Payload Contract & Invariants > Contract: Maps Hindi selection to CANONICAL payload
+--- PAYLOAD: language_mode=hi, copy_language=hi ---
+{
+  "url": "https://www.youtube.com/watch?v=hindi_video",
+  "min_duration": 1,
+  "max_duration": 2,
+  "count": 3,
+  "template_ref": "template-ref-hi",
+  "language_mode": "hi",
+  "copy_language": "hi"
+}
+
+stdout | src/__tests__/useJobSubmit.contract.test.tsx > Job Payload Contract & Invariants > Contract: Maps Auto selection to CANONICAL payload
+--- PAYLOAD: language_mode=auto, copy_language=en ---
+{
+  "url": "https://www.youtube.com/watch?v=auto_video",
+  "min_duration": 1,
+  "max_duration": 2,
+  "count": 5,
+  "template_ref": "template-ref-auto",
+  "language_mode": "auto",
+  "copy_language": "en"
+}
+
+stdout | src/__tests__/useJobSubmit.contract.test.tsx > Job Payload Contract & Invariants > Contract: Maps English selection to CANONICAL payload
+--- PAYLOAD: language_mode=en, copy_language=en ---
+{
+  "url": "https://www.youtube.com/watch?v=en_video",
+  "min_duration": 1,
+  "max_duration": 2,
+  "count": 4,
+  "template_ref": "template-ref-en",
+  "language_mode": "en",
+  "copy_language": "en"
+}
+
+stdout | src/__tests__/useJobSubmit.contract.test.tsx > Job Payload Contract & Invariants > Repro: Banner persists after clearing error (Bottom Error)
+--- REPRO: Error keys persist as undefined: [ [32m'youtubeUrl'[39m, [32m'selectedTemplate'[39m ]
+
+ Γ£ô src/__tests__/useJobSubmit.contract.test.tsx (6 tests) 33ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  12:45:36
+   Duration  1.38s (transform 98ms, setup 122ms, import 242ms, tests 33ms, environment 811ms)
+

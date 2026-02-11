@@ -22,11 +22,7 @@ const languageOptions = [
     { value: 'auto', label: 'Auto-detect' },
 ];
 
-const copyModeOptions = [
-    { value: 'ai', label: 'AI Generated', description: 'Generate copy using AI' },
-    { value: 'ocr', label: 'OCR Extract', description: 'Extract text from video' },
-    { value: 'manual', label: 'No Copy', description: 'Skip copy generation' },
-];
+
 
 export function SubmitPanel({
     formData,
@@ -112,9 +108,9 @@ export function SubmitPanel({
                     )}
                 </div>
 
-                {/* Language */}
+                {/* Language (Input/Processing Mode) */}
                 <div className={styles.field}>
-                    <label className={styles.label}>Language</label>
+                    <label className={styles.label}>Content Language (Input)</label>
                     <div className={styles.optionGroup}>
                         {languageOptions.map((option) => (
                             <button
@@ -132,26 +128,35 @@ export function SubmitPanel({
                     </div>
                 </div>
 
-                {/* Copy Mode */}
+                {/* POV Language (Output/Copy Mode) - REQUIRED */}
                 <div className={styles.field}>
-                    <label className={styles.label}>Copy Mode</label>
-                    <div className={styles.copyModeGrid}>
-                        {copyModeOptions.map((option) => (
+                    <label className={styles.label}>
+                        POV Language (Output) <span className={styles.required}>*</span>
+                    </label>
+                    <div className={styles.optionGroup}>
+                        {[
+                            { value: 'hi', label: 'Hindi' },
+                            { value: 'en', label: 'English' },
+                        ].map((option) => (
                             <button
                                 key={option.value}
                                 type="button"
                                 className={cn(
-                                    styles.copyModeCard,
-                                    formData.copyMode === option.value && styles.copyModeActive
+                                    styles.optionBtn,
+                                    formData.copyLanguage === option.value && styles.optionActive
                                 )}
-                                onClick={() => onUpdateField('copyMode', option.value as typeof formData.copyMode)}
+                                onClick={() => onUpdateField('copyLanguage', option.value as 'hi' | 'en')}
                             >
-                                <span className={styles.copyModeLabel}>{option.label}</span>
-                                <span className={styles.copyModeDesc}>{option.description}</span>
+                                {option.label}
                             </button>
                         ))}
                     </div>
+                    {errors.copyLanguage && (
+                        <span className={styles.error}>{errors.copyLanguage}</span>
+                    )}
                 </div>
+
+
 
                 {/* General Error */}
                 {errors.general && (

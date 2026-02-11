@@ -9,7 +9,7 @@ export interface SubmissionFormData {
     maxDuration: number;
     clipCount: number;
     language: 'hi' | 'en' | 'auto';
-    copyMode: 'ai' | 'ocr' | 'manual';
+    copyLanguage: 'hi' | 'en' | null; // POV Language, explicit selection required
     selectedTemplate: string | null; // template_ref, single selection
 }
 
@@ -43,6 +43,7 @@ export interface FormErrors {
     youtubeUrl?: string;
     duration?: string;
     clipCount?: string;
+    copyLanguage?: string;
     selectedTemplate?: string;
     general?: string;
 }
@@ -61,7 +62,7 @@ export const defaultFormData: SubmissionFormData = {
     maxDuration: 300,
     clipCount: 3,
     language: 'hi',
-    copyMode: 'ai',
+    copyLanguage: null,
     selectedTemplate: null,
 };
 

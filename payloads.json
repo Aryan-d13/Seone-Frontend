@@ -1,0 +1,50 @@
+[
+  {
+    "name": "hi_hi",
+    "payload": {
+      "url": "https://www.youtube.com/watch?v=hindi_video",
+      "min_duration": 1,
+      "max_duration": 2,
+      "count": 3,
+      "template_ref": "template-ref-hi",
+      "language_mode": "hi",
+      "copy_language": "hi"
+    }
+  },
+  {
+    "name": "auto_en",
+    "payload": {
+      "url": "https://www.youtube.com/watch?v=auto_video",
+      "min_duration": 1,
+      "max_duration": 2,
+      "count": 5,
+      "template_ref": "template-ref-auto",
+      "language_mode": "auto",
+      "copy_language": "en"
+    }
+  },
+  {
+    "name": "auto_hi",
+    "payload": {
+      "url": "https://www.youtube.com/watch?v=auto_video_hi",
+      "min_duration": 1,
+      "max_duration": 2,
+      "count": 5,
+      "template_ref": "template-ref-auto",
+      "language_mode": "auto",
+      "copy_language": "hi"
+    }
+  },
+  {
+    "name": "en_en",
+    "payload": {
+      "url": "https://www.youtube.com/watch?v=en_video",
+      "min_duration": 1,
+      "max_duration": 2,
+      "count": 4,
+      "template_ref": "template-ref-en",
+      "language_mode": "en",
+      "copy_language": "en"
+    }
+  }
+]

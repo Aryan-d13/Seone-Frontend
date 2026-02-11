@@ -1,0 +1,10 @@
+﻿
+ RUN  v4.0.18 E:/Code/Seone-Frontend
+
+ Γ£ô src/__tests__/useJobSubmit.contract.test.tsx (4 tests) 26ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  12:29:51
+   Duration  1.42s (transform 114ms, setup 138ms, import 248ms, tests 26ms, environment 821ms)
+

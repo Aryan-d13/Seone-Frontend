@@ -33,8 +33,14 @@ export function useJobSubmit() {
         value: SubmissionFormData[K]
     ) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error for this field
-        setErrors(prev => ({ ...prev, [field]: undefined }));
+        // Clear error for this field — delete the key entirely
+        // so Object.keys(errors).length reflects actual errors
+        const errorKey = field as string as keyof FormErrors;
+        setErrors(prev => {
+            const next = { ...prev };
+            delete next[errorKey];
+            return next;
+        });
     }, []);
 
     /**
@@ -46,7 +52,11 @@ export function useJobSubmit() {
             ...prev,
             selectedTemplate: prev.selectedTemplate === templateRef ? null : templateRef,
         }));
-        setErrors(prev => ({ ...prev, selectedTemplate: undefined }));
+        setErrors(prev => {
+            const next = { ...prev };
+            delete next.selectedTemplate;
+            return next;
+        });
     }, []);
 
     // Validate form
@@ -71,6 +81,10 @@ export function useJobSubmit() {
             newErrors.clipCount = `Clip count must be between ${CLIP_COUNT_MIN} and ${CLIP_COUNT_MAX}`;
         }
 
+        if (!formData.copyLanguage) {
+            newErrors.copyLanguage = 'Please select a POV language';
+        }
+
         if (!formData.selectedTemplate) {
             newErrors.selectedTemplate = 'Please select a template';
         }
@@ -82,6 +96,18 @@ export function useJobSubmit() {
     // Submit job
     const submit = useCallback(async () => {
         if (!validate()) return;
+
+        // Defense-in-depth: Strict NULL check
+        // Even if validate() passes, we block if copyLanguage is null to satisfy "never null/undefined" contract
+        if (!formData.copyLanguage) {
+            setState({
+                isSubmitting: false,
+                isSuccess: false,
+                error: 'POV Language is required',
+                jobId: null,
+            });
+            return;
+        }
 
         setState({ isSubmitting: true, isSuccess: false, error: null, jobId: null });
 
@@ -95,27 +121,29 @@ export function useJobSubmit() {
             const finalMin = Number(Math.min(minMinutes, maxMinutes).toFixed(1));
             const finalMax = Number(Math.max(minMinutes, maxMinutes).toFixed(1));
 
-            // Map Copy Mode & Language (API Alignment)
-            // API expects copy_mode to be 'en' or 'hi' (language code)
-            // UI copyMode ('ai'/'ocr') goes to extra_config
-            const apiCopyMode = formData.language === 'auto' ? 'en' : formData.language;
+            // Strict Payload Mapping
+            // 1. language_mode maps directly from UI language selection
+            const languageMode = formData.language;
+
+            // 2. copy_language logic - EXPLICIT USER SELECTION ONLY
+            // No derivation, no auto-fallback. Direct mapping.
+            const copyLanguage = formData.copyLanguage;
+
+            const payload = {
+                url: formData.youtubeUrl,
+                min_duration: finalMin,
+                max_duration: finalMax,
+                count: formData.clipCount,
+                template_ref: formData.selectedTemplate,
+                language_mode: languageMode,
+                copy_language: copyLanguage,
+                // Forbidden fields (copy_mode, extra_config) are strictly OMITTED
+            };
 
             const response = await authFetch(endpoints.jobs.create, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: formData.youtubeUrl,
-                    min_duration: finalMin,
-                    max_duration: finalMax,
-                    count: formData.clipCount,
-                    template_ref: formData.selectedTemplate, // NEW: single template reference
-                    copy_mode: apiCopyMode,
-                    language: null, // As per docs
-                    extra_config: {
-                        mode: formData.copyMode, // 'ai' | 'ocr' | 'manual'
-                        ui_language_selection: formData.language // Preserve original selection
-                    }
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
