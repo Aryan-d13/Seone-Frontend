@@ -34,9 +34,7 @@ export default function NewJobPage() {
                     <SubmitPanel
                         formData={formData}
                         errors={errors}
-                        isSubmitting={state.isSubmitting}
                         onUpdateField={updateField}
-                        onSubmit={submit}
                     />
                 </div>
 

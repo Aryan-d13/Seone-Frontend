@@ -82,7 +82,7 @@ export function useJobSubmit() {
         }
 
         if (!formData.copyLanguage) {
-            newErrors.copyLanguage = 'Please select a POV language';
+            newErrors.copyLanguage = 'Please select copy language';
         }
 
         if (!formData.selectedTemplate) {
@@ -97,13 +97,11 @@ export function useJobSubmit() {
     const submit = useCallback(async () => {
         if (!validate()) return;
 
-        // Defense-in-depth: Strict NULL check
-        // Even if validate() passes, we block if copyLanguage is null to satisfy "never null/undefined" contract
         if (!formData.copyLanguage) {
             setState({
                 isSubmitting: false,
                 isSuccess: false,
-                error: 'POV Language is required',
+                error: 'Copy language is required',
                 jobId: null,
             });
             return;
@@ -125,8 +123,7 @@ export function useJobSubmit() {
             // 1. language_mode maps directly from UI language selection
             const languageMode = formData.language;
 
-            // 2. copy_language logic - EXPLICIT USER SELECTION ONLY
-            // No derivation, no auto-fallback. Direct mapping.
+            // 2. copy_language comes from explicit UI selection
             const copyLanguage = formData.copyLanguage;
 
             const payload = {

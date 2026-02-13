@@ -21,7 +21,7 @@ export const config = {
     // Google OAuth Configuration
     auth: {
         googleClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
-        allowedDomain: ['creativefuel.io'],
+        allowedDomain: ['creativefuel.io', 'sarcasm.co'],
         tokenCookieName: 'seone_token',
         tokenExpiry: 7, // days
     },

@@ -1,9 +1,16 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Input, Button } from '@/components/ui';
+import { Input } from '@/components/ui';
 import { DualRangeSlider } from '@/components/ui/DualRangeSlider';
-import { SubmissionFormData, FormErrors, DURATION_MIN, DURATION_MAX, CLIP_COUNT_MIN, CLIP_COUNT_MAX } from '@/types/job';
+import {
+    SubmissionFormData,
+    FormErrors,
+    DURATION_MIN,
+    DURATION_MAX,
+    CLIP_COUNT_MIN,
+    CLIP_COUNT_MAX,
+} from '@/types/job';
 import { formatDuration } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import styles from './SubmitPanel.module.css';
@@ -11,25 +18,24 @@ import styles from './SubmitPanel.module.css';
 interface SubmitPanelProps {
     formData: SubmissionFormData;
     errors: FormErrors;
-    isSubmitting: boolean;
     onUpdateField: <K extends keyof SubmissionFormData>(field: K, value: SubmissionFormData[K]) => void;
-    onSubmit: () => void;
 }
 
-const languageOptions = [
+const contentLanguageOptions = [
     { value: 'hi', label: 'Hindi' },
     { value: 'en', label: 'English' },
     { value: 'auto', label: 'Auto-detect' },
 ];
 
-
+const copyLanguageOptions = [
+    { value: 'hi', label: 'Hindi' },
+    { value: 'en', label: 'English' },
+];
 
 export function SubmitPanel({
     formData,
     errors,
-    isSubmitting,
     onUpdateField,
-    onSubmit,
 }: SubmitPanelProps) {
     return (
         <motion.div
@@ -45,7 +51,6 @@ export function SubmitPanel({
             </div>
 
             <div className={styles.form}>
-                {/* YouTube URL Input */}
                 <div className={styles.field}>
                     <Input
                         label="YouTube URL"
@@ -53,15 +58,14 @@ export function SubmitPanel({
                         value={formData.youtubeUrl}
                         onChange={(e) => onUpdateField('youtubeUrl', e.target.value)}
                         error={errors.youtubeUrl}
-                        leftIcon={
+                        leftIcon={(
                             <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
                                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                             </svg>
-                        }
+                        )}
                     />
                 </div>
 
-                {/* Duration Range */}
                 <div className={styles.field}>
                     <DualRangeSlider
                         label="Clip Duration Range"
@@ -81,7 +85,6 @@ export function SubmitPanel({
                     )}
                 </div>
 
-                {/* Clip Count */}
                 <div className={styles.field}>
                     <label className={styles.label}>Number of Clips</label>
                     <div className={styles.clipCounter}>
@@ -91,7 +94,7 @@ export function SubmitPanel({
                             onClick={() => onUpdateField('clipCount', Math.max(CLIP_COUNT_MIN, formData.clipCount - 1))}
                             disabled={formData.clipCount <= CLIP_COUNT_MIN}
                         >
-                            −
+                            -
                         </button>
                         <span className={styles.counterValue}>{formData.clipCount}</span>
                         <button
@@ -108,11 +111,10 @@ export function SubmitPanel({
                     )}
                 </div>
 
-                {/* Language (Input/Processing Mode) */}
                 <div className={styles.field}>
                     <label className={styles.label}>Content Language (Input)</label>
                     <div className={styles.optionGroup}>
-                        {languageOptions.map((option) => (
+                        {contentLanguageOptions.map((option) => (
                             <button
                                 key={option.value}
                                 type="button"
@@ -128,16 +130,10 @@ export function SubmitPanel({
                     </div>
                 </div>
 
-                {/* POV Language (Output/Copy Mode) - REQUIRED */}
                 <div className={styles.field}>
-                    <label className={styles.label}>
-                        POV Language (Output) <span className={styles.required}>*</span>
-                    </label>
+                    <label className={styles.label}>Copy Language (Output)</label>
                     <div className={styles.optionGroup}>
-                        {[
-                            { value: 'hi', label: 'Hindi' },
-                            { value: 'en', label: 'English' },
-                        ].map((option) => (
+                        {copyLanguageOptions.map((option) => (
                             <button
                                 key={option.value}
                                 type="button"
@@ -156,9 +152,6 @@ export function SubmitPanel({
                     )}
                 </div>
 
-
-
-                {/* General Error */}
                 {errors.general && (
                     <div className={styles.generalError}>{errors.general}</div>
                 )}

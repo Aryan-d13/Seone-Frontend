@@ -1,0 +1,256 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-bottom: var(--space-8);
+}
+
+.header {
+    margin-bottom: var(--space-2);
+}
+
+.title {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.subtitle {
+    font-size: var(--text-base);
+    color: var(--text-muted);
+}
+
+.panel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+}
+
+.panelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}
+
+.panelHeader h2 {
+    font-size: var(--text-lg);
+    color: var(--text-primary);
+}
+
+.muted {
+    color: var(--text-muted);
+}
+
+.statusRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+.connected {
+    color: var(--color-success);
+}
+
+.success,
+.error {
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+}
+
+.success {
+    background: var(--color-success-muted);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: var(--color-success);
+}
+
+.error {
+    background: var(--color-error-muted);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: var(--color-error);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-6);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.textarea,
+.select,
+.input,
+.fileInput,
+.colorInput {
+    width: 100%;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.textarea {
+    min-height: 96px;
+    resize: vertical;
+    padding: var(--space-3);
+}
+
+.select,
+.input,
+.fileInput {
+    height: 44px;
+    padding: 0 var(--space-3);
+}
+
+.colorInput {
+    height: 44px;
+    padding: 6px;
+}
+
+.textarea:focus,
+.select:focus,
+.input:focus,
+.fileInput:focus,
+.colorInput:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-primary-muted);
+}
+
+.twoCol {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+}
+
+.logoPreview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.logoPreview img {
+    width: 160px;
+    height: auto;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--bg-secondary);
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
+.fieldCheckbox {
+    display: flex;
+    align-items: flex-end;
+}
+
+.checkboxLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.listItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    justify-content: space-between;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+}
+
+.itemInfo {
+    min-width: 0;
+}
+
+.itemInfo h3 {
+    font-size: var(--text-base);
+    color: var(--text-primary);
+    margin-bottom: var(--space-1);
+}
+
+.itemMeta {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+}
+
+.inlineLogo {
+    width: 88px;
+    height: 44px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-tertiary);
+    padding: var(--space-1);
+}
+
+.itemActions {
+    display: flex;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .statusRow,
+    .listItem,
+    .actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .twoCol {
+        grid-template-columns: 1fr;
+    }
+
+    .itemActions {
+        width: 100%;
+    }
+
+    .itemActions button {
+        flex: 1;
+    }
+}

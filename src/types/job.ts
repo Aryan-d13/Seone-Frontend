@@ -9,7 +9,7 @@ export interface SubmissionFormData {
     maxDuration: number;
     clipCount: number;
     language: 'hi' | 'en' | 'auto';
-    copyLanguage: 'hi' | 'en' | null; // POV Language, explicit selection required
+    copyLanguage: 'hi' | 'en' | null;
     selectedTemplate: string | null; // template_ref, single selection
 }
 

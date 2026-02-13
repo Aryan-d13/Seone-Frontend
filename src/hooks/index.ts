@@ -1,4 +1,4 @@
 export { useJobSubmit } from './useJobSubmit';
-export { usePages } from './usePages';
+export { usePages } from './useTemplates';
 export { useJobWebSocket } from './useJobWebSocket';
 export { useJobs } from './useJobs';

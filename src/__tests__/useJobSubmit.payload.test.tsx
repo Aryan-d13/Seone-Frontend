@@ -1,7 +1,7 @@
 
 import { renderHook, act } from '@testing-library/react';
 import { useJobSubmit } from '../hooks/useJobSubmit';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, beforeEach, afterEach } from 'vitest';
 import * as authService from '@/services/auth';
 
 // Mock router
@@ -20,7 +20,7 @@ vi.mock('@/services/auth', () => ({
 }));
 
 describe('Job Payload Verification', () => {
-    let consoleErrorSpy: any;
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -41,14 +41,14 @@ describe('Job Payload Verification', () => {
 
     it('captures payloads', async () => {
         const { result } = renderHook(() => useJobSubmit());
-        const payloads: Record<string, any> = {};
+        const payloads: Record<string, unknown> = {};
 
         // 1. Hindi
         act(() => {
             result.current.updateField('youtubeUrl', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
             result.current.selectTemplate('template-1');
             result.current.updateField('language', 'hi');
-            result.current.updateField('copyMode', 'ai');
+            result.current.updateField('copyLanguage', 'hi');
             // Add clip count just to be sure it's valid
             result.current.updateField('clipCount', 5);
             result.current.updateField('minDuration', 60);
@@ -57,7 +57,7 @@ describe('Job Payload Verification', () => {
         });
         await act(async () => { await result.current.submit(); });
         let calls = (authService.authFetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-        let [url, options] = calls[calls.length - 1]; // Get last call
+        let [, options] = calls[calls.length - 1]; // Get last call
         payloads.hindi = JSON.parse(options.body as string);
 
         // 2. English
@@ -66,14 +66,14 @@ describe('Job Payload Verification', () => {
             result.current.updateField('youtubeUrl', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
             result.current.selectTemplate('template-1');
             result.current.updateField('language', 'en');
-            result.current.updateField('copyMode', 'ocr');
+            result.current.updateField('copyLanguage', 'en');
             result.current.updateField('clipCount', 5);
             result.current.updateField('minDuration', 60);
             result.current.updateField('maxDuration', 120);
         });
         await act(async () => { await result.current.submit(); });
         calls = (authService.authFetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-        [url, options] = calls[calls.length - 1];
+        [, options] = calls[calls.length - 1];
         payloads.english = JSON.parse(options.body as string);
 
         // 3. Auto
@@ -82,14 +82,14 @@ describe('Job Payload Verification', () => {
             result.current.updateField('youtubeUrl', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
             result.current.selectTemplate('template-1');
             result.current.updateField('language', 'auto');
-            result.current.updateField('copyMode', 'manual');
+            result.current.updateField('copyLanguage', 'hi');
             result.current.updateField('clipCount', 5);
             result.current.updateField('minDuration', 60);
             result.current.updateField('maxDuration', 120);
         });
         await act(async () => { await result.current.submit(); });
         calls = (authService.authFetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
-        [url, options] = calls[calls.length - 1];
+        [, options] = calls[calls.length - 1];
         payloads.auto = JSON.parse(options.body as string);
 
         // Write to file

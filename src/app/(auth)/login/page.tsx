@@ -63,7 +63,10 @@ export default function LoginPage() {
     };
 
     const handleGoogleError = () => {
-        setError('Google sign-in failed. Please try again.');
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
+        setError(
+            `Google sign-in failed. If Google shows "origin_mismatch", add ${origin} to Authorized JavaScript origins for OAuth client ${config.auth.googleClientId}.`
+        );
     };
 
     return (
@@ -93,7 +96,7 @@ export default function LoginPage() {
                 {/* Title */}
                 <h1 className={styles.title}>Welcome back</h1>
                 <p className={styles.subtitle}>
-                    Sign in with your Creative Fuel account to continue
+                    Sign in with your approved work account to continue
                 </p>
 
                 {/* Error Message */}
@@ -128,6 +131,7 @@ export default function LoginPage() {
                             shape="rectangular"
                             useOneTap={false}
                             use_fedcm_for_prompt={false}
+                            auto_select={false}
                         />
                     )}
                 </div>
