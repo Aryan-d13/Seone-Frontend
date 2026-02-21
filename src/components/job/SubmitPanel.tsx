@@ -118,40 +118,56 @@ export function SubmitPanel({ formData, errors, onUpdateField }: SubmitPanelProp
 
         <div className={styles.field}>
           <label className={styles.label}>Content Language (Input)</label>
-          <div className={styles.optionGroup}>
+          <div className={styles.optionGroup} role="radiogroup">
             {contentLanguageOptions.map(option => (
-              <button
+              <label
                 key={option.value}
-                type="button"
                 className={cn(
-                  styles.optionBtn,
-                  formData.language === option.value && styles.optionActive
+                  styles.radioLabel,
+                  formData.language === option.value && styles.radioActive
                 )}
-                onClick={() =>
-                  onUpdateField('language', option.value as typeof formData.language)
-                }
               >
-                {option.label}
-              </button>
+                <input
+                  type="radio"
+                  name="contentLanguage"
+                  value={option.value}
+                  checked={formData.language === option.value}
+                  onChange={() =>
+                    onUpdateField('language', option.value as typeof formData.language)
+                  }
+                  className={styles.hiddenRadio}
+                />
+                <span className={styles.radioIndicator} />
+                <span className={styles.radioText}>{option.label}</span>
+              </label>
             ))}
           </div>
         </div>
 
         <div className={styles.field}>
           <label className={styles.label}>Copy Language (Output)</label>
-          <div className={styles.optionGroup}>
+          <div className={styles.optionGroup} role="radiogroup">
             {copyLanguageOptions.map(option => (
-              <button
+              <label
                 key={option.value}
-                type="button"
                 className={cn(
-                  styles.optionBtn,
-                  formData.copyLanguage === option.value && styles.optionActive
+                  styles.radioLabel,
+                  formData.copyLanguage === option.value && styles.radioActive
                 )}
-                onClick={() => onUpdateField('copyLanguage', option.value as 'hi' | 'en')}
               >
-                {option.label}
-              </button>
+                <input
+                  type="radio"
+                  name="copyLanguage"
+                  value={option.value}
+                  checked={formData.copyLanguage === option.value}
+                  onChange={() =>
+                    onUpdateField('copyLanguage', option.value as 'hi' | 'en')
+                  }
+                  className={styles.hiddenRadio}
+                />
+                <span className={styles.radioIndicator} />
+                <span className={styles.radioText}>{option.label}</span>
+              </label>
             ))}
           </div>
           {errors.copyLanguage && (

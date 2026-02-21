@@ -39,7 +39,7 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       // Initialize auth state on app load
-      // Skip /me API call - rely on persisted state from sessionStorage
+      // Skip /me API call - rely on persisted state from localStorage
       initialize: async () => {
         const token = getAuthToken();
         const currentState = get();
@@ -69,7 +69,7 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'seone-auth',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: state => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

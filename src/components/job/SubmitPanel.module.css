@@ -90,8 +90,12 @@
   gap: var(--space-2);
 }
 
-.optionBtn {
+.radioLabel {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-default);
@@ -99,18 +103,64 @@
   color: var(--text-secondary);
   font-size: var(--text-sm);
   font-weight: 500;
+  cursor: pointer;
   transition: all var(--transition-fast);
+  user-select: none;
 }
 
-.optionBtn:hover {
+.radioLabel:hover {
   background: var(--bg-hover);
   border-color: var(--border-hover);
 }
 
-.optionActive {
+.radioLabel:focus-within {
+  box-shadow: 0 0 0 2px var(--accent-primary);
+}
+
+.radioActive {
   background: var(--accent-primary-muted);
   border-color: var(--accent-primary);
   color: var(--text-primary);
+}
+
+.hiddenRadio {
+  /* Visually hidden for accessibility */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.radioIndicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: transparent;
+  transition: all var(--transition-fast);
+}
+
+.radioActive .radioIndicator {
+  border-color: var(--accent-primary);
+}
+
+.radioActive .radioIndicator::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-primary);
+}
+
+.radioText {
+  flex: 1;
+  text-align: left;
 }
 
 /* Copy Mode Grid */
