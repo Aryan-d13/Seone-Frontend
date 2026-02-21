@@ -1,21 +1,21 @@
 .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: var(--space-xl);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-xl);
 }
 
 .header {
-    margin-bottom: var(--space-xl);
+  margin-bottom: var(--space-xl);
 }
 
 .title {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: var(--space-xs);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
 }
 
 .subtitle {
-    font-size: 16px;
-    color: var(--text-secondary);
+  font-size: 16px;
+  color: var(--text-secondary);
 }

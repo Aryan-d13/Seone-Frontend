@@ -8,11 +8,11 @@
 
 Seone uses **WebSocket + REST polling** for real-time job updates:
 
-| Mechanism | Purpose | Frequency |
-|-----------|---------|-----------|
-| WebSocket | Real-time events (step changes, clips) | Event-driven |
-| REST Polling | State reconciliation | Every 3 seconds |
-| REST Fetch | Initial load, final reconciliation | On mount, on job_completed |
+| Mechanism    | Purpose                                | Frequency                  |
+| ------------ | -------------------------------------- | -------------------------- |
+| WebSocket    | Real-time events (step changes, clips) | Event-driven               |
+| REST Polling | State reconciliation                   | Every 3 seconds            |
+| REST Fetch   | Initial load, final reconciliation     | On mount, on job_completed |
 
 This hybrid approach ensures the frontend always converges to the correct state, even if WebSocket events are missed.
 
@@ -50,11 +50,13 @@ const wsUrl = `${getWsUrl(endpoints.ws.job(jobId))}?token=${encodeURIComponent(t
 ## Event Types
 
 ### `connected`
+
 **When:** Immediately after WebSocket opens
 **Payload:** `{ message: "Connected to job {id}" }`
 **Action:** Log to console (no state change)
 
 ### `step_started`
+
 **When:** Worker begins a processing step
 **Payload:** `{ step: "download" | "transcribe" | "analyze" | "smart_render" }`
 **Action:** Update `job.current_step` and `job.status`
@@ -73,21 +75,25 @@ case 'step_started':
 ```
 
 ### `step_completed`
+
 **When:** Worker finishes a processing step
 **Payload:** `{ step: "download" }`
 **Action:** Currently no-op (could be used for visual feedback)
 
 ### `clip_ready`
+
 **When:** A single clip is rendered
 **Payload:**
+
 ```json
 {
-    "clip_index": 0,
-    "clip_url": "/clips/job-id/clip_0.mp4",
-    "clips_ready": 1,
-    "clip_count": 3
+  "clip_index": 0,
+  "clip_url": "/clips/job-id/clip_0.mp4",
+  "clips_ready": 1,
+  "clip_count": 3
 }
 ```
+
 **Action:** Add clip to `liveClips`, update progress
 
 ```typescript
@@ -104,8 +110,10 @@ case 'clip_ready':
 ```
 
 ### `job_completed`
+
 **When:** All clips are rendered
 **Payload:**
+
 ```json
 {
     "output": {
@@ -116,6 +124,7 @@ case 'clip_ready':
     }
 }
 ```
+
 **Action:** Update status to completed, set progress to 100, fetch REST for final reconciliation
 
 ```typescript
@@ -130,6 +139,7 @@ case 'job_completed':
 ```
 
 ### `job_failed`
+
 **When:** Job processing fails
 **Payload:** `{ error: "Error message" }`
 **Action:** Update status to failed, store error message, close socket
@@ -150,11 +160,11 @@ case 'job_failed':
 ### Token Validation Before Connect
 
 ```typescript
-const token = getValidAuthToken(60);  // 60 second buffer
+const token = getValidAuthToken(60); // 60 second buffer
 if (!token) {
-    setError('Session expired. Please refresh the page or log in again.');
-    setWsConnected(false);
-    return;
+  setError('Session expired. Please refresh the page or log in again.');
+  setWsConnected(false);
+  return;
 }
 ```
 
@@ -164,13 +174,14 @@ if (!token) {
 
 ```typescript
 const AUTH_CLOSE_CODES = new Set([
-    4001,  // Custom: Unauthorized
-    4003,  // Custom: Forbidden
-    1008,  // Policy Violation (standard)
+  4001, // Custom: Unauthorized
+  4003, // Custom: Forbidden
+  1008, // Policy Violation (standard)
 ]);
 ```
 
 When WebSocket closes with these codes:
+
 1. Set `needsAuthRef.current = true`
 2. Check if token is still valid
 3. If expired → Show error, don't reconnect
@@ -181,30 +192,32 @@ When WebSocket closes with these codes:
 ## Reconnection Logic
 
 ```typescript
-ws.onclose = (event) => {
-    setWsConnected(false);
-    
-    // Don't reconnect on normal closure
-    if (event.code === 1000) return;
-    
-    // Don't reconnect after max attempts
-    if (reconnectAttemptsRef.current >= 5) {
-        setError('Connection lost. Please refresh the page.');
-        return;
-    }
-    
-    // Exponential backoff: 1s, 2s, 4s, 8s, 10s (capped)
-    const timeout = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
-    reconnectAttemptsRef.current++;
-    
-    setTimeout(connect, timeout);
+ws.onclose = event => {
+  setWsConnected(false);
+
+  // Don't reconnect on normal closure
+  if (event.code === 1000) return;
+
+  // Don't reconnect after max attempts
+  if (reconnectAttemptsRef.current >= 5) {
+    setError('Connection lost. Please refresh the page.');
+    return;
+  }
+
+  // Exponential backoff: 1s, 2s, 4s, 8s, 10s (capped)
+  const timeout = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
+  reconnectAttemptsRef.current++;
+
+  setTimeout(connect, timeout);
 };
 ```
 
 ### Simple Explanation
+
 If the connection drops unexpectedly, we try again. Each retry waits longer (1 second, then 2, then 4...) to avoid hammering the server. After 5 tries, we give up and tell the user to refresh.
 
 ### Technical Explanation
+
 - `reconnectAttemptsRef` tracks retry count
 - Exponential backoff with 10s cap
 - Refs used instead of state to avoid dependency issues
@@ -217,6 +230,7 @@ If the connection drops unexpectedly, we try again. Each retry waits longer (1 s
 ### Why Poll?
 
 WebSocket events can be missed:
+
 - Late connection (job started before WS connected)
 - Network interruption
 - Server restart
@@ -228,26 +242,28 @@ Polling ensures eventual consistency.
 
 ```typescript
 useEffect(() => {
-    if (!jobId || !mountedRef.current) return;
-    
-    // Stop polling for terminal jobs
-    const isTerminal = job?.status === 'completed' || 
-                       job?.status === 'failed' || 
-                       job?.phase === 'completed' || 
-                       job?.phase === 'failed';
-    if (isTerminal) return;
-    
-    const intervalId = setInterval(() => {
-        if (mountedRef.current) {
-            fetchJob();
-        }
-    }, 3000);
-    
-    return () => clearInterval(intervalId);
+  if (!jobId || !mountedRef.current) return;
+
+  // Stop polling for terminal jobs
+  const isTerminal =
+    job?.status === 'completed' ||
+    job?.status === 'failed' ||
+    job?.phase === 'completed' ||
+    job?.phase === 'failed';
+  if (isTerminal) return;
+
+  const intervalId = setInterval(() => {
+    if (mountedRef.current) {
+      fetchJob();
+    }
+  }, 3000);
+
+  return () => clearInterval(intervalId);
 }, [jobId, job?.status, job?.phase, fetchJob]);
 ```
 
 ### Polling Rules
+
 1. Poll every 3 seconds while job is active
 2. Stop polling when job reaches terminal state
 3. Polling continues even if WebSocket is connected (redundancy)
@@ -267,18 +283,18 @@ REST  → Final reconciliation on job_completed
 
 ```typescript
 // No timestamp comparison — last write wins
-updateJob(updates);  // Just shallow merge
+updateJob(updates); // Just shallow merge
 ```
 
 **Why?** Simplicity. Both REST and WS are authoritative sources. Conflicts are rare and resolve quickly due to polling.
 
 ### Known Race Windows
 
-| Race | Impact | Mitigation |
-|------|--------|------------|
-| WS before REST completes | WS applied to stale state | fetchStatus gates WS connection |
-| REST returns after WS update | REST overwrites | Acceptable; final state is correct |
-| Clip arrives before job data | Clip stored in liveClips | Rendered when job data arrives |
+| Race                         | Impact                    | Mitigation                         |
+| ---------------------------- | ------------------------- | ---------------------------------- |
+| WS before REST completes     | WS applied to stale state | fetchStatus gates WS connection    |
+| REST returns after WS update | REST overwrites           | Acceptable; final state is correct |
+| Clip arrives before job data | Clip stored in liveClips  | Rendered when job data arrives     |
 
 ---
 
@@ -287,16 +303,17 @@ updateJob(updates);  // Just shallow merge
 The WebSocket only connects for active jobs:
 
 ```typescript
-const shouldConnect = 
-    fetchStatus === 'success' && 
-    job && 
-    job.status !== 'completed' && 
-    job.status !== 'failed';
+const shouldConnect =
+  fetchStatus === 'success' &&
+  job &&
+  job.status !== 'completed' &&
+  job.status !== 'failed';
 
 useJobWebSocket(shouldConnect ? id : '');
 ```
 
 **Why?**
+
 - No point connecting for completed jobs
 - Failed jobs won't send more events
 - Saves server resources
@@ -380,16 +397,16 @@ On module load, validates WebSocket protocol matches page security:
 
 ```typescript
 function validateWsConfig(): void {
-    if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return;
 
-    const isSecurePage = window.location.protocol === 'https:';
-    const isSecureWs = config.ws.baseUrl.startsWith('wss://');
+  const isSecurePage = window.location.protocol === 'https:';
+  const isSecureWs = config.ws.baseUrl.startsWith('wss://');
 
-    if (isSecurePage && !isSecureWs) {
-        console.error(
-            '[FATAL CONFIG] Secure page (https) attempting non-secure WebSocket (ws://).'
-        );
-    }
+  if (isSecurePage && !isSecureWs) {
+    console.error(
+      '[FATAL CONFIG] Secure page (https) attempting non-secure WebSocket (ws://).'
+    );
+  }
 }
 ```
 

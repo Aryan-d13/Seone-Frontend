@@ -8,12 +8,12 @@
 
 Seone uses a **multi-layer error handling** approach:
 
-| Layer | Responsibility | Example |
-|-------|----------------|---------|
-| Service Layer | API errors, token expiry | `authFetch()` handles 401 |
-| Hooks | Data fetching errors | `useJobs` sets error state |
-| Stores | State errors | `useJobStore.error` |
-| Components | Display errors | Error UI rendering |
+| Layer         | Responsibility           | Example                    |
+| ------------- | ------------------------ | -------------------------- |
+| Service Layer | API errors, token expiry | `authFetch()` handles 401  |
+| Hooks         | Data fetching errors     | `useJobs` sets error state |
+| Stores        | State errors             | `useJobStore.error`        |
+| Components    | Display errors           | Error UI rendering         |
 
 ---
 
@@ -25,10 +25,10 @@ Seone uses a **multi-layer error handling** approach:
 
 ```typescript
 if (response.status === 401) {
-    clearAuthToken();
-    alert('Session expired. Please log in again.');
-    window.location.href = '/login';
-    throw new Error('Session expired');
+  clearAuthToken();
+  alert('Session expired. Please log in again.');
+  window.location.href = '/login';
+  throw new Error('Session expired');
 }
 ```
 
@@ -38,10 +38,10 @@ if (response.status === 401) {
 
 ```typescript
 if (!response.ok) {
-    const error = await response.json().catch(() => ({
-        detail: 'Request failed'
-    }));
-    throw new Error(error.detail || error.message || 'Unknown error');
+  const error = await response.json().catch(() => ({
+    detail: 'Request failed',
+  }));
+  throw new Error(error.detail || error.message || 'Unknown error');
 }
 ```
 
@@ -78,19 +78,19 @@ try {
 ```typescript
 // Connection errors
 ws.onerror = () => {
-    console.warn('WebSocket connection failed');
-    ws.close();
+  console.warn('WebSocket connection failed');
+  ws.close();
 };
 
 // Auth errors from close codes
 if (AUTH_CLOSE_CODES.has(event.code)) {
-    setError('Session expired. Please refresh the page or log in again.');
-    return;
+  setError('Session expired. Please refresh the page or log in again.');
+  return;
 }
 
 // Max reconnection attempts
 if (reconnectAttemptsRef.current >= 5) {
-    setError('Connection lost. Please refresh the page.');
+  setError('Connection lost. Please refresh the page.');
 }
 ```
 
@@ -102,14 +102,14 @@ if (reconnectAttemptsRef.current >= 5) {
 
 ```tsx
 if (error) {
-    return (
-        <div className={styles.error}>
-            <p>{error}</p>
-            <Button onClick={() => window.location.reload()} variant="secondary">
-                Retry
-            </Button>
-        </div>
-    );
+  return (
+    <div className={styles.error}>
+      <p>{error}</p>
+      <Button onClick={() => window.location.reload()} variant="secondary">
+        Retry
+      </Button>
+    </div>
+  );
 }
 ```
 
@@ -118,17 +118,17 @@ if (error) {
 ```tsx
 // Ownership/access errors
 if (fetchStatus === 'error' && fetchError) {
-    return (
-        <div className={styles.errorContainer}>
-            <div className={styles.errorCard}>
-                <h2 className={styles.errorCode}>{fetchError.code}</h2>
-                <p className={styles.errorMessage}>{fetchError.message}</p>
-                <Button onClick={() => router.push('/dashboard/jobs')} variant="secondary">
-                    Back to Jobs
-                </Button>
-            </div>
-        </div>
-    );
+  return (
+    <div className={styles.errorContainer}>
+      <div className={styles.errorCard}>
+        <h2 className={styles.errorCode}>{fetchError.code}</h2>
+        <p className={styles.errorMessage}>{fetchError.message}</p>
+        <Button onClick={() => router.push('/dashboard/jobs')} variant="secondary">
+          Back to Jobs
+        </Button>
+      </div>
+    </div>
+  );
 }
 ```
 
@@ -136,14 +136,14 @@ if (fetchStatus === 'error' && fetchError) {
 
 ```typescript
 if (!response.ok) {
-    const status = response.status;
-    if (status === 403) {
-        throw { code: 403, message: 'This job does not belong to you.' };
-    } else if (status === 404) {
-        throw { code: 404, message: 'Job not found.' };
-    } else {
-        throw { code: status, message: 'Failed to load job.' };
-    }
+  const status = response.status;
+  if (status === 403) {
+    throw { code: 403, message: 'This job does not belong to you.' };
+  } else if (status === 404) {
+    throw { code: 404, message: 'Job not found.' };
+  } else {
+    throw { code: status, message: 'Failed to load job.' };
+  }
 }
 ```
 
@@ -155,24 +155,24 @@ if (!response.ok) {
 
 ```typescript
 const validate = useCallback((): boolean => {
-    const newErrors: FormErrors = {};
+  const newErrors: FormErrors = {};
 
-    if (!formData.youtubeUrl.trim()) {
-        newErrors.youtubeUrl = 'YouTube URL is required';
-    } else if (!isValidYouTubeUrl(formData.youtubeUrl)) {
-        newErrors.youtubeUrl = 'Please enter a valid YouTube URL';
-    }
+  if (!formData.youtubeUrl.trim()) {
+    newErrors.youtubeUrl = 'YouTube URL is required';
+  } else if (!isValidYouTubeUrl(formData.youtubeUrl)) {
+    newErrors.youtubeUrl = 'Please enter a valid YouTube URL';
+  }
 
-    if (formData.minDuration >= formData.maxDuration) {
-        newErrors.duration = 'Min duration must be less than max duration';
-    }
+  if (formData.minDuration >= formData.maxDuration) {
+    newErrors.duration = 'Min duration must be less than max duration';
+  }
 
-    if (formData.selectedPages.length === 0) {
-        newErrors.selectedPages = 'Please select at least one template';
-    }
+  if (formData.selectedPages.length === 0) {
+    newErrors.selectedPages = 'Please select at least one template';
+  }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
 }, [formData]);
 ```
 
@@ -180,13 +180,13 @@ const validate = useCallback((): boolean => {
 
 ```tsx
 <Input
-    value={formData.youtubeUrl}
-    error={errors.youtubeUrl}  // Shown below input
-/>
+  value={formData.youtubeUrl}
+  error={errors.youtubeUrl} // Shown below input
+/>;
 
-{errors.duration && (
-    <span className={styles.error}>{errors.duration}</span>
-)}
+{
+  errors.duration && <span className={styles.error}>{errors.duration}</span>;
+}
 ```
 
 ---
@@ -195,25 +195,23 @@ const validate = useCallback((): boolean => {
 
 ### Empty States
 
-| Scenario | Component | Display |
-|----------|-----------|---------|
-| No jobs | JobsList | "No jobs found" + Create button |
-| No clips yet | ClipGallery | Returns `null` (hidden) |
-| No active job | Inspector | "Select a job to view details" |
-| No templates | TemplateSelector | Falls back to mock data |
+| Scenario      | Component        | Display                         |
+| ------------- | ---------------- | ------------------------------- |
+| No jobs       | JobsList         | "No jobs found" + Create button |
+| No clips yet  | ClipGallery      | Returns `null` (hidden)         |
+| No active job | Inspector        | "Select a job to view details"  |
+| No templates  | TemplateSelector | Falls back to mock data         |
 
 ```tsx
 // JobsList empty state
 if (items.length === 0) {
-    return (
-        <div className={styles.empty}>
-            <h3>No jobs found</h3>
-            <p>Create your first job to get started</p>
-            <Button onClick={() => router.push('/dashboard/new')}>
-                Create Job
-            </Button>
-        </div>
-    );
+  return (
+    <div className={styles.empty}>
+      <h3>No jobs found</h3>
+      <p>Create your first job to get started</p>
+      <Button onClick={() => router.push('/dashboard/new')}>Create Job</Button>
+    </div>
+  );
 }
 ```
 
@@ -222,23 +220,23 @@ if (items.length === 0) {
 ```tsx
 // Initial loading with skeleton
 if (isLoading && items.length === 0) {
-    return (
-        <div className={styles.grid}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className={styles.skeleton} />
-            ))}
-        </div>
-    );
+  return (
+    <div className={styles.grid}>
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <div key={i} className={styles.skeleton} />
+      ))}
+    </div>
+  );
 }
 
 // Job detail loading
 if (fetchStatus === 'loading') {
-    return (
-        <div className={styles.loading}>
-            <div className={styles.spinner} />
-            <p>Loading job details...</p>
-        </div>
-    );
+  return (
+    <div className={styles.loading}>
+      <div className={styles.spinner} />
+      <p>Loading job details...</p>
+    </div>
+  );
 }
 ```
 
@@ -252,7 +250,7 @@ const job = useJobStore(state => state.job);
 if (!job) return null;
 
 // ClipGallery
-const clips = liveClips.length > 0 ? liveClips : (job?.output?.clips || []);
+const clips = liveClips.length > 0 ? liveClips : job?.output?.clips || [];
 if (clips.length === 0) return null;
 
 // Job Detail Page
@@ -264,7 +262,7 @@ if (!job) return null;
 ```typescript
 // Clear any existing Google session on mount
 useEffect(() => {
-    googleLogout();
+  googleLogout();
 }, []);
 ```
 
@@ -279,8 +277,8 @@ useEffect(() => {
 ```tsx
 // Manual retry button
 <Button onClick={() => window.location.reload()} variant="secondary">
-    Retry
-</Button>
+  Retry
+</Button>;
 
 // Automatic reconnect (WebSocket)
 const timeout = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
@@ -307,7 +305,7 @@ setTimeout(connect, timeout);
 ```typescript
 // Job detail page resets store before fetching new job
 useEffect(() => {
-    reset();  // Clear previous job state
-    // ... fetch new job
+  reset(); // Clear previous job state
+  // ... fetch new job
 }, [id]);
 ```

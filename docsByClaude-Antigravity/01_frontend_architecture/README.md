@@ -7,29 +7,33 @@
 ## Technology Stack
 
 ### Core Framework
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **Next.js** | 16.1.1 | App Router, SSR, routing |
-| **React** | 19.2.3 | UI components, hooks |
-| **TypeScript** | ^5 | Type safety |
+
+| Technology     | Version | Purpose                  |
+| -------------- | ------- | ------------------------ |
+| **Next.js**    | 16.1.1  | App Router, SSR, routing |
+| **React**      | 19.2.3  | UI components, hooks     |
+| **TypeScript** | ^5      | Type safety              |
 
 ### State Management
-| Technology | Version | Purpose |
-|------------|---------|---------|
+
+| Technology  | Version | Purpose                 |
+| ----------- | ------- | ----------------------- |
 | **Zustand** | ^5.0.10 | Global state management |
 
 ### Styling & Animation
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **CSS Modules** | (built-in) | Scoped component styles |
-| **Framer Motion** | ^12.26.1 | Animations and transitions |
-| **clsx** | ^2.1.1 | Conditional class names |
+
+| Technology        | Version    | Purpose                    |
+| ----------------- | ---------- | -------------------------- |
+| **CSS Modules**   | (built-in) | Scoped component styles    |
+| **Framer Motion** | ^12.26.1   | Animations and transitions |
+| **clsx**          | ^2.1.1     | Conditional class names    |
 
 ### Authentication
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| **@react-oauth/google** | ^0.13.4 | Google OAuth integration |
-| **js-cookie** | ^3.0.5 | Cookie management for JWT |
+
+| Technology              | Version | Purpose                   |
+| ----------------------- | ------- | ------------------------- |
+| **@react-oauth/google** | ^0.13.4 | Google OAuth integration  |
+| **js-cookie**           | ^3.0.5  | Cookie management for JWT |
 
 ---
 
@@ -100,11 +104,12 @@
 **Pattern:** Pages act as containers that fetch data and pass it to presentational components.
 
 **Example:**
+
 ```tsx
 // Page (Container) - src/app/(dashboard)/dashboard/new/page.tsx
 export default function NewJobPage() {
     const { formData, errors, state, updateField, togglePage, submit } = useJobSubmit();
-    
+
     return (
         <SubmitPanel formData={formData} onUpdateField={updateField} />
         <TemplateSelector selectedPages={formData.selectedPages} onToggle={togglePage} />
@@ -119,12 +124,12 @@ export function SubmitPanel({ formData, onUpdateField }: Props) { ... }
 
 **Pattern:** All data fetching is encapsulated in custom hooks.
 
-| Hook | Responsibility |
-|------|----------------|
-| `useJobs()` | Fetch paginated job list, handle pagination |
-| `useJobSubmit()` | Form state, validation, job creation |
+| Hook                | Responsibility                                |
+| ------------------- | --------------------------------------------- |
+| `useJobs()`         | Fetch paginated job list, handle pagination   |
+| `useJobSubmit()`    | Form state, validation, job creation          |
 | `useJobWebSocket()` | WebSocket connection, event handling, polling |
-| `usePages()` | Fetch available templates with caching |
+| `usePages()`        | Fetch available templates with caching        |
 
 **Why:** Separates data logic from UI logic. Components stay focused on rendering.
 
@@ -135,14 +140,15 @@ export function SubmitPanel({ formData, onUpdateField }: Props) { ... }
 ```tsx
 // src/stores/job.ts - Single responsibility: job detail state
 interface JobState {
-    job: Job | null;        // Current job being viewed
-    liveClips: Clip[];      // Clips received via WebSocket
-    wsConnected: boolean;   // WebSocket connection status
-    // ... actions
+  job: Job | null; // Current job being viewed
+  liveClips: Clip[]; // Clips received via WebSocket
+  wsConnected: boolean; // WebSocket connection status
+  // ... actions
 }
 ```
 
 **Key Principle:** Stores provide type-accurate defaults:
+
 - Objects → `null`
 - Arrays → `[]`
 - Booleans → explicit `true/false`
@@ -218,6 +224,7 @@ src/
 **Decision:** Use `(auth)` and `(dashboard)` route groups to apply different layouts.
 
 **Rationale:**
+
 - `(auth)` routes need GoogleOAuthProvider but no auth guard
 - `(dashboard)` routes need AuthGuard and AppShell
 - Route groups don't affect URL structure
@@ -227,6 +234,7 @@ src/
 **Decision:** Auth state persisted to sessionStorage, not localStorage.
 
 **Rationale:**
+
 - Session ends when browser closes (security)
 - JWT in cookie for API requests (automatic)
 - User info in sessionStorage for display only
@@ -236,6 +244,7 @@ src/
 **Decision:** CSS Modules with a custom design system.
 
 **Rationale:**
+
 - Full control over design tokens
 - No runtime CSS-in-JS overhead
 - Better for premium, branded UI
@@ -245,6 +254,7 @@ src/
 **Decision:** Complex clip de-duplication in `useJobStore`.
 
 **Rationale:**
+
 - WebSocket sends clips incrementally
 - REST returns full clip array
 - Must merge without duplicates
@@ -253,10 +263,10 @@ src/
 ```tsx
 // src/stores/job.ts
 const mergeClips = (base: Clip[], incoming: Clip[]): Clip[] => {
-    const byKey = new Map<string, Clip>();
-    for (const clip of base) byKey.set(getClipKey(clip), clip);
-    for (const clip of incoming) byKey.set(getClipKey(clip), clip);
-    return sortClips(Array.from(byKey.values()));
+  const byKey = new Map<string, Clip>();
+  for (const clip of base) byKey.set(getClipKey(clip), clip);
+  for (const clip of incoming) byKey.set(getClipKey(clip), clip);
+  return sortClips(Array.from(byKey.values()));
 };
 ```
 

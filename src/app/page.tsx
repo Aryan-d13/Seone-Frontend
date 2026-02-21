@@ -55,10 +55,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Button
-            size="lg"
-            onClick={() => router.push('/dashboard/new')}
-          >
+          <Button size="lg" onClick={() => router.push('/dashboard/new')}>
             Get Started
           </Button>
           <Button variant="secondary" size="lg">
@@ -99,7 +96,15 @@ export default function Home() {
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+}) {
   return (
     <motion.div
       className={styles.featureCard}

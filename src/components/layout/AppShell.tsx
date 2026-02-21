@@ -9,40 +9,38 @@ import { useAppStore } from '@/stores/app';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
-    const { isInspectorOpen } = useAppStore();
+  const { isInspectorOpen } = useAppStore();
 
-    return (
-        <div className={styles.shell}>
-            {/* Top Bar */}
-            <TopBar />
+  return (
+    <div className={styles.shell}>
+      {/* Top Bar */}
+      <TopBar />
 
-            {/* Main Content Area */}
-            <div className={styles.content}>
-                {/* Sidebar */}
-                <Sidebar />
+      {/* Main Content Area */}
+      <div className={styles.content}>
+        {/* Sidebar */}
+        <Sidebar />
 
-                {/* Main Canvas */}
-                <main className={styles.canvas}>
-                    {children}
-                </main>
+        {/* Main Canvas */}
+        <main className={styles.canvas}>{children}</main>
 
-                {/* Inspector Panel */}
-                <motion.aside
-                    className={styles.inspector}
-                    initial={false}
-                    animate={{
-                        width: isInspectorOpen ? 'var(--inspector-width)' : 0,
-                        opacity: isInspectorOpen ? 1 : 0,
-                    }}
-                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                >
-                    {isInspectorOpen && <Inspector />}
-                </motion.aside>
-            </div>
-        </div>
-    );
+        {/* Inspector Panel */}
+        <motion.aside
+          className={styles.inspector}
+          initial={false}
+          animate={{
+            width: isInspectorOpen ? 'var(--inspector-width)' : 0,
+            opacity: isInspectorOpen ? 1 : 0,
+          }}
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+        >
+          {isInspectorOpen && <Inspector />}
+        </motion.aside>
+      </div>
+    </div>
+  );
 }

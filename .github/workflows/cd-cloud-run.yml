@@ -1,0 +1,89 @@
+name: CD Cloud Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-cloud-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_SERVICE_NAME: ${{ vars.GCP_SERVICE_NAME }}
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_WS_URL: ${{ vars.NEXT_PUBLIC_WS_URL }}
+      NEXT_PUBLIC_DATA_URL: ${{ vars.NEXT_PUBLIC_DATA_URL }}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            GCP_SA_KEY
+            GCP_PROJECT_ID
+            GCP_REGION
+            GCP_SERVICE_NAME
+            NEXT_PUBLIC_API_URL
+            NEXT_PUBLIC_WS_URL
+            NEXT_PUBLIC_DATA_URL
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID
+            NEXT_PUBLIC_FIREBASE_API_KEY
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+          )
+
+          for key in "${required[@]}"; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required repo secret/variable: ${key}"
+              exit 1
+            fi
+          done
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Deploy to Cloud Run
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_env_vars="NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL},NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL},NEXT_PUBLIC_DATA_URL=${NEXT_PUBLIC_DATA_URL},NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID},NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY},NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN},NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID},NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}"
+
+          gcloud run deploy "${GCP_SERVICE_NAME}" \
+            --quiet \
+            --source . \
+            --project "${GCP_PROJECT_ID}" \
+            --region "${GCP_REGION}" \
+            --allow-unauthenticated \
+            --set-build-env-vars "${build_env_vars}" \
+            --set-env-vars "${build_env_vars}"

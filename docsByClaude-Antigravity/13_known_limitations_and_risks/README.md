@@ -11,6 +11,7 @@
 **Issue:** JWT tokens are not automatically refreshed.
 
 **Current Behavior:**
+
 - Token expires after 30 minutes (backend default)
 - On 401, user is redirected to login
 - User must re-authenticate
@@ -18,6 +19,7 @@
 **Impact:** Users in long sessions will be interrupted.
 
 **Mitigation Options:**
+
 - Implement refresh token flow
 - Extend token expiry
 - Show warning before expiry
@@ -29,6 +31,7 @@
 **Issue:** Application requires constant network connection.
 
 **Current Behavior:**
+
 - No service worker
 - No caching of API responses
 - WebSocket disconnects are handled but offline state is not
@@ -42,6 +45,7 @@
 **Issue:** Auth state uses sessionStorage, not localStorage.
 
 **Current Behavior:**
+
 - Opening new browser window requires re-login
 - Closing browser logs user out
 
@@ -56,6 +60,7 @@
 **Issue:** Delete endpoint exists but no UI to trigger it.
 
 **Endpoints defined:**
+
 ```typescript
 jobs: {
     delete: (id: string) => `/api/v1/jobs/${id}`,
@@ -152,8 +157,8 @@ if (!mountedRef.current) return;
 
 ```typescript
 if (!isAllowedDomain(payload.email)) {
-    setError('Only @xyz allowed');
-    return;
+  setError('Only @xyz allowed');
+  return;
 }
 ```
 
@@ -171,7 +176,8 @@ const wsUrl = `...?token=${encodeURIComponent(token)}`;
 
 **Risk:** Token may appear in server logs.
 
-**Mitigation:** 
+**Mitigation:**
+
 - Use short-lived tokens
 - Backend should support header-based auth for WS
 - Ensure logs are secured
@@ -182,15 +188,16 @@ const wsUrl = `...?token=${encodeURIComponent(token)}`;
 
 ```typescript
 Cookies.set(config.auth.tokenCookieName, token, {
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    // httpOnly: NOT SET
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  // httpOnly: NOT SET
 });
 ```
 
 **Risk:** XSS could steal tokens.
 
 **Mitigation:**
+
 - Strict CSP headers
 - Input sanitization
 - Consider httpOnly with server-side cookie setting
@@ -199,29 +206,31 @@ Cookies.set(config.auth.tokenCookieName, token, {
 
 ## Missing Features
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Toast notifications | ❌ Missing | Currently uses `alert()` |
-| Job cancellation | ❌ Missing | No cancel button/endpoint |
-| Job deletion | ❌ Missing | Endpoint exists, no UI |
-| Clip download all | ❌ Missing | Individual downloads only |
-| Search/filter jobs | ❌ Missing | Only pagination |
-| User settings | ❌ Missing | No preferences page |
-| Dark/light toggle | ❌ Missing | Dark mode only |
-| Reduced motion | ❌ Missing | Animations always play |
-| Error boundary | ❌ Missing | Crashes propagate up |
-| Sentry/logging | ❌ Missing | Console.error only |
+| Feature             | Status     | Notes                     |
+| ------------------- | ---------- | ------------------------- |
+| Toast notifications | ❌ Missing | Currently uses `alert()`  |
+| Job cancellation    | ❌ Missing | No cancel button/endpoint |
+| Job deletion        | ❌ Missing | Endpoint exists, no UI    |
+| Clip download all   | ❌ Missing | Individual downloads only |
+| Search/filter jobs  | ❌ Missing | Only pagination           |
+| User settings       | ❌ Missing | No preferences page       |
+| Dark/light toggle   | ❌ Missing | Dark mode only            |
+| Reduced motion      | ❌ Missing | Animations always play    |
+| Error boundary      | ❌ Missing | Crashes propagate up      |
+| Sentry/logging      | ❌ Missing | Console.error only        |
 
 ---
 
 ## Browser Compatibility
 
 ### Tested
+
 - Chrome (latest)
 - Firefox (latest)
 - Safari (latest)
 
 ### Potential Issues
+
 - **IE11:** Not supported (ES6+, CSS variables)
 - **Old Safari:** WebSocket may have quirks
 - **Mobile browsers:** Sidebar overlay behavior

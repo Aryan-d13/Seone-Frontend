@@ -103,6 +103,7 @@ Seone uses **Google OAuth 2.0** for authentication:
 ## Domain Restriction
 
 **File:** `src/lib/config.ts`
+
 ```typescript
 auth: {
     allowedDomain: ['creativefuel.io'],
@@ -110,10 +111,11 @@ auth: {
 ```
 
 **File:** `src/services/auth.ts`
+
 ```typescript
 export function isAllowedDomain(email: string): boolean {
-    const domain = email.split('@')[1]?.toLowerCase();
-    return (config.auth.allowedDomain as readonly string[]).includes(domain);
+  const domain = email.split('@')[1]?.toLowerCase();
+  return (config.auth.allowedDomain as readonly string[]).includes(domain);
 }
 ```
 
@@ -123,8 +125,8 @@ export function isAllowedDomain(email: string): boolean {
 const payload = JSON.parse(atob(response.credential.split('.')[1]));
 
 if (!isAllowedDomain(payload.email)) {
-    setError(`Only @${config.auth.allowedDomain.join(', @')} accounts are allowed.`);
-    return;
+  setError(`Only @${config.auth.allowedDomain.join(', @')} accounts are allowed.`);
+  return;
 }
 ```
 
@@ -142,15 +144,15 @@ if (!isAllowedDomain(payload.email)) {
 
 ```typescript
 export function setAuthToken(token: string, expiresInSeconds?: number): void {
-    const expires = expiresInSeconds
-        ? expiresInSeconds / 86400  // Convert seconds to days
-        : config.auth.tokenExpiry;  // Default: 7 days
+  const expires = expiresInSeconds
+    ? expiresInSeconds / 86400 // Convert seconds to days
+    : config.auth.tokenExpiry; // Default: 7 days
 
-    Cookies.set(config.auth.tokenCookieName, token, {
-        expires,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-    });
+  Cookies.set(config.auth.tokenCookieName, token, {
+    expires,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  });
 }
 ```
 
@@ -161,7 +163,7 @@ export function setAuthToken(token: string, expiresInSeconds?: number): void {
 
 ```typescript
 export function getAuthToken(): string | undefined {
-    return Cookies.get(config.auth.tokenCookieName);
+  return Cookies.get(config.auth.tokenCookieName);
 }
 ```
 
@@ -169,7 +171,7 @@ export function getAuthToken(): string | undefined {
 
 ```typescript
 export function clearAuthToken(): void {
-    Cookies.remove(config.auth.tokenCookieName);
+  Cookies.remove(config.auth.tokenCookieName);
 }
 ```
 
@@ -181,16 +183,16 @@ export function clearAuthToken(): void {
 
 ```typescript
 export function decodeJwtPayload(token: string): JwtPayload | null {
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) return null;
-        
-        const payload = parts[1];
-        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-        return JSON.parse(decoded);
-    } catch {
-        return null;
-    }
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const payload = parts[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
 }
 ```
 
@@ -200,12 +202,12 @@ export function decodeJwtPayload(token: string): JwtPayload | null {
 
 ```typescript
 export function isTokenExpired(token: string, bufferSeconds: number = 60): boolean {
-    const expiry = getTokenExpiry(token);
-    if (!expiry) return true;  // Treat unparseable as expired
-    
-    const now = new Date();
-    const bufferMs = bufferSeconds * 1000;
-    return expiry.getTime() - bufferMs <= now.getTime();
+  const expiry = getTokenExpiry(token);
+  if (!expiry) return true; // Treat unparseable as expired
+
+  const now = new Date();
+  const bufferMs = bufferSeconds * 1000;
+  return expiry.getTime() - bufferMs <= now.getTime();
 }
 ```
 
@@ -215,10 +217,10 @@ export function isTokenExpired(token: string, bufferSeconds: number = 60): boole
 
 ```typescript
 export function getValidAuthToken(bufferSeconds: number = 60): string | undefined {
-    const token = getAuthToken();
-    if (!token) return undefined;
-    if (isTokenExpired(token, bufferSeconds)) return undefined;
-    return token;
+  const token = getAuthToken();
+  if (!token) return undefined;
+  if (isTokenExpired(token, bufferSeconds)) return undefined;
+  return token;
 }
 ```
 
@@ -249,39 +251,42 @@ export const useAuthStore = create<AuthStore>()(
 ```
 
 **What's Persisted:**
+
 - `user` (object with name, email, picture, etc.)
 - `isAuthenticated` (boolean)
 
 **What's NOT Persisted:**
+
 - `isLoading` (always starts as true)
 
 ### Session Initialization
 
 ```typescript
 initialize: async () => {
-    const token = getAuthToken();
-    const currentState = get();
+  const token = getAuthToken();
+  const currentState = get();
 
-    // Token + persisted user → authenticated
-    if (token && currentState.user) {
-        set({ isLoading: false, isAuthenticated: true });
-        return;
-    }
+  // Token + persisted user → authenticated
+  if (token && currentState.user) {
+    set({ isLoading: false, isAuthenticated: true });
+    return;
+  }
 
-    // No token → not authenticated
-    if (!token) {
-        set({ user: null, isAuthenticated: false, isLoading: false });
-        return;
-    }
-
-    // Token but no user → inconsistent, clear state
+  // No token → not authenticated
+  if (!token) {
     set({ user: null, isAuthenticated: false, isLoading: false });
-}
+    return;
+  }
+
+  // Token but no user → inconsistent, clear state
+  set({ user: null, isAuthenticated: false, isLoading: false });
+};
 ```
 
 **Key Decision:** Does NOT call `/me` API. Relies on persisted state.
 
-**Why?** 
+**Why?**
+
 1. Faster page loads (no API wait)
 2. User info from Google token is sufficient
 3. If token is invalid, backend will return 401 which triggers login
@@ -293,6 +298,7 @@ initialize: async () => {
 **File:** `src/components/layout/AuthGuard.tsx`
 
 ### Purpose
+
 - Protect routes that require authentication
 - Redirect authenticated users away from login page
 
@@ -358,8 +364,8 @@ export function AuthGuard({
 
 ```typescript
 const handleLogout = async () => {
-    await logout();
-    router.replace('/login');
+  await logout();
+  router.replace('/login');
 };
 ```
 
@@ -367,30 +373,30 @@ const handleLogout = async () => {
 
 ```typescript
 logout: async () => {
-    set({ isLoading: true });
-    await logoutService();  // Calls POST /api/v1/auth/logout
-    set({ user: null, isAuthenticated: false, isLoading: false });
-}
+  set({ isLoading: true });
+  await logoutService(); // Calls POST /api/v1/auth/logout
+  set({ user: null, isAuthenticated: false, isLoading: false });
+};
 ```
 
 ### Service Logout
 
 ```typescript
 export async function logout(): Promise<void> {
-    const token = getAuthToken();
+  const token = getAuthToken();
 
-    if (token) {
-        try {
-            await fetch(getApiUrl(endpoints.auth.logout), {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-        } catch {
-            // Ignore logout errors — clear token regardless
-        }
+  if (token) {
+    try {
+      await fetch(getApiUrl(endpoints.auth.logout), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {
+      // Ignore logout errors — clear token regardless
     }
+  }
 
-    clearAuthToken();
+  clearAuthToken();
 }
 ```
 
@@ -404,36 +410,39 @@ export async function logout(): Promise<void> {
 
 ```typescript
 if (response.status === 401) {
-    clearAuthToken();
-    if (typeof window !== 'undefined') {
-        alert('Session expired. Please log in again.');
-    }
-    window.location.href = '/login';
-    throw new Error('Session expired');
+  clearAuthToken();
+  if (typeof window !== 'undefined') {
+    alert('Session expired. Please log in again.');
+  }
+  window.location.href = '/login';
+  throw new Error('Session expired');
 }
 ```
 
 ### Simple Explanation
+
 If any API call returns "unauthorized," we assume the session is expired, clear everything, and send the user to login.
 
 ### Technical Explanation
+
 - 401 could mean: expired token, revoked token, tampered token
 - Alert provides user feedback (temporary UX until toast system exists)
 - Hard redirect via `window.location.href` ensures full page reload
 - Thrown error prevents further code execution during redirect
 
 ### Why This Matters in Production
+
 Without centralized 401 handling, components might continue executing with invalid state, causing confusing errors or data inconsistencies.
 
 ---
 
 ## Security Considerations
 
-| Aspect | Implementation | Rationale |
-|--------|----------------|-----------|
-| Token Storage | Cookie (not localStorage) | Automatic inclusion in requests |
-| Cookie Secure Flag | `secure: true` in production | Prevents transmission over HTTP |
-| Cookie SameSite | `strict` | CSRF protection |
-| Session Scope | sessionStorage | Clears when browser closes |
-| Domain Restriction | Client + server validation | Fail fast + defense in depth |
-| Token Expiry | 30 min backend, client checks | Short-lived tokens reduce risk |
+| Aspect             | Implementation                | Rationale                       |
+| ------------------ | ----------------------------- | ------------------------------- |
+| Token Storage      | Cookie (not localStorage)     | Automatic inclusion in requests |
+| Cookie Secure Flag | `secure: true` in production  | Prevents transmission over HTTP |
+| Cookie SameSite    | `strict`                      | CSRF protection                 |
+| Session Scope      | sessionStorage                | Clears when browser closes      |
+| Domain Restriction | Client + server validation    | Fail fast + defense in depth    |
+| Token Expiry       | 30 min backend, client checks | Short-lived tokens reduce risk  |

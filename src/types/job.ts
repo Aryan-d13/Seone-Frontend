@@ -4,13 +4,13 @@
 // ============================================
 
 export interface SubmissionFormData {
-    youtubeUrl: string;
-    minDuration: number;
-    maxDuration: number;
-    clipCount: number;
-    language: 'hi' | 'en' | 'auto';
-    copyLanguage: 'hi' | 'en' | null;
-    selectedTemplate: string | null; // template_ref, single selection
+  youtubeUrl: string;
+  minDuration: number;
+  maxDuration: number;
+  clipCount: number;
+  language: 'hi' | 'en' | 'auto';
+  copyLanguage: 'hi' | 'en' | null;
+  selectedTemplate: string | null; // template_ref, single selection
 }
 
 /**
@@ -18,52 +18,52 @@ export interface SubmissionFormData {
  * template_ref is the value to submit in JobCreateRequest.
  */
 export interface Template {
-    template_ref: string; // Canonical ID, e.g. "chaturnath/v1"
-    name: string;
-    slug: string;
-    aspect_ratio?: string;
-    description?: string;
-    thumbnailUrl?: string;
-    category?: string;
+  template_ref: string; // Canonical ID, e.g. "chaturnath/v1"
+  name: string;
+  slug: string;
+  aspect_ratio?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  category?: string;
 }
 
 /**
  * @deprecated Use Template instead
  */
 export interface Page {
-    id: string;
-    name: string;
-    slug: string;
-    description?: string;
-    thumbnailUrl?: string;
-    category?: string;
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  thumbnailUrl?: string;
+  category?: string;
 }
 
 export interface FormErrors {
-    youtubeUrl?: string;
-    duration?: string;
-    clipCount?: string;
-    copyLanguage?: string;
-    selectedTemplate?: string;
-    general?: string;
+  youtubeUrl?: string;
+  duration?: string;
+  clipCount?: string;
+  copyLanguage?: string;
+  selectedTemplate?: string;
+  general?: string;
 }
 
 export interface SubmissionState {
-    isSubmitting: boolean;
-    isSuccess: boolean;
-    error: string | null;
-    jobId: string | null;
+  isSubmitting: boolean;
+  isSuccess: boolean;
+  error: string | null;
+  jobId: string | null;
 }
 
 // Default form values
 export const defaultFormData: SubmissionFormData = {
-    youtubeUrl: '',
-    minDuration: 60,
-    maxDuration: 300,
-    clipCount: 3,
-    language: 'hi',
-    copyLanguage: null,
-    selectedTemplate: null,
+  youtubeUrl: '',
+  minDuration: 60,
+  maxDuration: 300,
+  clipCount: 3,
+  language: 'hi',
+  copyLanguage: null,
+  selectedTemplate: null,
 };
 
 // Duration constraints

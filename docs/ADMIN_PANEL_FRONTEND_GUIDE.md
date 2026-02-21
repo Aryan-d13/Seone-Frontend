@@ -58,15 +58,15 @@ npm install firebase
 
 ```typescript
 // src/config/firebase.ts
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  projectId: "seone-platform",
-  apiKey: "<from step 1>",
-  authDomain: "seone-platform.firebaseapp.com",
-  storageBucket: "seone-platform.firebasestorage.app",
+  projectId: 'seone-platform',
+  apiKey: '<from step 1>',
+  authDomain: 'seone-platform.firebaseapp.com',
+  storageBucket: 'seone-platform.firebasestorage.app',
 };
 
 export const app = initializeApp(firebaseConfig);
@@ -82,16 +82,16 @@ export const storage = getStorage(app);
 
 **Document ID format**: `{slug}_v{version}` — e.g. `chaturnath_v1`, `brand_xyz_v2`
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `id` | string | ✅ | Template ref used in job payloads, e.g. `"chaturnath/v1"` |
-| `template_version` | string | ✅ | Always `"1.0"` for now |
-| `name` | string | ✅ | Display name, e.g. `"Chaturnath Hindi"` |
-| `description` | string | ❌ | Optional description |
-| `canvas` | object | ✅ | `{ width: 1080, height: 1080 }` |
-| `zones` | array | ✅ | Layout zones (see Zone Schema below) |
-| `styles` | object | ✅ | Style definitions |
-| `assets` | object | ❌ | Asset references with GCS paths |
+| Field              | Type   | Required | Description                                               |
+| ------------------ | ------ | -------- | --------------------------------------------------------- |
+| `id`               | string | ✅       | Template ref used in job payloads, e.g. `"chaturnath/v1"` |
+| `template_version` | string | ✅       | Always `"1.0"` for now                                    |
+| `name`             | string | ✅       | Display name, e.g. `"Chaturnath Hindi"`                   |
+| `description`      | string | ❌       | Optional description                                      |
+| `canvas`           | object | ✅       | `{ width: 1080, height: 1080 }`                           |
+| `zones`            | array  | ✅       | Layout zones (see Zone Schema below)                      |
+| `styles`           | object | ✅       | Style definitions                                         |
+| `assets`           | object | ❌       | Asset references with GCS paths                           |
 
 ### Zone Schema (inside `zones` array)
 
@@ -157,15 +157,15 @@ Every template has exactly **3 zones**:
 
 ### `pages/{page_id}` (NEW — you create this)
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `name` | string | ✅ | Page display name |
-| `tenant_id` | string | ✅ | User/org ID from auth |
-| `template_id` | string | ✅ | Firestore doc ID, e.g. `"chaturnath_v1"` |
-| `copy_language` | string | ✅ | `"hi"` or `"en"` |
-| `active` | boolean | ✅ | Whether the page is active |
-| `created_at` | timestamp | ✅ | Firestore server timestamp |
-| `created_by` | string | ✅ | Email of creator |
+| Field           | Type      | Required | Description                              |
+| --------------- | --------- | -------- | ---------------------------------------- |
+| `name`          | string    | ✅       | Page display name                        |
+| `tenant_id`     | string    | ✅       | User/org ID from auth                    |
+| `template_id`   | string    | ✅       | Firestore doc ID, e.g. `"chaturnath_v1"` |
+| `copy_language` | string    | ✅       | `"hi"` or `"en"`                         |
+| `active`        | boolean   | ✅       | Whether the page is active               |
+| `created_at`    | timestamp | ✅       | Firestore server timestamp               |
+| `created_by`    | string    | ✅       | Email of creator                         |
 
 ```json
 {
@@ -183,15 +183,11 @@ Every template has exactly **3 zones**:
 ## Logo Upload Flow
 
 ```typescript
-import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc } from "firebase/firestore";
-import { storage, db } from "./config/firebase";
+import { ref, uploadBytes } from 'firebase/storage';
+import { doc, setDoc } from 'firebase/firestore';
+import { storage, db } from './config/firebase';
 
-async function createTemplate(
-  slug: string,
-  templateData: object,
-  logoFile: File
-) {
+async function createTemplate(slug: string, templateData: object, logoFile: File) {
   // 1. Upload logo to GCS
   const gcsPath = `templates/${slug}/assets/logo.png`;
   const storageRef = ref(storage, gcsPath);
@@ -202,16 +198,16 @@ async function createTemplate(
     ...templateData,
     assets: {
       logo_mark: {
-        type: "image",
+        type: 'image',
         gcs_path: gcsPath,
-        path: "assets/logo.png",
+        path: 'assets/logo.png',
       },
     },
   };
 
   // 3. Write to Firestore
   const docId = `${slug}_v1`;
-  await setDoc(doc(db, "templates", docId), data);
+  await setDoc(doc(db, 'templates', docId), data);
 
   return docId;
 }
@@ -221,10 +217,10 @@ async function createTemplate(
 
 ## Existing API Endpoints (unchanged)
 
-| Endpoint | Method | What It Returns |
-|---|---|---|
-| `GET /api/v1/pages` | GET | List of all templates (now reads from Firestore, falls back to filesystem) |
-| `GET /api/v1/pages/{page_id}` | GET | Single template details |
+| Endpoint                      | Method | What It Returns                                                            |
+| ----------------------------- | ------ | -------------------------------------------------------------------------- |
+| `GET /api/v1/pages`           | GET    | List of all templates (now reads from Firestore, falls back to filesystem) |
+| `GET /api/v1/pages/{page_id}` | GET    | Single template details                                                    |
 
 **Response schema is unchanged.** Your existing template picker will continue to work.
 
@@ -258,10 +254,10 @@ service cloud.firestore {
 
 ## Font Options
 
-| Language | Font Family | Value for `font.family` |
-|---|---|---|
-| Hindi | NotoSansDevanagari | `"NotoSansDevanagari"` |
-| English | NotoSans | `"NotoSans"` |
+| Language | Font Family        | Value for `font.family` |
+| -------- | ------------------ | ----------------------- |
+| Hindi    | NotoSansDevanagari | `"NotoSansDevanagari"`  |
+| English  | NotoSans           | `"NotoSans"`            |
 
 ---
 

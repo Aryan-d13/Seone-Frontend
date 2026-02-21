@@ -12,8 +12,8 @@
 
 ```css
 :focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: 2px;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 ```
 
@@ -60,12 +60,13 @@ Components use appropriate semantic elements:
 
 ```tsx
 <Input
-    label="YouTube URL"  // Generates <label> with for attribute
-    id={inputId}         // Links label to input
+  label="YouTube URL" // Generates <label> with for attribute
+  id={inputId} // Links label to input
 />
 ```
 
 Internal implementation:
+
 ```tsx
 const inputId = id || `input-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -91,12 +92,12 @@ The application uses a dark theme by default:
 ```css
 /* Color scheme declaration */
 html {
-    color-scheme: dark;
+  color-scheme: dark;
 }
 
 body {
-    background: var(--bg-primary);  /* #0a0a0b */
-    color: var(--text-primary);      /* #ffffff */
+  background: var(--bg-primary); /* #0a0a0b */
+  color: var(--text-primary); /* #ffffff */
 }
 ```
 
@@ -108,9 +109,9 @@ body {
 
 ```css
 html {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 ```
 
@@ -126,10 +127,12 @@ Currently, animations do not respect `prefers-reduced-motion`. Recommended addit
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-    }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 ```
 
@@ -139,50 +142,54 @@ Currently, animations do not respect `prefers-reduced-motion`. Recommended addit
 
 ### Loading Feedback
 
-| Action | Feedback |
-|--------|----------|
-| Initial page load | Skeleton screens |
-| Button submission | Spinner + disabled state |
-| Job fetch | Centered spinner with text |
-| Auth check | Full-screen spinner |
+| Action            | Feedback                   |
+| ----------------- | -------------------------- |
+| Initial page load | Skeleton screens           |
+| Button submission | Spinner + disabled state   |
+| Job fetch         | Centered spinner with text |
+| Auth check        | Full-screen spinner        |
 
 ### Error Communication
 
-| Error Type | Display |
-|------------|---------|
-| Form validation | Inline below field |
-| API error | Alert/toast + error message |
-| 403/404 | Full page with back button |
-| Session expiry | Alert + redirect |
+| Error Type      | Display                     |
+| --------------- | --------------------------- |
+| Form validation | Inline below field          |
+| API error       | Alert/toast + error message |
+| 403/404         | Full page with back button  |
+| Session expiry  | Alert + redirect            |
 
 ### Progress Visualization
 
 **Pipeline Timeline:**
+
 - Visual steps with checkmarks for completed
 - Current step highlighted
 - Failed step shows X with error message
 
 **Progress Bar:**
+
 - Only shown during active processing
 - Width based on `clips_ready / clip_count`
 
 ### Navigation Patterns
 
 **Sidebar Active State:**
+
 - Current page highlighted with accent color
 - Animated indicator using `layoutId`
 
 **Breadcrumb-style Back:**
+
 - Job detail page has "← Back" button
 - Returns to jobs list
 
 ### Confirmation Patterns
 
-| Action | Confirmation |
-|--------|--------------|
-| Logout | Immediate (no confirmation) |
+| Action     | Confirmation                 |
+| ---------- | ---------------------------- |
+| Logout     | Immediate (no confirmation)  |
 | Create job | Form validation, then submit |
-| Delete job | NOT IMPLEMENTED |
+| Delete job | NOT IMPLEMENTED              |
 
 ---
 
@@ -192,26 +199,25 @@ Currently, animations do not respect `prefers-reduced-motion`. Recommended addit
 
 ```tsx
 // Mobile: sidebar hidden by default, overlay when open
-{isSidebarOpen && (
-    <motion.div
-        className={styles.overlay}
-        onClick={() => setSidebarOpen(false)}
-    />
-)}
+{
+  isSidebarOpen && (
+    <motion.div className={styles.overlay} onClick={() => setSidebarOpen(false)} />
+  );
+}
 
 // Toggle via hamburger menu in TopBar
 <button className={styles.menuButton} onClick={toggleSidebar}>
-    <MenuIcon />
-</button>
+  <MenuIcon />
+</button>;
 ```
 
 ### CSS Variables for Layout
 
 ```css
 :root {
-    --sidebar-width: 260px;
-    --inspector-width: 340px;
-    --topbar-height: 60px;
+  --sidebar-width: 260px;
+  --inspector-width: 340px;
+  --topbar-height: 60px;
 }
 ```
 
@@ -221,11 +227,11 @@ These can be adjusted via media queries for responsive layouts.
 
 ## Color Contrast
 
-| Usage | Foreground | Background | Ratio (approx) |
-|-------|------------|------------|----------------|
-| Primary text | #ffffff | #0a0a0b | 21:1 ⬛ |
-| Secondary text | #a1a1a6 | #0a0a0b | 7:1 ✅ |
-| Muted text | #6e6e73 | #0a0a0b | 4:1 ⚠️ |
-| Accent on dark | #6366f1 | #0a0a0b | 4.5:1 ✅ |
+| Usage          | Foreground | Background | Ratio (approx) |
+| -------------- | ---------- | ---------- | -------------- |
+| Primary text   | #ffffff    | #0a0a0b    | 21:1 ⬛        |
+| Secondary text | #a1a1a6    | #0a0a0b    | 7:1 ✅         |
+| Muted text     | #6e6e73    | #0a0a0b    | 4:1 ⚠️         |
+| Accent on dark | #6366f1    | #0a0a0b    | 4.5:1 ✅       |
 
 **Note:** Muted text may not meet WCAG AA for small text. Consider for future improvement.

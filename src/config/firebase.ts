@@ -7,11 +7,11 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import {
-    getAuth,
-    signInWithPopup,
-    GoogleAuthProvider,
-    onAuthStateChanged,
-    type User as FirebaseUser,
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  type User as FirebaseUser,
 } from 'firebase/auth';
 import { config } from '@/lib/config';
 
@@ -19,18 +19,18 @@ const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const configuredStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim();
 
 function resolveStorageBucket(): string | undefined {
-    if (configuredStorageBucket) {
-        return configuredStorageBucket;
-    }
+  if (configuredStorageBucket) {
+    return configuredStorageBucket;
+  }
 
-    return projectId ? `${projectId}.firebasestorage.app` : undefined;
+  return projectId ? `${projectId}.firebasestorage.app` : undefined;
 }
 
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId,
-    storageBucket: resolveStorageBucket(),
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId,
+  storageBucket: resolveStorageBucket(),
 };
 
 // Singleton — avoid re-init during HMR
@@ -51,27 +51,27 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
  * Security Rules the `request.auth.token.email` they need.
  */
 export async function signInWithFirebase(): Promise<FirebaseUser> {
-    const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-    const email = user.email?.toLowerCase() ?? '';
-    const domain = email.split('@')[1] ?? '';
-    const allowedDomains = config.auth.allowedDomain as readonly string[];
+  const result = await signInWithPopup(auth, googleProvider);
+  const user = result.user;
+  const email = user.email?.toLowerCase() ?? '';
+  const domain = email.split('@')[1] ?? '';
+  const allowedDomains = config.auth.allowedDomain as readonly string[];
 
-    if (!allowedDomains.includes(domain)) {
-        await auth.signOut();
-        throw new Error(
-            `Only @${allowedDomains.join(', @')} accounts are allowed. You used ${email || 'an unknown account'}.`
-        );
-    }
+  if (!allowedDomains.includes(domain)) {
+    await auth.signOut();
+    throw new Error(
+      `Only @${allowedDomains.join(', @')} accounts are allowed. You used ${email || 'an unknown account'}.`
+    );
+  }
 
-    return user;
+  return user;
 }
 
 /**
  * Sign out of Firebase (does NOT affect the Seone JWT session).
  */
 export async function signOutFirebase(): Promise<void> {
-    await auth.signOut();
+  await auth.signOut();
 }
 
 /**
@@ -79,9 +79,9 @@ export async function signOutFirebase(): Promise<void> {
  * Returns the current user or null.
  */
 export function onFirebaseAuthChange(
-    callback: (user: FirebaseUser | null) => void
+  callback: (user: FirebaseUser | null) => void
 ): () => void {
-    return onAuthStateChanged(auth, callback);
+  return onAuthStateChanged(auth, callback);
 }
 
 export type { FirebaseUser };

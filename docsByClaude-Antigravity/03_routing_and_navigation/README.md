@@ -17,14 +17,14 @@ Seone uses **Next.js 16 App Router** with the following key features:
 
 ## URL Structure
 
-| URL | Page | Layout Chain | Auth Required |
-|-----|------|--------------|---------------|
-| `/` | Landing page | RootLayout → PageTransition | ❌ No |
-| `/login` | Login page | RootLayout → AuthLayout (GoogleOAuth) | ❌ No |
-| `/dashboard` | Dashboard home | RootLayout → DashboardLayout (AuthGuard + AppShell) | ✅ Yes |
-| `/dashboard/new` | Create new job | RootLayout → DashboardLayout | ✅ Yes |
-| `/dashboard/jobs` | Jobs list | RootLayout → DashboardLayout | ✅ Yes |
-| `/dashboard/jobs/{id}` | Job detail | RootLayout → DashboardLayout | ✅ Yes |
+| URL                    | Page           | Layout Chain                                        | Auth Required |
+| ---------------------- | -------------- | --------------------------------------------------- | ------------- |
+| `/`                    | Landing page   | RootLayout → PageTransition                         | ❌ No         |
+| `/login`               | Login page     | RootLayout → AuthLayout (GoogleOAuth)               | ❌ No         |
+| `/dashboard`           | Dashboard home | RootLayout → DashboardLayout (AuthGuard + AppShell) | ✅ Yes        |
+| `/dashboard/new`       | Create new job | RootLayout → DashboardLayout                        | ✅ Yes        |
+| `/dashboard/jobs`      | Jobs list      | RootLayout → DashboardLayout                        | ✅ Yes        |
+| `/dashboard/jobs/{id}` | Job detail     | RootLayout → DashboardLayout                        | ✅ Yes        |
 
 ---
 
@@ -33,29 +33,29 @@ Seone uses **Next.js 16 App Router** with the following key features:
 **Purpose:** Public authentication pages that need GoogleOAuthProvider but NOT auth guard.
 
 **File:** `src/app/(auth)/layout.tsx`
+
 ```tsx
 import { GoogleOAuthProvider } from '@/components/layout/GoogleOAuthProvider';
 
 export default function AuthLayout({ children }) {
-    return (
-        <GoogleOAuthProvider>
-            {children}
-        </GoogleOAuthProvider>
-    );
+  return <GoogleOAuthProvider>{children}</GoogleOAuthProvider>;
 }
 ```
 
 ### Simple Explanation
+
 This layout wraps the login page so that Google's OAuth scripts are available. Users can log in without being authenticated (obviously — that's the point of a login page).
 
 ### Technical Explanation
+
 - `GoogleOAuthProvider` initializes the `@react-oauth/google` library
 - Passes the Google Client ID from environment config
 - All child routes automatically have access to `GoogleLogin` component
 
 ### Child Routes
-| Route | File | Purpose |
-|-------|------|---------|
+
+| Route    | File                    | Purpose            |
+| -------- | ----------------------- | ------------------ |
 | `/login` | `(auth)/login/page.tsx` | Google OAuth login |
 
 ---
@@ -65,34 +65,38 @@ This layout wraps the login page so that Google's OAuth scripts are available. U
 **Purpose:** Protected dashboard pages that require authentication and use the main app layout.
 
 **File:** `src/app/(dashboard)/layout.tsx`
+
 ```tsx
 import { AuthGuard, AppShell } from '@/components/layout';
 
 export default function DashboardLayout({ children }) {
-    return (
-        <AuthGuard requireAuth={true} redirectTo="/login">
-            <AppShell>{children}</AppShell>
-        </AuthGuard>
-    );
+  return (
+    <AuthGuard requireAuth={true} redirectTo="/login">
+      <AppShell>{children}</AppShell>
+    </AuthGuard>
+  );
 }
 ```
 
 ### Simple Explanation
+
 This layout adds a security check: if you're not logged in, you get sent to the login page. If you are logged in, you see the main app with a sidebar and top bar.
 
 ### Technical Explanation
+
 - `AuthGuard` checks `useAuthStore` for authentication state
 - If not authenticated, redirects to `/login`
 - If authenticated, renders `AppShell` which includes Sidebar, TopBar, and Inspector
 - Children render in the main content area
 
 ### Child Routes
-| Route | File | Purpose |
-|-------|------|---------|
-| `/dashboard` | `dashboard/page.tsx` | Dashboard home |
-| `/dashboard/new` | `dashboard/new/page.tsx` | Job creation form |
-| `/dashboard/jobs` | `dashboard/jobs/page.tsx` | Jobs history list |
-| `/dashboard/jobs/{id}` | `dashboard/jobs/[id]/page.tsx` | Job detail view |
+
+| Route                  | File                           | Purpose           |
+| ---------------------- | ------------------------------ | ----------------- |
+| `/dashboard`           | `dashboard/page.tsx`           | Dashboard home    |
+| `/dashboard/new`       | `dashboard/new/page.tsx`       | Job creation form |
+| `/dashboard/jobs`      | `dashboard/jobs/page.tsx`      | Jobs history list |
+| `/dashboard/jobs/{id}` | `dashboard/jobs/[id]/page.tsx` | Job detail view   |
 
 ---
 
@@ -144,24 +148,29 @@ src/app/layout.tsx (ROOT)
 **File:** `src/components/layout/Sidebar.tsx`
 
 **Navigation Items:**
+
 ```tsx
 const navItems = [
-    { label: 'Dashboard', href: '/dashboard', icon: <GridIcon /> },
-    { label: 'New Job', href: '/dashboard/new', icon: <PlusIcon /> },
-    { label: 'Jobs History', href: '/dashboard/jobs', icon: <ClockIcon /> },
+  { label: 'Dashboard', href: '/dashboard', icon: <GridIcon /> },
+  { label: 'New Job', href: '/dashboard/new', icon: <PlusIcon /> },
+  { label: 'Jobs History', href: '/dashboard/jobs', icon: <ClockIcon /> },
 ];
 ```
 
 **Active State Logic:**
+
 ```tsx
-const isActive = pathname === item.href ||
-    (item.href !== '/dashboard' && pathname.startsWith(item.href));
+const isActive =
+  pathname === item.href ||
+  (item.href !== '/dashboard' && pathname.startsWith(item.href));
 ```
 
 ### Simple Explanation
+
 The sidebar shows three links. The current page is highlighted. "Dashboard" is only highlighted when you're exactly on `/dashboard`, but "Jobs History" is highlighted for `/dashboard/jobs` AND `/dashboard/jobs/123`.
 
 ### Technical Explanation
+
 - `usePathname()` from Next.js gives current URL path
 - Exact match for dashboard root (avoids highlighting for all dashboard routes)
 - Prefix match for other routes (job detail pages highlight "Jobs History")
@@ -188,26 +197,26 @@ All programmatic navigation uses Next.js `useRouter`:
 import { useRouter } from 'next/navigation';
 
 function Component() {
-    const router = useRouter();
-    
-    // Navigate to new page
-    router.push('/dashboard/jobs/123');
-    
-    // Replace current URL (no back button)
-    router.replace('/login');
+  const router = useRouter();
+
+  // Navigate to new page
+  router.push('/dashboard/jobs/123');
+
+  // Replace current URL (no back button)
+  router.replace('/login');
 }
 ```
 
 ### Navigation Patterns by Action
 
-| Action | Method | Destination |
-|--------|--------|-------------|
-| After login | `router.replace()` | `/dashboard` |
-| After logout | `router.replace()` | `/login` |
-| Create job success | `router.push()` | `/dashboard/jobs/{id}` |
-| Click job card | `router.push()` | `/dashboard/jobs/{id}` |
-| Back from job detail | `router.push()` | `/dashboard/jobs` |
-| Click sidebar nav | `<Link>` component | Various |
+| Action               | Method             | Destination            |
+| -------------------- | ------------------ | ---------------------- |
+| After login          | `router.replace()` | `/dashboard`           |
+| After logout         | `router.replace()` | `/login`               |
+| Create job success   | `router.push()`    | `/dashboard/jobs/{id}` |
+| Click job card       | `router.push()`    | `/dashboard/jobs/{id}` |
+| Back from job detail | `router.push()`    | `/dashboard/jobs`      |
+| Click sidebar nav    | `<Link>` component | Various                |
 
 ---
 
@@ -219,26 +228,27 @@ Wraps all pages in Framer Motion `AnimatePresence`:
 
 ```tsx
 export function PageTransition({ children }) {
-    const pathname = usePathname();
-    
-    return (
-        <AnimatePresence mode="wait">
-            <motion.div
-                key={pathname}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={pageTransition}
-            >
-                {children}
-            </motion.div>
-        </AnimatePresence>
-    );
+  const pathname = usePathname();
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pathname}
+        variants={pageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={pageTransition}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
 ```
 
 **Animation Effect:**
+
 - **Enter:** Fade in + slide up from y: 20
 - **Exit:** Fade out + slide up to y: -20
 - **Duration:** 300ms with easeOut curve
@@ -255,20 +265,22 @@ export function PageTransition({ children }) {
 
 ```tsx
 interface JobDetailPageProps {
-    params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export default function JobDetailPage({ params }: JobDetailPageProps) {
-    const { id } = use(params);  // React.use() to unwrap Promise
-    
-    // Use id for API calls, WebSocket, etc.
+  const { id } = use(params); // React.use() to unwrap Promise
+
+  // Use id for API calls, WebSocket, etc.
 }
 ```
 
 ### Simple Explanation
+
 The `[id]` folder name tells Next.js this is a dynamic segment. Whatever you put in the URL (like `abc123`) becomes available as `id`.
 
 ### Technical Explanation
+
 - `use()` is a React 19 hook for unwrapping Promises in render
 - This pattern is required in Next.js 15+ App Router
 - The `id` is used to fetch job data and connect to WebSocket

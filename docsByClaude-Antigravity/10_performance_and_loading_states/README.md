@@ -13,24 +13,24 @@ Used for initial data loading:
 ```tsx
 // JobsList skeleton
 if (isLoading && items.length === 0) {
-    return (
-        <div className={styles.grid}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className={styles.skeleton} />
-            ))}
-        </div>
-    );
+  return (
+    <div className={styles.grid}>
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <div key={i} className={styles.skeleton} />
+      ))}
+    </div>
+  );
 }
 
 // TemplateSelector skeleton
 if (isLoading) {
-    return (
-        <div className={styles.grid}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className={styles.skeleton} />
-            ))}
-        </div>
-    );
+  return (
+    <div className={styles.grid}>
+      {[1, 2, 3, 4, 5, 6].map(i => (
+        <div key={i} className={styles.skeleton} />
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -41,46 +41,51 @@ Used for focused actions:
 ```tsx
 // Job detail page loading
 if (fetchStatus === 'loading') {
-    return (
-        <div className={styles.loading}>
-            <div className={styles.spinner} />
-            <p>Loading job details...</p>
-        </div>
-    );
+  return (
+    <div className={styles.loading}>
+      <div className={styles.spinner} />
+      <p>Loading job details...</p>
+    </div>
+  );
 }
 
 // Auth guard loading
 if (isLoading) {
-    return (
-        <div className="auth-loading">
-            <div className="auth-loading-spinner" />
-        </div>
-    );
+  return (
+    <div className="auth-loading">
+      <div className="auth-loading-spinner" />
+    </div>
+  );
 }
 ```
 
 ### Button Loading State
 
 ```tsx
-<Button
-    isLoading={state.isSubmitting}
-    disabled={state.isSubmitting}
->
-    {state.isSubmitting ? 'Creating Job...' : 'Create Job'}
+<Button isLoading={state.isSubmitting} disabled={state.isSubmitting}>
+  {state.isSubmitting ? 'Creating Job...' : 'Create Job'}
 </Button>
 ```
 
 **Inside Button component:**
+
 ```tsx
-{isLoading && (
+{
+  isLoading && (
     <span className={styles.spinner}>
-        <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" strokeDasharray="32">
-                <animate attributeName="stroke-dashoffset" values="32;0" dur="1s" repeatCount="indefinite" />
-            </circle>
-        </svg>
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" strokeDasharray="32">
+          <animate
+            attributeName="stroke-dashoffset"
+            values="32;0"
+            dur="1s"
+            repeatCount="indefinite"
+          />
+        </circle>
+      </svg>
     </span>
-)}
+  );
+}
 ```
 
 ---
@@ -104,7 +109,7 @@ export function usePages() {
             setIsLoading(false);
             return;  // Skip fetch, use cache
         }
-        
+
         async function fetchPages() {
             const data = await fetch(...);
             pagesCache = data;  // Cache for future
@@ -131,11 +136,11 @@ const store = useJobStore();
 ### Conditional WebSocket
 
 ```typescript
-const shouldConnect = 
-    fetchStatus === 'success' && 
-    job && 
-    job.status !== 'completed' && 
-    job.status !== 'failed';
+const shouldConnect =
+  fetchStatus === 'success' &&
+  job &&
+  job.status !== 'completed' &&
+  job.status !== 'failed';
 
 useJobWebSocket(shouldConnect ? id : '');
 ```
@@ -146,11 +151,11 @@ useJobWebSocket(shouldConnect ? id : '');
 
 ```typescript
 useEffect(() => {
-    const isTerminal = job?.status === 'completed' || job?.status === 'failed';
-    if (isTerminal) return;  // Don't setup interval
-    
-    const intervalId = setInterval(fetchJob, 3000);
-    return () => clearInterval(intervalId);
+  const isTerminal = job?.status === 'completed' || job?.status === 'failed';
+  if (isTerminal) return; // Don't setup interval
+
+  const intervalId = setInterval(fetchJob, 3000);
+  return () => clearInterval(intervalId);
 }, [job?.status, job?.phase]);
 ```
 
@@ -165,8 +170,8 @@ useEffect(() => {
 ```typescript
 // Uses transform instead of top/left
 export const slideUpVariants: Variants = {
-    initial: { opacity: 0, y: 20 },  // translateY
-    animate: { opacity: 1, y: 0 },
+  initial: { opacity: 0, y: 20 }, // translateY
+  animate: { opacity: 1, y: 0 },
 };
 ```
 
@@ -174,12 +179,12 @@ export const slideUpVariants: Variants = {
 
 ```typescript
 export const staggerContainer: Variants = {
-    animate: {
-        transition: {
-            staggerChildren: 0.05,  // 50ms between items
-            delayChildren: 0.1,
-        },
+  animate: {
+    transition: {
+      staggerChildren: 0.05, // 50ms between items
+      delayChildren: 0.1,
     },
+  },
 };
 ```
 
@@ -208,11 +213,11 @@ Visual progress through job steps:
 
 ```tsx
 const STEPS = [
-    { id: 'queued', label: 'Queued' },
-    { id: 'downloading', label: 'Downloading' },
-    { id: 'transcribing', label: 'Transcribing' },
-    { id: 'analyzing', label: 'Analyzing' },
-    { id: 'rendering', label: 'Rendering' },
+  { id: 'queued', label: 'Queued' },
+  { id: 'downloading', label: 'Downloading' },
+  { id: 'transcribing', label: 'Transcribing' },
+  { id: 'analyzing', label: 'Analyzing' },
+  { id: 'rendering', label: 'Rendering' },
 ];
 
 // Determine which steps are done
@@ -223,14 +228,13 @@ const isDone = index < effectiveIndex;
 ### Progress Bar
 
 ```tsx
-{['downloading', 'transcribing', 'analyzing', 'rendering'].includes(job.status) && (
+{
+  ['downloading', 'transcribing', 'analyzing', 'rendering'].includes(job.status) && (
     <div className={styles.progress}>
-        <div
-            className={styles.progressBar}
-            style={{ width: `${job.progress}%` }}
-        />
+      <div className={styles.progressBar} style={{ width: `${job.progress}%` }} />
     </div>
-)}
+  );
+}
 ```
 
 ---
@@ -242,19 +246,19 @@ const isDone = index < effectiveIndex;
 ```typescript
 // WebSocket cleanup on unmount
 useEffect(() => {
-    mountedRef.current = true;
-    connect();
+  mountedRef.current = true;
+  connect();
 
-    return () => {
-        mountedRef.current = false;
-        if (wsRef.current) {
-            wsRef.current.close(1000, 'Component unmounting');
-            wsRef.current = null;
-        }
-        if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-        }
-    };
+  return () => {
+    mountedRef.current = false;
+    if (wsRef.current) {
+      wsRef.current.close(1000, 'Component unmounting');
+      wsRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+  };
 }, [connect]);
 ```
 
@@ -263,8 +267,8 @@ useEffect(() => {
 ```typescript
 // Job detail page
 useEffect(() => {
-    reset();  // Clear previous job data
-    fetchJob();
+  reset(); // Clear previous job data
+  fetchJob();
 }, [id]);
 ```
 
@@ -278,15 +282,15 @@ useEffect(() => {
 
 ```typescript
 const inter = Inter({
-    variable: "--font-sans",
-    subsets: ["latin"],
-    display: "swap",  // Show fallback font until loaded
+  variable: '--font-sans',
+  subsets: ['latin'],
+  display: 'swap', // Show fallback font until loaded
 });
 
 const jetbrainsMono = JetBrains_Mono({
-    variable: "--font-mono",
-    subsets: ["latin"],
-    display: "swap",
+  variable: '--font-mono',
+  subsets: ['latin'],
+  display: 'swap',
 });
 ```
 

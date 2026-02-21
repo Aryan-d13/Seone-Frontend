@@ -16,11 +16,11 @@ items: Job[] is ALWAYS an array.
 Empty list is represented as [], never undefined or null.
 ```
 
-| Property | Type | Guarantee |
-|----------|------|-----------|
-| `items` | `Job[]` | Always an array, safe to call `.length` and `.map()` |
-| `isLoading` | `boolean` | Always defined |
-| `error` | `string \| null` | Always defined, `null` when no error |
+| Property    | Type             | Guarantee                                            |
+| ----------- | ---------------- | ---------------------------------------------------- |
+| `items`     | `Job[]`          | Always an array, safe to call `.length` and `.map()` |
+| `isLoading` | `boolean`        | Always defined                                       |
+| `error`     | `string \| null` | Always defined, `null` when no error                 |
 
 ---
 
@@ -58,11 +58,11 @@ We do NOT use render-safe mock objects in stores.
 
 ### Required Component Guards
 
-| Component | Required Guard |
-|-----------|----------------|
-| `PipelineTimeline` | `if (!job) return null` |
-| `ClipGallery` | `if (clips.length === 0) return null` |
-| Job Detail Page | `if (!job) return null` |
+| Component          | Required Guard                        |
+| ------------------ | ------------------------------------- |
+| `PipelineTimeline` | `if (!job) return null`               |
+| `ClipGallery`      | `if (clips.length === 0) return null` |
+| Job Detail Page    | `if (!job) return null`               |
 
 ---
 
@@ -83,32 +83,32 @@ REST  → Final reconciliation on job_completed
 
 ### Known Race Windows (Accepted)
 
-| Race | Impact | Mitigation |
-|------|--------|------------|
-| WS before REST completes | WS applied to stale state | `fetchStatus` gates WS connection |
-| REST returns after WS update | REST overwrites | Acceptable; final state is correct |
+| Race                         | Impact                    | Mitigation                         |
+| ---------------------------- | ------------------------- | ---------------------------------- |
+| WS before REST completes     | WS applied to stale state | `fetchStatus` gates WS connection  |
+| REST returns after WS update | REST overwrites           | Acceptable; final state is correct |
 
 ---
 
 ## 5. Error States
 
-| State | How Distinguished |
-|-------|-------------------|
-| **Loading** | `isLoading: true` or `fetchStatus: 'loading'` |
-| **Error** | `error: string` or `fetchStatus: 'error'` |
-| **Empty** | `items: []` AND `error: null` AND `isLoading: false` |
-| **Reset/Null** | `job: null` — handled by component guards |
-| **Unauthorized** | `fetchError.code === 403` or `401` response |
+| State            | How Distinguished                                    |
+| ---------------- | ---------------------------------------------------- |
+| **Loading**      | `isLoading: true` or `fetchStatus: 'loading'`        |
+| **Error**        | `error: string` or `fetchStatus: 'error'`            |
+| **Empty**        | `items: []` AND `error: null` AND `isLoading: false` |
+| **Reset/Null**   | `job: null` — handled by component guards            |
+| **Unauthorized** | `fetchError.code === 403` or `401` response          |
 
 ---
 
 ## 6. Store Persistence
 
-| Store | Persists Across Navigation? |
-|-------|----------------------------|
-| `useJobStore` | ❌ No — reset on job route change |
-| `useJobs` (hook state) | ❌ No — recreated on mount |
-| `useAppStore` (UI state) | ✅ Yes — intentional |
+| Store                    | Persists Across Navigation?       |
+| ------------------------ | --------------------------------- |
+| `useJobStore`            | ❌ No — reset on job route change |
+| `useJobs` (hook state)   | ❌ No — recreated on mount        |
+| `useAppStore` (UI state) | ✅ Yes — intentional              |
 
 ---
 
