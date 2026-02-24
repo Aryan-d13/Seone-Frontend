@@ -50,7 +50,8 @@ export function useJobWebSocket(jobId: string) {
         setError(err instanceof Error ? err.message : 'Failed to fetch job');
       }
     }
-  }, [jobId, setJob, setError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]); // Intentionally omitting setJob/setError as they are stable from Zustand
 
   const connect = useCallback(() => {
     // Guard: component still mounted?
@@ -276,7 +277,8 @@ export function useJobWebSocket(jobId: string) {
     };
 
     wsRef.current = ws;
-  }, [jobId, updateJob, addClip, fetchJob, setWsConnected, setLastEventAt, setError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]); // Intentionally omitting Zustand setters and fetchJob to prevent infinite render loops
 
   useEffect(() => {
     mountedRef.current = true;
@@ -293,7 +295,8 @@ export function useJobWebSocket(jobId: string) {
         reconnectTimeoutRef.current = undefined;
       }
     };
-  }, [connect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, connect]); // Only re-run if jobId or connect changes (which now only changes on jobId)
 
   // POLLING STRATEGY (Phase B):
   // WebSocket is the authoritative source for live updates.
