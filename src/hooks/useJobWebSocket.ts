@@ -104,16 +104,24 @@ export function useJobWebSocket(jobId: string) {
     ws.onmessage = event => {
       if (!mountedRef.current) return;
       try {
-        const data = JSON.parse(event.data) as WebSocketEvent;
+        const data = JSON.parse(event.data);
+
+        // ── Server heartbeat: reply immediately, skip event processing ──
+        if (data.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong' }));
+          return;
+        }
+
+        const wsEvent = data as WebSocketEvent;
         setLastEventAt(new Date().toISOString());
 
-        switch (data.event_type) {
+        switch (wsEvent.event_type) {
           case 'connected':
-            console.log('Job connected:', data.message);
+            console.log('Job connected:', wsEvent.message);
             break;
 
           case 'step_started': {
-            const stepEvent = data as import('@/types').StepStartedEvent;
+            const stepEvent = wsEvent as import('@/types').StepStartedEvent;
             if (stepEvent.payload?.step) {
               // Terminal guard: don't process step events after job is terminal
               const currentJob = useJobStore.getState().job;
@@ -160,7 +168,7 @@ export function useJobWebSocket(jobId: string) {
             break;
 
           case 'clip_ready': {
-            const clipEvent = data as import('@/types').ClipReadyEvent;
+            const clipEvent = wsEvent as import('@/types').ClipReadyEvent;
             if (clipEvent.payload) {
               const clip: Clip = {
                 index: clipEvent.payload.clip_index,
@@ -178,7 +186,7 @@ export function useJobWebSocket(jobId: string) {
           }
 
           case 'job_completed': {
-            const doneEvent = data as import('@/types').JobCompletedEvent;
+            const doneEvent = wsEvent as import('@/types').JobCompletedEvent;
             if (doneEvent.payload?.output) {
               const clips = doneEvent.payload.output?.clips;
               const hasValidClips = Array.isArray(clips) && clips.length > 0;
@@ -206,7 +214,7 @@ export function useJobWebSocket(jobId: string) {
           }
 
           case 'job_failed': {
-            const failEvent = data as import('@/types').JobFailedEvent;
+            const failEvent = wsEvent as import('@/types').JobFailedEvent;
             updateJob({
               status: 'failed',
               error_message: failEvent.payload?.error || 'Job failed',
@@ -287,11 +295,17 @@ export function useJobWebSocket(jobId: string) {
     };
   }, [connect]);
 
-  // POLLING STRATEGY:
-  // Reconcile with REST every 3 seconds while job is non-terminal.
-  // This ensures we converge to the correct state even if WS events are missed.
+  // POLLING STRATEGY (Phase B):
+  // WebSocket is the authoritative source for live updates.
+  // Poll ONLY when WebSocket is disconnected (fallback mode).
+  // When WS reconnects, polling deactivates immediately.
+  const wsConnected = useJobStore(state => state.wsConnected);
+
   useEffect(() => {
     if (!jobId || !mountedRef.current) return;
+
+    // Phase B: No polling when WebSocket is healthy.
+    if (wsConnected) return;
 
     // Stop polling if job is in a terminal state
     const isTerminal =
@@ -301,15 +315,19 @@ export function useJobWebSocket(jobId: string) {
       job?.phase === 'failed';
     if (isTerminal) return;
 
+    console.log('[WS Fallback] Polling activated — WebSocket disconnected');
+
     const intervalId = setInterval(() => {
       if (mountedRef.current) {
-        // console.log('Polling job state...'); // Debug
         fetchJob();
       }
     }, 3000);
 
-    return () => clearInterval(intervalId);
-  }, [jobId, job?.status, job?.phase, fetchJob]);
+    return () => {
+      clearInterval(intervalId);
+      console.log('[WS Fallback] Polling deactivated');
+    };
+  }, [jobId, job?.status, job?.phase, fetchJob, wsConnected]);
 
   return {
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,
