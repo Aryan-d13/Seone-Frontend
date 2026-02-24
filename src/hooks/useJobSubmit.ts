@@ -15,9 +15,11 @@ import {
 import { isValidYouTubeUrl } from '@/lib/utils';
 import { authFetch } from '@/services/auth';
 import { endpoints } from '@/lib/config';
+import { useServiceConfig } from './useServiceConfig';
 
 export function useJobSubmit() {
   const router = useRouter();
+  const { killSwitch } = useServiceConfig();
   const [formData, setFormData] = useState<SubmissionFormData>(defaultFormData);
   const [errors, setErrors] = useState<FormErrors>({});
   const [state, setState] = useState<SubmissionState>({
@@ -95,6 +97,16 @@ export function useJobSubmit() {
 
   // Submit job
   const submit = useCallback(async () => {
+    if (killSwitch) {
+      setState({
+        isSubmitting: false,
+        isSuccess: false,
+        error: 'System is currently in read-only mode for maintenance.',
+        jobId: null,
+      });
+      return;
+    }
+
     if (!validate()) return;
 
     if (!formData.copyLanguage) {

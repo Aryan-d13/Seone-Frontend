@@ -16,6 +16,7 @@ import {
   type FirestoreTemplateDoc,
 } from '@/services/admin';
 import { DEFAULT_FORM_DATA, type TemplateFormData } from '@/types/admin';
+import { useServiceConfig } from '@/hooks/useServiceConfig';
 import styles from './page.module.css';
 
 function cloneDefaultFormData(): TemplateFormData {
@@ -43,6 +44,7 @@ function isPng(file: File): boolean {
 }
 
 export default function AdminPage() {
+  const { killSwitch } = useServiceConfig();
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -209,6 +211,10 @@ export default function AdminPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (killSwitch) {
+      setError('System is currently in read-only mode for maintenance.');
+      return;
+    }
     setError(null);
     setSuccess(null);
 
@@ -247,6 +253,11 @@ export default function AdminPage() {
   };
 
   const handleDelete = async (docId: string) => {
+    if (killSwitch) {
+      setError('System is currently in read-only mode for maintenance.');
+      return;
+    }
+
     const shouldDelete = window.confirm(`Delete template "${docId}"?`);
 
     if (!shouldDelete) {
@@ -418,7 +429,7 @@ export default function AdminPage() {
                 type="button"
                 variant="secondary"
                 onClick={resetForm}
-                disabled={isSubmitting}
+                disabled={isSubmitting || killSwitch}
               >
                 Reset
               </Button>
@@ -426,7 +437,7 @@ export default function AdminPage() {
                 type="submit"
                 variant="primary"
                 isLoading={isSubmitting}
-                disabled={!firebaseUser}
+                disabled={!firebaseUser || killSwitch}
               >
                 Seed Template
               </Button>
@@ -477,6 +488,7 @@ export default function AdminPage() {
                       variant="danger"
                       size="sm"
                       onClick={() => void handleDelete(template._docId)}
+                      disabled={killSwitch}
                     >
                       Delete
                     </Button>

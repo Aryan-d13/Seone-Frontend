@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleLogin, CredentialResponse, googleLogout } from '@react-oauth/google';
 import { motion } from 'framer-motion';
-import { exchangeGoogleToken, isAllowedDomain } from '@/services/auth';
+import { exchangeGoogleToken } from '@/services/auth';
 import { useAuthStore } from '@/stores';
 import { config } from '@/lib/config';
 import { pageVariants, pageTransition } from '@/lib/animations';
@@ -33,14 +33,6 @@ export default function LoginPage() {
     try {
       // Decode the JWT to get user info
       const payload = JSON.parse(atob(response.credential.split('.')[1]));
-
-      if (!isAllowedDomain(payload.email)) {
-        setError(
-          `Only @${config.auth.allowedDomain.join(', @')} accounts are allowed. You used ${payload.email}`
-        );
-        setIsLoading(false);
-        return;
-      }
 
       // Exchange Google token for Seone JWT
       await exchangeGoogleToken(response.credential);
@@ -144,8 +136,7 @@ export default function LoginPage() {
 
         {/* Domain Notice */}
         <p className={styles.notice}>
-          Only <strong>@{config.auth.allowedDomain.join(', @')}</strong> accounts are
-          permitted
+          Use your approved work account to continue
         </p>
       </motion.div>
 

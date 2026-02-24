@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Inspector } from './Inspector';
 import { TopBar } from './TopBar';
+import { ServiceBanner } from './ServiceBanner';
 import { useAppStore } from '@/stores/app';
 import styles from './AppShell.module.css';
 
@@ -17,6 +18,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className={styles.shell}>
+      <ServiceBanner />
       {/* Top Bar */}
       <TopBar />
 

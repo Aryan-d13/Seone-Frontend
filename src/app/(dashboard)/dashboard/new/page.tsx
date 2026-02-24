@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { SubmitPanel } from '@/components/job/SubmitPanel';
 import { TemplateSelector } from '@/components/job/TemplateSelector';
 import { useJobSubmit } from '@/hooks/useJobSubmit';
+import { useServiceConfig } from '@/hooks/useServiceConfig';
 import { Button } from '@/components/ui';
 import { pageVariants, pageTransition } from '@/lib/animations';
 import styles from './page.module.css';
@@ -11,6 +12,7 @@ import styles from './page.module.css';
 export default function NewJobPage() {
   const { formData, errors, state, updateField, selectTemplate, submit, reset } =
     useJobSubmit();
+  const { killSwitch } = useServiceConfig();
 
   return (
     <motion.div
@@ -45,6 +47,11 @@ export default function NewJobPage() {
 
       {/* Submit Button */}
       <div className={styles.actions}>
+        {killSwitch && (
+          <div className={styles.submitError}>
+            Service is currently in read-only mode for maintenance.
+          </div>
+        )}
         {state.error && <div className={styles.submitError}>{state.error}</div>}
         {Object.values(errors).some(Boolean) && (
           <div className={styles.submitError}>
@@ -53,7 +60,7 @@ export default function NewJobPage() {
               : 'Please fix the errors above'}
           </div>
         )}
-        <Button variant="secondary" onClick={reset} disabled={state.isSubmitting}>
+        <Button variant="secondary" onClick={reset} disabled={state.isSubmitting || killSwitch}>
           Reset
         </Button>
         <Button
@@ -61,6 +68,7 @@ export default function NewJobPage() {
           size="lg"
           onClick={submit}
           isLoading={state.isSubmitting}
+          disabled={killSwitch}
         >
           {state.isSubmitting ? 'Creating Job...' : 'Create Job'}
         </Button>

@@ -13,7 +13,6 @@ import {
   onAuthStateChanged,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import { config } from '@/lib/config';
 
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const configuredStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim();
@@ -46,25 +45,13 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 /**
- * Trigger Google sign-in popup and enforce allowed workspace domains.
+ * Trigger Google sign-in popup.
  * This is separate from the Seone JWT auth — it gives Firestore
  * Security Rules the `request.auth.token.email` they need.
  */
 export async function signInWithFirebase(): Promise<FirebaseUser> {
   const result = await signInWithPopup(auth, googleProvider);
-  const user = result.user;
-  const email = user.email?.toLowerCase() ?? '';
-  const domain = email.split('@')[1] ?? '';
-  const allowedDomains = config.auth.allowedDomain as readonly string[];
-
-  if (!allowedDomains.includes(domain)) {
-    await auth.signOut();
-    throw new Error(
-      `Only @${allowedDomains.join(', @')} accounts are allowed. You used ${email || 'an unknown account'}.`
-    );
-  }
-
-  return user;
+  return result.user;
 }
 
 /**
