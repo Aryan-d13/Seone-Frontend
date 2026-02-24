@@ -135,9 +135,7 @@ export default function LoginPage() {
         </div>
 
         {/* Domain Notice */}
-        <p className={styles.notice}>
-          Use your approved work account to continue
-        </p>
+        <p className={styles.notice}>Use your approved work account to continue</p>
       </motion.div>
 
       {/* Footer */}

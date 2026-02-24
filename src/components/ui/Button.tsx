@@ -37,7 +37,7 @@ function Button({
       disabled={disabled || isLoading}
       whileHover={!disabled && !isLoading ? buttonHover : undefined}
       whileTap={!disabled && !isLoading ? buttonTap : undefined}
-      {...(props as HTMLMotionProps<"button">)} // Cast to HTMLMotionProps to avoid motion/HTML props conflict
+      {...(props as HTMLMotionProps<'button'>)} // Cast to HTMLMotionProps to avoid motion/HTML props conflict
     >
       {isLoading && (
         <span className={styles.spinner}>

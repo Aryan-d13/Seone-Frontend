@@ -180,7 +180,8 @@ export function useJobWebSocket(jobId: string) {
               };
               addClip(clip);
               updateJob({
-                progress: (clipEvent.payload.clips_ready / clipEvent.payload.clip_count) * 100,
+                progress:
+                  (clipEvent.payload.clips_ready / clipEvent.payload.clip_count) * 100,
               });
             }
             break;

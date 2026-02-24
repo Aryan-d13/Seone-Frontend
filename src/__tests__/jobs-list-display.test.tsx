@@ -23,7 +23,9 @@ vi.mock('next/navigation', () => ({
 // Mock framer-motion to render children directly
 vi.mock('framer-motion', () => ({
   motion: {
-    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
+      <div {...props}>{children}</div>
+    ),
   },
 }));
 

@@ -60,7 +60,11 @@ export default function NewJobPage() {
               : 'Please fix the errors above'}
           </div>
         )}
-        <Button variant="secondary" onClick={reset} disabled={state.isSubmitting || killSwitch}>
+        <Button
+          variant="secondary"
+          onClick={reset}
+          disabled={state.isSubmitting || killSwitch}
+        >
           Reset
         </Button>
         <Button
