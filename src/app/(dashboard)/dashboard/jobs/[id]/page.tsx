@@ -64,7 +64,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         setJob(data);
         setFetchStatus('success');
       } catch (error: unknown) {
-        const err = error as { code?: number; message?: string; [key: string]: unknown };
+        const err = error as { code?: number; message?: string;[key: string]: unknown };
         console.error('Job fetch error:', err);
         const errorObj = {
           code: err.code && typeof err.code === 'number' ? err.code : 500,
@@ -81,13 +81,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     fetchJob();
   }, [id, setJob, setError, setLoading, reset]);
 
-  // 2. WebSocket: Connect ONLY if job exists and is active
-  const shouldConnect =
-    fetchStatus === 'success' &&
-    job &&
-    job.status !== 'completed' &&
-    job.status !== 'failed';
-  useJobWebSocket(shouldConnect ? id : '');
+  // 2. WebSocket: Hook manages its own lifecycle (terminal guard, empty-id guard).
+  //    Always pass id — no parent-driven toggling to prevent connect/close churn.
+  useJobWebSocket(id);
 
   if (fetchStatus === 'loading') {
     return (

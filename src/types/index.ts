@@ -141,7 +141,43 @@ export interface Clip {
   thumbnailPath?: string;
 }
 
-// ---------- WebSocket Event Types ----------
+// ============================================
+// WebSocket Message Types
+// Two-channel protocol:
+//   Control channel: keyed by `type` (ping, job_sync, resume_state)
+//   Data channel:    keyed by `event_type` (connected, step_started, etc.)
+// Parser rule: kind = msg.type ?? msg.event_type
+// ============================================
+
+// ---------- Control Channel (keyed by `type`) ----------
+
+/** Server heartbeat — client must reply with { type: "pong" } */
+export interface PingMessage {
+  type: 'ping';
+}
+
+/** Full job snapshot sent on connect/reconnect */
+export interface JobSyncMessage {
+  type: 'job_sync';
+  job: Job;
+}
+
+/** Cursor watermark after replay — metadata only, no job payload */
+export interface ResumeStateMessage {
+  type: 'resume_state';
+  job_id: string;
+  cursor: string | null;    // Redis stream ID, e.g. "1771999914424-0"
+  replayed: number;  // Count of replayed events
+  replay_mode?: 'cursor' | 'from_start' | 'latest_only';
+  replay_truncated?: boolean;
+  stream_xlen?: number | null;
+  timestamp: string;
+}
+
+export type WsControlMessage = PingMessage | JobSyncMessage | ResumeStateMessage;
+
+// ---------- Data Channel (keyed by `event_type`) ----------
+
 export type WebSocketEventType =
   | 'connected'
   | 'step_started'
@@ -154,8 +190,13 @@ export interface WebSocketEvent {
   event_type: WebSocketEventType;
   job_id: string;
   timestamp: string;
+  step?: string;
   message?: string;
   payload?: unknown;
+  // Stream metadata — not guaranteed on every event type
+  event_id?: string;   // Unique event identity for deduplication
+  seq?: number;        // Monotonic sequence for diagnostics/ordering
+  cursor?: string;     // Redis stream ID for resume position
 }
 
 export interface StepStartedEvent extends WebSocketEvent {
@@ -191,6 +232,14 @@ export interface JobFailedEvent extends WebSocketEvent {
     error: string;
   };
 }
+
+// ---------- Discriminated Union ----------
+
+/**
+ * Any message from the WS server.
+ * Discriminate via: `'type' in msg` → control channel, else data channel.
+ */
+export type WsMessage = WsControlMessage | WebSocketEvent;
 
 // ---------- API Response Types ----------
 export interface ApiResponse<T> {

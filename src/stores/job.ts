@@ -77,6 +77,7 @@ interface JobState {
   liveClips: Clip[];
   wsConnected: boolean;
   lastEventAt: string | null;
+  lastCursor: string | null;
   isLoading: boolean;
   error: string | null;
 
@@ -86,6 +87,7 @@ interface JobState {
   addClip: (clip: Clip) => void;
   setWsConnected: (connected: boolean) => void;
   setLastEventAt: (timestamp: string) => void;
+  setLastCursor: (cursor: string | null) => void;
   setError: (error: string | null) => void;
   setLoading: (isLoading: boolean) => void;
   reset: () => void;
@@ -96,6 +98,7 @@ export const useJobStore = create<JobState>(set => ({
   liveClips: [],
   wsConnected: false,
   lastEventAt: null,
+  lastCursor: null,
   isLoading: false,
   error: null,
 
@@ -108,6 +111,11 @@ export const useJobStore = create<JobState>(set => ({
           return { job, liveClips: [], error: null };
         }
         // Reject all other updates to terminal jobs
+        console.debug('[Store] setJob rejected — terminal guard', {
+          current: state.job?.status,
+          incoming: job.status,
+          jobId: job.id,
+        });
         return {};
       }
 
@@ -145,6 +153,10 @@ export const useJobStore = create<JobState>(set => ({
 
       // ── Terminal monotonicity guard ──
       if (isTerminal(state.job) && updates.status !== 'failed') {
+        console.debug('[Store] updateJob rejected — terminal guard', {
+          current: state.job?.status,
+          incoming: updates,
+        });
         return {};
       }
 
@@ -181,6 +193,7 @@ export const useJobStore = create<JobState>(set => ({
 
   setWsConnected: connected => set({ wsConnected: connected }),
   setLastEventAt: timestamp => set({ lastEventAt: timestamp }),
+  setLastCursor: cursor => set({ lastCursor: cursor }),
 
   setError: error => set({ error }),
   setLoading: isLoading => set({ isLoading }),
@@ -190,6 +203,7 @@ export const useJobStore = create<JobState>(set => ({
       liveClips: [],
       wsConnected: false,
       lastEventAt: null,
+      lastCursor: null,
       isLoading: false,
       error: null,
     }),
