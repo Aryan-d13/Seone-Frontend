@@ -3,12 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useJobStore } from '@/stores/job';
 import { getWsUrl, endpoints } from '@/lib/config';
-import {
-  WebSocketEvent,
-  Clip,
-  JobSyncMessage,
-  ResumeStateMessage,
-} from '@/types';
+import { WebSocketEvent, Clip, JobSyncMessage, ResumeStateMessage } from '@/types';
 import {
   authFetch,
   getValidAuthToken,
@@ -203,7 +198,12 @@ export function useJobWebSocket(jobId: string) {
 
           case 'resume_state': {
             const resumeMsg = data as ResumeStateMessage;
-            console.log('[WS] resume_state received — cursor:', resumeMsg.cursor, 'replayed:', resumeMsg.replayed);
+            console.log(
+              '[WS] resume_state received — cursor:',
+              resumeMsg.cursor,
+              'replayed:',
+              resumeMsg.replayed
+            );
             updateCursor(resumeMsg.cursor);
             return;
           }
@@ -222,7 +222,12 @@ export function useJobWebSocket(jobId: string) {
         // Monotonic seq tracking (diagnostic)
         if (typeof wsEvent.seq === 'number') {
           if (lastSeqRef.current !== null && wsEvent.seq <= lastSeqRef.current) {
-            console.debug('[WS] Non-monotonic seq:', wsEvent.seq, 'last:', lastSeqRef.current);
+            console.debug(
+              '[WS] Non-monotonic seq:',
+              wsEvent.seq,
+              'last:',
+              lastSeqRef.current
+            );
           }
           if (lastSeqRef.current === null || wsEvent.seq > lastSeqRef.current) {
             lastSeqRef.current = wsEvent.seq;
@@ -255,10 +260,16 @@ export function useJobWebSocket(jobId: string) {
                 storeJob &&
                 (storeJob.status === 'completed' || storeJob.status === 'failed')
               ) {
-                console.debug('[WS] Rejected step_started (terminal):', step, 'current:', storeJob.status, {
-                  event_id: wsEvent.event_id,
-                  seq: wsEvent.seq,
-                });
+                console.debug(
+                  '[WS] Rejected step_started (terminal):',
+                  step,
+                  'current:',
+                  storeJob.status,
+                  {
+                    event_id: wsEvent.event_id,
+                    seq: wsEvent.seq,
+                  }
+                );
                 break;
               }
               let status: import('@/types').JobStatus | undefined;

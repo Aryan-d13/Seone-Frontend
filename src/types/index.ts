@@ -166,8 +166,8 @@ export interface JobSyncMessage {
 export interface ResumeStateMessage {
   type: 'resume_state';
   job_id: string;
-  cursor: string | null;    // Redis stream ID, e.g. "1771999914424-0"
-  replayed: number;  // Count of replayed events
+  cursor: string | null; // Redis stream ID, e.g. "1771999914424-0"
+  replayed: number; // Count of replayed events
   replay_mode?: 'cursor' | 'from_start' | 'latest_only';
   replay_truncated?: boolean;
   stream_xlen?: number | null;
@@ -194,9 +194,9 @@ export interface WebSocketEvent {
   message?: string;
   payload?: unknown;
   // Stream metadata — not guaranteed on every event type
-  event_id?: string;   // Unique event identity for deduplication
-  seq?: number;        // Monotonic sequence for diagnostics/ordering
-  cursor?: string;     // Redis stream ID for resume position
+  event_id?: string; // Unique event identity for deduplication
+  seq?: number; // Monotonic sequence for diagnostics/ordering
+  cursor?: string; // Redis stream ID for resume position
 }
 
 export interface StepStartedEvent extends WebSocketEvent {
