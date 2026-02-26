@@ -4,85 +4,90 @@
    ============================================ */
 
 .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-modal);
-    pointer-events: none;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .zone {
-    position: fixed;
-    bottom: var(--space-8);
-    right: var(--space-8);
-    z-index: calc(var(--z-modal) + 1);
-    width: 240px;
-    height: 200px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-3);
-    border-radius: var(--radius-xl);
-    background: var(--bg-tertiary);
-    border: 2px dashed var(--border-strong);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    cursor: default;
+  position: fixed;
+  bottom: var(--space-8);
+  right: var(--space-8);
+  z-index: calc(var(--z-modal) + 1);
+  width: 240px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border-radius: var(--radius-xl);
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border-strong);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+  cursor: default;
 }
 
 .zone.dragOver {
-    border-color: var(--accent-primary);
-    background: var(--accent-primary-muted);
-    box-shadow: var(--shadow-glow), inset 0 0 60px rgba(244, 63, 94, 0.06);
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-muted);
+  box-shadow:
+    var(--shadow-glow),
+    inset 0 0 60px rgba(244, 63, 94, 0.06);
 }
 
 .zoneIcon {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-lg);
-    background: var(--accent-primary-muted);
-    color: var(--accent-primary);
-    transition: transform 0.2s ease;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--accent-primary-muted);
+  color: var(--accent-primary);
+  transition: transform 0.2s ease;
 }
 
 .zone.dragOver .zoneIcon {
-    transform: scale(1.15);
+  transform: scale(1.15);
 }
 
 .zoneIcon svg {
-    width: 24px;
-    height: 24px;
+  width: 24px;
+  height: 24px;
 }
 
 .zoneLabel {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .zoneSublabel {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-align: center;
-    line-height: 1.3;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
 }
 
 @keyframes editZoneSpin {
-    from {
-        transform: rotate(0deg);
-    }
+  from {
+    transform: rotate(0deg);
+  }
 
-    to {
-        transform: rotate(360deg);
-    }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spinner {
-    animation: editZoneSpin 1s linear infinite;
+  animation: editZoneSpin 1s linear infinite;
 }

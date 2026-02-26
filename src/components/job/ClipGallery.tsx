@@ -57,7 +57,7 @@ export function ClipGallery() {
               className={styles.card}
               variants={listItemVariants}
               draggable
-              onDragStart={(e) => {
+              onDragStart={e => {
                 const de = e as unknown as React.DragEvent;
                 de.dataTransfer.setData('text/x-clip-url', videoUrl);
                 de.dataTransfer.effectAllowed = 'copy';
