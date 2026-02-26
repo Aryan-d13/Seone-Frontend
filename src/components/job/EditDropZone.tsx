@@ -12,21 +12,17 @@ const PLUG_EDIT_URL = process.env.NEXT_PUBLIC_PLUG_EDIT_URL || 'http://localhost
 /**
  * Opens plug&edit in a new tab with the video URL.
  *
- * In production, also passes `&proxy=<origin>` so plug&edit can
- * route GCS signed URLs through Seone's server-side proxy
- * (/api/proxy-media). In dev, the proxy param is omitted and
- * plug&edit uses its own Vite path-proxy.
+ * Always passes `&proxy=<origin>` so plug&edit can route video URLs
+ * through Seone's server-side proxy (/api/proxy-media). This works
+ * for both local backend URLs and production GCS signed URLs.
  *
  * Must be called synchronously from a user gesture (click/drop).
  */
 export function openPlugEdit(videoUrl: string) {
-  const params = new URLSearchParams({ video: videoUrl });
-
-  // In production (non-localhost), pass our origin so plug&edit
-  // can proxy the video through our /api/proxy-media endpoint
-  if (!window.location.hostname.includes('localhost')) {
-    params.set('proxy', window.location.origin);
-  }
+  const params = new URLSearchParams({
+    video: videoUrl,
+    proxy: window.location.origin,
+  });
 
   const editorUrl = `${PLUG_EDIT_URL}?${params.toString()}`;
   window.open(editorUrl, '_blank');
