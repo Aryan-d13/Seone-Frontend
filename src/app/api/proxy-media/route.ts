@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+};
+
 /**
  * Proxy route for media files.
  *
@@ -20,7 +27,10 @@ export async function GET(request: NextRequest) {
 
   if (!url) {
     console.warn('[proxy-media] Missing url parameter');
-    return NextResponse.json({ error: 'Missing "url" query parameter' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Missing "url" query parameter' },
+      { status: 400, headers: CORS_HEADERS }
+    );
   }
 
   try {
@@ -41,7 +51,7 @@ export async function GET(request: NextRequest) {
       );
       return NextResponse.json(
         { error: `Upstream returned ${upstream.status}` },
-        { status: upstream.status }
+        { status: upstream.status, headers: CORS_HEADERS }
       );
     }
 
@@ -49,14 +59,8 @@ export async function GET(request: NextRequest) {
     const contentLength = upstream.headers.get('Content-Length');
 
     const headers: Record<string, string> = {
+      ...CORS_HEADERS,
       'Content-Type': contentType,
-      // CORS: allow any origin to fetch this
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      // CORP: required because plug&edit enforces COEP (require-corp)
-      // for SharedArrayBuffer/FFmpeg. Without this, COEP blocks the
-      // response even when CORS headers are present.
-      'Cross-Origin-Resource-Policy': 'cross-origin',
       'Cache-Control': 'public, max-age=3600',
     };
 
@@ -75,7 +79,7 @@ export async function GET(request: NextRequest) {
     console.error('[proxy-media] Fetch failed:', err);
     return NextResponse.json(
       { error: 'Failed to fetch upstream resource' },
-      { status: 502 }
+      { status: 502, headers: CORS_HEADERS }
     );
   }
 }
