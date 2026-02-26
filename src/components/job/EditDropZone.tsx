@@ -7,7 +7,8 @@ import styles from './EditDropZone.module.css';
 /**
  * URL of the plug&edit app.
  */
-const PLUG_EDIT_URL = process.env.NEXT_PUBLIC_PLUG_EDIT_URL || 'https://plugandedit.netlify.app';
+const PLUG_EDIT_URL =
+  process.env.NEXT_PUBLIC_PLUG_EDIT_URL || 'https://plugandedit.netlify.app';
 
 /**
  * Opens plug&edit in a new tab with the video URL.
