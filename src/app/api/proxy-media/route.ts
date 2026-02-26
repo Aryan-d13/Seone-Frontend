@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const CORS_HEADERS = {
+const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -8,80 +8,42 @@ const CORS_HEADERS = {
 };
 
 /**
- * Proxy route for media files.
+ * Media proxy route — 302 redirect strategy.
  *
- * Fetches a video from the backend (server-side, no CORS) and streams it
- * back with permissive CORS + CORP headers so plug&edit (different origin
- * with COEP: require-corp) can fetch it for FFmpeg processing.
+ * Instead of streaming video through Cloud Run (which fails for large
+ * files because Next.js standalone buffers the full response in memory),
+ * we redirect the browser directly to the GCS signed URL. The browser
+ * then fetches from GCS, which has CORS configured on the bucket.
+ *
+ * This uses zero Cloud Run memory and responds instantly.
  *
  * Usage: GET /api/proxy-media?url=<encoded-media-url>
  */
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url');
 
-  console.log('[proxy-media] Incoming request:', {
-    url,
+  console.log('[proxy-media] Redirect request:', {
+    url: url?.slice(0, 80) + '...',
     origin: request.headers.get('origin'),
-    referer: request.headers.get('referer'),
   });
 
   if (!url) {
-    console.warn('[proxy-media] Missing url parameter');
     return NextResponse.json(
       { error: 'Missing "url" query parameter' },
       { status: 400, headers: CORS_HEADERS }
     );
   }
 
-  try {
-    console.log('[proxy-media] Fetching upstream:', url);
-    const upstream = await fetch(url);
-
-    console.log('[proxy-media] Upstream response:', {
-      status: upstream.status,
-      contentType: upstream.headers.get('Content-Type'),
-      contentLength: upstream.headers.get('Content-Length'),
-    });
-
-    if (!upstream.ok) {
-      console.error(
-        '[proxy-media] Upstream error:',
-        upstream.status,
-        upstream.statusText
-      );
-      return NextResponse.json(
-        { error: `Upstream returned ${upstream.status}` },
-        { status: upstream.status, headers: CORS_HEADERS }
-      );
-    }
-
-    const contentType = upstream.headers.get('Content-Type') || 'video/mp4';
-    const contentLength = upstream.headers.get('Content-Length');
-
-    const headers: Record<string, string> = {
+  // Return a 302 redirect to the actual GCS signed URL.
+  // The browser will follow this and fetch directly from GCS.
+  // GCS bucket must have CORS configured for this to work.
+  return new NextResponse(null, {
+    status: 302,
+    headers: {
       ...CORS_HEADERS,
-      'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=3600',
-    };
-
-    if (contentLength) {
-      headers['Content-Length'] = contentLength;
-    }
-
-    console.log('[proxy-media] Streaming response with headers:', headers);
-
-    // Stream the response body through
-    return new NextResponse(upstream.body, {
-      status: 200,
-      headers,
-    });
-  } catch (err) {
-    console.error('[proxy-media] Fetch failed:', err);
-    return NextResponse.json(
-      { error: 'Failed to fetch upstream resource' },
-      { status: 502, headers: CORS_HEADERS }
-    );
-  }
+      Location: url,
+    },
+  });
 }
 
 /** Handle CORS preflight */
@@ -89,11 +51,6 @@ export async function OPTIONS(request: NextRequest) {
   console.log('[proxy-media] OPTIONS preflight from:', request.headers.get('origin'));
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Cross-Origin-Resource-Policy': 'cross-origin',
-    },
+    headers: CORS_HEADERS,
   });
 }
