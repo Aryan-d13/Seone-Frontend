@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useJobStore } from '@/stores/job';
 import { getMediaUrl } from '@/lib/config';
 import { staggerContainer, listItemVariants } from '@/lib/animations';
+import { openPlugEdit } from './EditDropZone';
 import styles from './ClipGallery.module.css';
 
 export function ClipGallery() {
@@ -55,6 +56,12 @@ export function ClipGallery() {
               key={clip.index}
               className={styles.card}
               variants={listItemVariants}
+              draggable
+              onDragStart={(e) => {
+                const de = e as unknown as React.DragEvent;
+                de.dataTransfer.setData('text/x-clip-url', videoUrl);
+                de.dataTransfer.effectAllowed = 'copy';
+              }}
             >
               <div className={styles.videoWrapper}>
                 <video
@@ -69,22 +76,39 @@ export function ClipGallery() {
                   <span className={styles.filename} title={clip.filename}>
                     {clip.filename}
                   </span>
-                  <button
-                    className={styles.downloadButton}
-                    onClick={() => window.open(videoUrl, '_blank')}
-                    title="Download Video"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
+                  <div className={styles.overlayActions}>
+                    <button
+                      className={styles.editButton}
+                      onClick={() => openPlugEdit(videoUrl)}
+                      title="Edit in Plug & Edit"
                     >
-                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                      <polyline points="7 10 12 15 17 10" />
-                      <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
-                  </button>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
+                    </button>
+                    <button
+                      className={styles.downloadButton}
+                      onClick={() => window.open(videoUrl, '_blank')}
+                      title="Download Video"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>

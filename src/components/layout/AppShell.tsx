@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { Inspector } from './Inspector';
 import { TopBar } from './TopBar';
 import { ServiceBanner } from './ServiceBanner';
+import { EditDropZone } from '@/components/job/EditDropZone';
 import { useAppStore } from '@/stores/app';
 import styles from './AppShell.module.css';
 
@@ -43,6 +44,9 @@ export function AppShell({ children }: AppShellProps) {
           {isInspectorOpen && <Inspector />}
         </motion.aside>
       </div>
+
+      {/* Plug & Edit Drop Zone — appears globally when a clip is dragged */}
+      <EditDropZone />
     </div>
   );
 }

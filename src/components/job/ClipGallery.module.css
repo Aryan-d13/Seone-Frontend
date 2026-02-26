@@ -101,6 +101,14 @@
   flex: 1;
 }
 
+.overlayActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.editButton,
 .downloadButton {
   width: 32px;
   height: 32px;
@@ -116,11 +124,29 @@
   flex-shrink: 0;
 }
 
+.editButton:hover {
+  transform: scale(1.1);
+  background: var(--accent-primary);
+  color: white;
+}
+
 .downloadButton:hover {
   transform: scale(1.1);
 }
 
+.editButton svg,
 .downloadButton svg {
   width: 16px;
   height: 16px;
+}
+
+/* Drag states */
+.card[draggable="true"] {
+  cursor: grab;
+}
+
+.card[draggable="true"]:active {
+  cursor: grabbing;
+  opacity: 0.6;
+  transform: scale(0.97);
 }
