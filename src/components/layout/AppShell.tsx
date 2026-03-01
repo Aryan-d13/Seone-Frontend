@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Inspector } from './Inspector';
@@ -8,6 +8,7 @@ import { TopBar } from './TopBar';
 import { ServiceBanner } from './ServiceBanner';
 import { EditDropZone } from '@/components/job/EditDropZone';
 import { useAppStore } from '@/stores/app';
+import { useServiceConfig } from '@/hooks';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -16,6 +17,12 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { isInspectorOpen } = useAppStore();
+
+  // Subscribe to Firebase RTDB kill switch — runs once on mount
+  useEffect(() => {
+    const unsubscribe = useServiceConfig.getState().subscribe();
+    return unsubscribe;
+  }, []);
 
   return (
     <div className={styles.shell}>
