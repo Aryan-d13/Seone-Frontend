@@ -18,7 +18,7 @@ interface ServiceConfigState {
 
 const CONFIG_PATH = 'config';
 
-export const useServiceConfig = create<ServiceConfigState>((set) => ({
+export const useServiceConfig = create<ServiceConfigState>(set => ({
   // Fail-open: default to healthy until RTDB says otherwise
   killSwitch: false,
   message: null,
@@ -32,12 +32,12 @@ export const useServiceConfig = create<ServiceConfigState>((set) => ({
     } catch {
       // Firebase not configured — fail open
       set({ isLoading: false, killSwitch: false });
-      return () => { };
+      return () => {};
     }
 
     const unsubscribe = onValue(
       configRef,
-      (snapshot) => {
+      snapshot => {
         if (!snapshot.exists()) {
           // No config node yet — fail open
           set({ isLoading: false, killSwitch: false, message: null });
@@ -52,7 +52,7 @@ export const useServiceConfig = create<ServiceConfigState>((set) => ({
           isLoading: false,
         });
       },
-      (_error) => {
+      _error => {
         // RTDB error — fail open
         set({ isLoading: false, killSwitch: false, message: null });
       }
