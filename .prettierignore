@@ -2,6 +2,7 @@ node_modules
 .next
 out
 build
+.github
 coverage
 *.txt
 lint_output*.json
