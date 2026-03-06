@@ -1,0 +1,36 @@
+# Dependencies (reinstalled in container)
+node_modules
+
+# Build output (rebuilt in container)
+.next
+out
+build
+
+# Version control
+.git
+.gitignore
+
+# Environment (injected via build args)
+.env*
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Test & docs artifacts
+coverage
+docs
+docsByClaude-Antigravity
+*.test.ts
+*.test.tsx
+__tests__
+vitest.config.ts
+
+# Deployment logs
+deploy-error*.log
+*.txt
+
+# CI
+.github

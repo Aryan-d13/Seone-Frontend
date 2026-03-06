@@ -1,0 +1,120 @@
+name: CD Azure Container Apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-azure-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            ACR_LOGIN_SERVER
+            ACR_USERNAME
+            ACR_PASSWORD
+            AZURE_RESOURCE_GROUP
+            AZURE_CONTAINER_APP_NAME
+            NEXT_PUBLIC_API_URL
+            NEXT_PUBLIC_WS_URL
+            NEXT_PUBLIC_DATA_URL
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID
+            NEXT_PUBLIC_FIREBASE_API_KEY
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+            NEXT_PUBLIC_FIREBASE_DATABASE_URL
+          )
+          for key in "${required[@]}"; do
+            val="${!key:-}"
+            if [ -z "$val" ]; then
+              echo "::error::Missing required secret/variable: ${key}"
+              exit 1
+            fi
+          done
+        env:
+          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_CONTAINER_APP_NAME: ${{ vars.AZURE_CONTAINER_APP_NAME }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_WS_URL: ${{ vars.NEXT_PUBLIC_WS_URL }}
+          NEXT_PUBLIC_DATA_URL: ${{ vars.NEXT_PUBLIC_DATA_URL }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_DATABASE_URL: ${{ vars.NEXT_PUBLIC_FIREBASE_DATABASE_URL }}
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Set image tag
+        id: meta
+        run: |
+          IMAGE="${{ secrets.ACR_LOGIN_SERVER }}/seone-frontend"
+          TAG="${GITHUB_SHA::8}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "full=${IMAGE}:${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.full }}
+            ${{ steps.meta.outputs.image }}:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_WS_URL=${{ vars.NEXT_PUBLIC_WS_URL }}
+            NEXT_PUBLIC_DATA_URL=${{ vars.NEXT_PUBLIC_DATA_URL }}
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ vars.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+            NEXT_PUBLIC_FIREBASE_DATABASE_URL=${{ vars.NEXT_PUBLIC_FIREBASE_DATABASE_URL }}
+            NEXT_PUBLIC_PLUG_EDIT_URL=${{ vars.NEXT_PUBLIC_PLUG_EDIT_URL }}
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name "${{ vars.AZURE_CONTAINER_APP_NAME }}" \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --image "${{ steps.meta.outputs.full }}" \
+              --set-env-vars "NODE_ENV=production" "PORT=3000"
