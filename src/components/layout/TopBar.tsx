@@ -59,7 +59,14 @@ export function TopBar() {
           <div className={styles.userMenu}>
             <button className={styles.userButton}>
               {user.picture ? (
-                <Image src={user.picture} alt={user.name} className={styles.userAvatar} width={32} height={32} unoptimized />
+                <Image
+                  src={user.picture}
+                  alt={user.name}
+                  className={styles.userAvatar}
+                  width={32}
+                  height={32}
+                  unoptimized
+                />
               ) : (
                 <span className={styles.userInitial}>
                   {user.name.charAt(0).toUpperCase()}

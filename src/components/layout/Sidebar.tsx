@@ -118,7 +118,13 @@ export function Sidebar() {
             <>
               <div className={styles.avatar}>
                 {user.picture ? (
-                  <Image src={user.picture} alt={user.name} width={40} height={40} unoptimized />
+                  <Image
+                    src={user.picture}
+                    alt={user.name}
+                    width={40}
+                    height={40}
+                    unoptimized
+                  />
                 ) : (
                   <span>{user.name.charAt(0).toUpperCase()}</span>
                 )}

@@ -15,12 +15,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useJobStore } from '@/stores/job';
-import type {
-  Job,
-  WebSocketEvent,
-  JobSyncMessage,
-  ResumeStateMessage,
-} from '@/types';
+import type { Job, WebSocketEvent, JobSyncMessage, ResumeStateMessage } from '@/types';
 
 // ============================================
 // BASE FIXTURES
@@ -396,7 +391,7 @@ describe('WS Lifecycle — Terminal Guard Reject Logging', () => {
   });
 
   it('store setJob logs rejection for terminal → non-terminal update', () => {
-    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => { });
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
     useJobStore.getState().setJob(COMPLETED_JOB);
     // Try to regress to rendering
@@ -417,7 +412,7 @@ describe('WS Lifecycle — Terminal Guard Reject Logging', () => {
   });
 
   it('store updateJob logs rejection for terminal → non-terminal update', () => {
-    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => { });
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
     useJobStore.getState().setJob(FAILED_JOB);
     // Try to update status to rendering

@@ -304,8 +304,7 @@ export function useJobWebSocket(jobId: string) {
           }
 
           case 'step_completed': {
-            const step =
-              wsEvent.step || (wsEvent.payload as { step?: string })?.step;
+            const step = wsEvent.step || (wsEvent.payload as { step?: string })?.step;
             // If the final semantic step has completed, but we haven't received
             // a job_completed event, explicitly trigger a REST sync to snap the state
             if (step === 'smart_render') {

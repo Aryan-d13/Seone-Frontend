@@ -20,13 +20,7 @@ interface JobDetailPageProps {
 export default function JobDetailPage({ params }: JobDetailPageProps) {
   const router = useRouter();
   const { id } = use(params);
-  const {
-    job,
-    setJob,
-    setError,
-    setLoading,
-    reset,
-  } = useJobStore();
+  const { job, setJob, setError, setLoading, reset } = useJobStore();
 
   // Local state for initial fetch status to handle 403/404 explicitly
   const [fetchStatus, setFetchStatus] = useState<
@@ -62,7 +56,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         setJob(data);
         setFetchStatus('success');
       } catch (error: unknown) {
-        const err = error as { code?: number; message?: string;[key: string]: unknown };
+        const err = error as { code?: number; message?: string; [key: string]: unknown };
         console.error('Job fetch error:', err);
         const errorObj = {
           code: err.code && typeof err.code === 'number' ? err.code : 500,

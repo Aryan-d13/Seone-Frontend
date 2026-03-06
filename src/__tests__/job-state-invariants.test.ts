@@ -42,7 +42,6 @@ const completedJobWithClips: Job = {
   },
 };
 
-
 const renderingJob: Job = {
   ...BASE_JOB,
   status: 'rendering',

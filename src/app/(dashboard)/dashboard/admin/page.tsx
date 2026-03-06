@@ -421,7 +421,13 @@ export default function AdminPage() {
             {formData.logoPreview && (
               <div className={styles.logoPreview}>
                 <span className={styles.label}>Preview</span>
-                <Image src={formData.logoPreview} alt="Logo preview" width={200} height={150} unoptimized />
+                <Image
+                  src={formData.logoPreview}
+                  alt="Logo preview"
+                  width={200}
+                  height={150}
+                  unoptimized
+                />
               </div>
             )}
 

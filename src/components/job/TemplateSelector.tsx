@@ -86,7 +86,13 @@ export function TemplateSelector({
                 >
                   <div className={styles.cardPreview}>
                     {template.thumbnailUrl ? (
-                      <Image src={template.thumbnailUrl} alt={template.name} width={200} height={150} unoptimized />
+                      <Image
+                        src={template.thumbnailUrl}
+                        alt={template.name}
+                        width={200}
+                        height={150}
+                        unoptimized
+                      />
                     ) : (
                       <div className={styles.cardPlaceholder}>
                         <svg
