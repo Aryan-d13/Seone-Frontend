@@ -42,13 +42,6 @@ const completedJobWithClips: Job = {
   },
 };
 
-const completedJobWithEmptyClips: Job = {
-  ...BASE_JOB,
-  status: 'completed',
-  progress: 100,
-  completed_at: '2026-02-10T13:10:00Z',
-  output: { clips: [] },
-};
 
 const renderingJob: Job = {
   ...BASE_JOB,

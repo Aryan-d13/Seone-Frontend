@@ -13,11 +13,10 @@
  * These are unit tests against the store + simulated message handler logic
  * extracted from useJobWebSocket.ts — no actual WebSocket connections.
  */
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useJobStore } from '@/stores/job';
 import type {
   Job,
-  Clip,
   WebSocketEvent,
   JobSyncMessage,
   ResumeStateMessage,
@@ -397,7 +396,7 @@ describe('WS Lifecycle — Terminal Guard Reject Logging', () => {
   });
 
   it('store setJob logs rejection for terminal → non-terminal update', () => {
-    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => { });
 
     useJobStore.getState().setJob(COMPLETED_JOB);
     // Try to regress to rendering
@@ -418,7 +417,7 @@ describe('WS Lifecycle — Terminal Guard Reject Logging', () => {
   });
 
   it('store updateJob logs rejection for terminal → non-terminal update', () => {
-    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => { });
 
     useJobStore.getState().setJob(FAILED_JOB);
     // Try to update status to rendering

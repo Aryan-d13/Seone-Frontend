@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -117,7 +118,7 @@ export function Sidebar() {
             <>
               <div className={styles.avatar}>
                 {user.picture ? (
-                  <img src={user.picture} alt={user.name} />
+                  <Image src={user.picture} alt={user.name} width={40} height={40} unoptimized />
                 ) : (
                   <span>{user.name.charAt(0).toUpperCase()}</span>
                 )}

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useAppStore } from '@/stores';
 import { Button } from '@/components/ui';
@@ -58,7 +59,7 @@ export function TopBar() {
           <div className={styles.userMenu}>
             <button className={styles.userButton}>
               {user.picture ? (
-                <img src={user.picture} alt={user.name} className={styles.userAvatar} />
+                <Image src={user.picture} alt={user.name} className={styles.userAvatar} width={32} height={32} unoptimized />
               ) : (
                 <span className={styles.userInitial}>
                   {user.name.charAt(0).toUpperCase()}

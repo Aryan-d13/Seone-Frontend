@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useTemplates } from '@/hooks/useTemplates';
 import { Template } from '@/types/job';
@@ -85,7 +86,7 @@ export function TemplateSelector({
                 >
                   <div className={styles.cardPreview}>
                     {template.thumbnailUrl ? (
-                      <img src={template.thumbnailUrl} alt={template.name} />
+                      <Image src={template.thumbnailUrl} alt={template.name} width={200} height={150} unoptimized />
                     ) : (
                       <div className={styles.cardPlaceholder}>
                         <svg

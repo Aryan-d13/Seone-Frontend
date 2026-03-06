@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useState, useCallback, useRef, useEffect } from 'react';
+import { forwardRef, useRef } from 'react';
 import styles from './DualRangeSlider.module.css';
 import { cn } from '@/lib/utils';
 
