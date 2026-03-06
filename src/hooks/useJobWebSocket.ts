@@ -303,10 +303,20 @@ export function useJobWebSocket(jobId: string) {
             break;
           }
 
-          case 'step_completed':
-            // Optional: could mark step as done visually
-            break;
+          case 'step_completed': {
+            const step =
+              wsEvent.step ||
+              (wsEvent.payload as any)?.step ||
+              (wsEvent as any).step;
 
+            // If the final semantic step has completed, but we haven't received
+            // a job_completed event, explicitly trigger a REST sync to snap the state
+            if (step === 'smart_render') {
+              console.log('[WS] smart_render step completed. Fetching final job state.');
+              fetchJob();
+            }
+            break;
+          }
           case 'clip_ready': {
             const clipEvent = wsEvent as import('@/types').ClipReadyEvent;
             if (clipEvent.payload) {
