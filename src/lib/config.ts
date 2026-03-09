@@ -27,7 +27,7 @@ export const config = {
         )
       : ['creativefuel.io', 'sarcasm.co', 'scrawled.agency'],
     tokenCookieName: 'seone_token',
-    tokenExpiry: 7, // days
+    // tokenExpiry removed — cookie TTL comes from backend expires_in
   },
 
   // Media Configuration
@@ -44,7 +44,7 @@ export const endpoints = {
   auth: {
     google: '/api/v1/auth/google',
     me: '/api/v1/auth/me',
-    logout: '/api/v1/auth/logout',
+    // logout endpoint removed — logout is local-only (no backend endpoint)
   },
   jobs: {
     list: '/api/v1/jobs',

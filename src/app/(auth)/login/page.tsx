@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GoogleLogin, CredentialResponse, googleLogout } from '@react-oauth/google';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { exchangeGoogleToken } from '@/services/auth';
 import { useAuthStore } from '@/stores';
@@ -10,16 +10,24 @@ import { config } from '@/lib/config';
 import { pageVariants, pageTransition } from '@/lib/animations';
 import styles from './page.module.css';
 
+const LOG_PREFIX = '[AUTH:login]';
+
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const { isAuthenticated, loginWithBackendResponse } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Clear any existing Google session on mount
-  useEffect(() => {
-    googleLogout();
-  }, []);
+  // Belt-and-suspenders: AuthGuard on (auth) layout handles route-level redirect,
+  // but component also bails if already authenticated (prevents mount-time side effects)
+  if (isAuthenticated) {
+    console.info(`${LOG_PREFIX} already authenticated — bailing early`);
+    router.replace('/dashboard');
+    return null;
+  }
+
+  // NO googleLogout() on mount — removed per contract.
+  // Visiting /login should not destroy Google session state.
 
   const handleGoogleSuccess = async (response: CredentialResponse) => {
     if (!response.credential) {
@@ -31,26 +39,22 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // Decode the JWT to get user info
-      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      console.info(`${LOG_PREFIX} exchanging Google credential with backend`);
 
-      // Exchange Google token for Seone JWT
-      await exchangeGoogleToken(response.credential);
+      // Exchange Google token for Seone JWT — backend returns enriched response
+      const loginResponse = await exchangeGoogleToken(response.credential);
 
-      // Set user in store from Google payload
-      // (Backend JWT is stored in cookie, user info from Google token)
-      setUser({
-        id: payload.sub,
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture,
-        role: 'user',
-      });
+      // Store session facts via the auth coordinator (store)
+      // No Google JWT decoding. User identity comes from backend.
+      loginWithBackendResponse(loginResponse);
 
-      // Redirect to dashboard
+      console.info(
+        `${LOG_PREFIX} login success — user_id=${loginResponse.user.id}, redirecting to dashboard`
+      );
+
       router.replace('/dashboard');
     } catch (err) {
-      console.error('Auth error:', err);
+      console.error(`${LOG_PREFIX} login failed:`, err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
       setIsLoading(false);
     }
@@ -58,6 +62,7 @@ export default function LoginPage() {
 
   const handleGoogleError = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
+    console.error(`${LOG_PREFIX} Google sign-in failed`);
     setError(
       `Google sign-in failed. If Google shows "origin_mismatch", add ${origin} to Authorized JavaScript origins for OAuth client ${config.auth.googleClientId}.`
     );
@@ -111,7 +116,7 @@ export default function LoginPage() {
           </motion.div>
         )}
 
-        {/* Google Sign In Button with FedCM */}
+        {/* Google Sign In Button */}
         <div className={styles.googleButton}>
           {isLoading ? (
             <div className={styles.loadingState}>

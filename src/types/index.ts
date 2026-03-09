@@ -5,25 +5,57 @@
 
 // ---------- Auth Types ----------
 export interface User {
-  id: string;
+  id: string; // Backend DB UUID — NOT Google sub
   email: string;
   name: string;
-  picture?: string;
+  picture?: string; // Optional — backend doesn't provide it
   domain?: string;
   createdAt?: string;
   role?: 'user' | 'admin';
 }
 
+export type BackendAuthError =
+  | 'token_missing'
+  | 'token_expired'
+  | 'token_invalid'
+  | 'user_not_found';
+
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authError: BackendAuthError | null;
+  verificationFailure: 'network_error' | 'server_error' | null;
 }
 
 export interface AuthResponse {
   accessToken: string;
   user: User;
   expiresIn: number;
+}
+
+// -- Backend Wire Types (auth boundary only) --
+export interface AuthWireUser {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+}
+
+export interface AuthLoginWireResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: AuthWireUser;
+}
+
+export interface AuthMeWireResponse {
+  user: AuthWireUser;
+}
+
+export interface AuthErrorWireResponse {
+  error: BackendAuthError;
+  detail: string;
 }
 
 // ---------- Job Types ----------
