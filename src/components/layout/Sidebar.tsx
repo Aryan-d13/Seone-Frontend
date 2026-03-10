@@ -45,7 +45,8 @@ const navItems = [
   },
   {
     label: 'Admin',
-    href: '/dashboard/admin',
+    href: process.env.NEXT_PUBLIC_TEMPLATE_BUILDER_URL || 'http://localhost:5173',
+    external: true,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -88,15 +89,29 @@ export function Sidebar() {
         <nav className={styles.nav}>
           {navItems.map(item => {
             const isActive =
-              pathname === item.href ||
-              (item.href !== '/dashboard' && pathname.startsWith(item.href));
+              !item.external &&
+              (pathname === item.href ||
+                (item.href !== '/dashboard' && pathname.startsWith(item.href)));
+
+            const linkProps = item.external
+              ? {
+                href: item.href,
+                target: '_blank',
+                rel: 'noopener noreferrer',
+                onClick: () => setSidebarOpen(false),
+              }
+              : {
+                href: item.href,
+                onClick: () => setSidebarOpen(false),
+              };
+
+            const LinkComponent = item.external ? 'a' : Link;
 
             return (
-              <Link
+              <LinkComponent
                 key={item.href}
-                href={item.href}
+                {...linkProps}
                 className={cn(styles.navItem, isActive && styles.active)}
-                onClick={() => setSidebarOpen(false)}
               >
                 <span className={styles.navIcon}>{item.icon}</span>
                 <span className={styles.navLabel}>{item.label}</span>
@@ -107,7 +122,7 @@ export function Sidebar() {
                     transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   />
                 )}
-              </Link>
+              </LinkComponent>
             );
           })}
         </nav>

@@ -22,7 +22,7 @@
 /* Variants */
 .primary {
   background: var(--accent-primary);
-  color: white;
+  color: var(--bg-primary);
 }
 
 .primary:hover:not(:disabled) {
@@ -102,7 +102,7 @@
 }
 
 .loading .spinner {
-  color: white;
+  color: var(--bg-primary);
 }
 
 .secondary.loading .spinner {

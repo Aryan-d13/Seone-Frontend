@@ -76,68 +76,51 @@ export function JobsList() {
         <div key={dateLabel} className={styles.section}>
           <h3 className={styles.sectionTitle}>{dateLabel}</h3>
           <motion.div
-            className={styles.grid}
+            className={styles.list}
             variants={staggerContainer}
             initial="initial"
             animate="animate"
           >
+            <div className={styles.listHeader}>
+              <span>Job ID</span>
+              <span>Time</span>
+              <span>Output</span>
+              <span>Status</span>
+            </div>
             {jobs.map(job => (
               <motion.div
                 key={job.id}
-                className={styles.card}
+                className={styles.jobRow}
                 variants={listItemVariants}
                 onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
-                whileHover={{ y: -2, transition: { duration: 0.2 } }}
               >
-                <div className={styles.cardHeader}>
-                  <h4 className={styles.jobId}>#{job.id.slice(0, 8)}</h4>
-                  <span className={cn(styles.status, styles[job.status])}>
-                    {job.status}
-                  </span>
+                <div className={styles.jobId}>#{job.id.slice(0, 8)}</div>
+                <div className={styles.jobTime}>
+                  {new Date(job.created_at).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                 </div>
-
-                <div className={styles.cardBody}>
-                  <div className={styles.metaRow}>
-                    <span className={styles.metaItem}>
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      {job.status === 'completed' || job.status === 'failed'
-                        ? `${job.output?.clips?.length ?? 0} / ${job.clip_count} clips`
-                        : `${job.clip_count} clips`}
-                    </span>
-                    <span className={styles.metaItem}>
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {new Date(job.created_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
+                <div className={styles.jobClips}>
+                  {job.status === 'completed' || job.status === 'failed'
+                    ? `${job.output?.clips?.length ?? 0} / ${job.clip_count} clips`
+                    : `${job.clip_count} clips`}
+                </div>
+                <div className={cn(styles.statusLabel, styles[job.status])}>
+                  <span className={styles.statusDot} />
+                  {job.status}
                 </div>
 
                 {['downloading', 'transcribing', 'analyzing', 'rendering'].includes(
                   job.status
                 ) && (
-                  <div className={styles.progressContainer}>
-                    <div
-                      className={styles.progressBar}
-                      style={{ width: `${job.progress}%` }}
-                    />
-                  </div>
-                )}
+                    <div className={styles.progressContainer}>
+                      <div
+                        className={styles.progressBar}
+                        style={{ width: `${job.progress}%` }}
+                      />
+                    </div>
+                  )}
               </motion.div>
             ))}
           </motion.div>

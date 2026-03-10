@@ -104,22 +104,18 @@ export default function DashboardPage() {
         animate="animate"
       >
         <StatCard
-          icon="🎬"
           label="Total Jobs"
           value={isLoadingRecent ? '-' : totalJobs.toString()}
         />
         <StatCard
-          icon="✅"
           label="Completed"
           value={isLoadingRecent ? '-' : completedJobs.toString()}
         />
         <StatCard
-          icon="⏳"
           label="Processing"
           value={isLoadingRecent ? '-' : processingJobs.toString()}
         />
         <StatCard
-          icon="✂️"
           label="Recent Clips"
           value={isLoadingRecent ? '-' : recentClipsCount.toString()}
         />
@@ -133,7 +129,7 @@ export default function DashboardPage() {
         transition={{ delay: 0.5 }}
       >
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Recent Jobs</h2>
+          <h2 className={styles.sectionTitle}>Recent Output</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -148,46 +144,35 @@ export default function DashboardPage() {
             <div className={styles.spinner} />
           </div>
         ) : recentJobs.length > 0 ? (
-          <div className={styles.jobsGrid}>
+          <div className={styles.jobsList}>
+            <div className={styles.jobsListHeader}>
+              <span>Job ID</span>
+              <span>Date</span>
+              <span>Output</span>
+              <span>Status</span>
+            </div>
             {recentJobs.map(job => (
               <motion.div
                 key={job.id}
-                className={styles.jobCard}
+                className={styles.jobRow}
                 variants={listItemVariants}
                 onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
-                whileHover={{ y: -2, transition: { duration: 0.2 } }}
               >
-                <div className={styles.jobHeader}>
-                  <span className={styles.jobId}>#{job.id.slice(0, 8)}</span>
-                  <span className={cn(styles.status, styles[job.status])}>
-                    {job.status}
-                  </span>
-                </div>
-                <div className={styles.jobMeta}>
-                  <span>{new Date(job.created_at).toLocaleDateString()}</span>
-                  <span>•</span>
-                  <span>{job.clip_count} clips</span>
-                </div>
+                <span className={styles.jobId}>{job.id.slice(0, 8)}</span>
+                <span className={styles.jobDate}>{new Date(job.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                <span className={styles.jobClips}>{job.clip_count} clips</span>
+                <span className={cn(styles.statusLabel, styles[job.status])}>
+                  <span className={styles.statusDot} />
+                  {job.status}
+                </span>
               </motion.div>
             ))}
           </div>
         ) : (
           <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <path d="M21 15l-5-5L5 21" />
-              </svg>
-            </div>
-            <p>No jobs yet. Create your first job to get started!</p>
-            <Button onClick={() => router.push('/dashboard/new')}>
-              Create First Job
+            <p>Awaiting generation.</p>
+            <Button onClick={() => router.push('/dashboard/new')} variant="secondary" size="sm" className={styles.emptyAction}>
+              Initialize First Sequence
             </Button>
           </div>
         )}
@@ -197,17 +182,14 @@ export default function DashboardPage() {
 }
 
 function StatCard({
-  icon,
   label,
   value,
 }: {
-  icon: string;
   label: string;
   value: string;
 }) {
   return (
     <motion.div className={styles.statCard} variants={listItemVariants}>
-      <div className={styles.statIconWrapper}>{icon}</div>
       <div className={styles.statContent}>
         <span className={styles.statValue}>{value}</span>
         <span className={styles.statLabel}>{label}</span>

@@ -8,22 +8,25 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .title {
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: 400;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .count {
-  font-size: 12px;
-  color: var(--text-secondary);
-  background: var(--bg-elevated);
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .grid {
@@ -33,19 +36,18 @@
 }
 
 .card {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
+  background: transparent;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid transparent;
-  transition: all 0.3s ease;
+  border: 1px solid var(--border-subtle);
+  transition: border-color var(--transition-fast);
   position: relative;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-  border-color: var(--glass-border);
+  border-color: var(--border-hover);
+  transform: none;
+  box-shadow: none;
 }
 
 .videoWrapper {
@@ -53,7 +55,7 @@
   width: 100%;
   padding-top: 177.77%;
   /* 9:16 Aspect Ratio */
-  background: black;
+  background: var(--bg-tertiary);
 }
 
 .video {
@@ -63,6 +65,12 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  filter: grayscale(30%) contrast(1.05);
+  transition: filter var(--transition-slow);
+}
+
+.card:hover .video {
+  filter: grayscale(0%) contrast(1);
 }
 
 /* Overlay */
@@ -72,9 +80,9 @@
   left: 0;
   width: 100%;
   padding: var(--space-4);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--transition-base);
   display: flex;
   align-items: flex-end;
 }
@@ -92,12 +100,12 @@
 }
 
 .filename {
-  font-size: 13px;
-  color: white;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0.9;
   flex: 1;
 }
 
@@ -110,34 +118,33 @@
 
 .editButton,
 .downloadButton {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
-  color: black;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  color: var(--text-primary);
   border-radius: 50%;
-  border: none;
+  border: 1px solid var(--border-subtle);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all var(--transition-fast);
   flex-shrink: 0;
 }
 
-.editButton:hover {
-  transform: scale(1.1);
-  background: var(--accent-primary);
-  color: white;
-}
-
+.editButton:hover,
 .downloadButton:hover {
-  transform: scale(1.1);
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+  transform: none;
 }
 
 .editButton svg,
 .downloadButton svg {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
 }
 
 /* Drag states */
@@ -148,5 +155,17 @@
 .card[draggable='true']:active {
   cursor: grabbing;
   opacity: 0.6;
-  transform: scale(0.97);
+}
+
+/* Empty State */
+.emptyError {
+  padding: var(--space-16) 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: var(--space-8);
 }

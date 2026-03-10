@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Outfit, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { PageTransition } from '@/components/layout/PageTransition';
 
-const inter = Inter({
+const outfit = Outfit({
   variable: '--font-sans',
   subsets: ['latin'],
   display: 'swap',
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: '--font-mono',
+const dmSans = DM_Sans({
+  variable: '--font-mono', // Reusing this variable for secondary text/numbers for now
   subsets: ['latin'],
   display: 'swap',
 });
@@ -30,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className={`${outfit.variable} ${dmSans.variable}`}>
         <PageTransition>{children}</PageTransition>
       </body>
     </html>

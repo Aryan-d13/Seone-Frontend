@@ -17,18 +17,8 @@ export function ClipGallery() {
   if (clips.length === 0) {
     if (job?.status === 'failed' || job?.status === 'completed') {
       return (
-        <div
-          className={styles.emptyError}
-          style={{
-            padding: '2rem',
-            textAlign: 'center',
-            color: 'var(--error)',
-            background: 'var(--error-bg)',
-            borderRadius: 'var(--radius-md)',
-            marginTop: '1rem',
-          }}
-        >
-          <p>No clips were generated for this job.</p>
+        <div className={styles.emptyError}>
+          <p>Sequence yielded zero clips.</p>
         </div>
       );
     }

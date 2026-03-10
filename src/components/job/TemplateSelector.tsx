@@ -72,51 +72,41 @@ export function TemplateSelector({
             initial="initial"
             animate="animate"
           >
-            {categoryTemplates.map(template => {
+            {categoryTemplates.map((template) => {
               const isSelected = selectedTemplate === template.template_ref;
+
               return (
-                <motion.button
+                <motion.div
                   key={template.template_ref}
-                  type="button"
-                  className={cn(styles.card, isSelected && styles.cardSelected)}
+                  className={cn(
+                    styles.avatarCard,
+                    isSelected && styles.avatarSelected
+                  )}
                   onClick={() => onSelect(template.template_ref)}
+                  title={`${template.name} - ${template.description || 'Standard Sequence'}`}
                   variants={listItemVariants}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <div className={styles.cardPreview}>
+                  <div className={styles.avatar}>
                     {template.thumbnailUrl ? (
                       <Image
                         src={template.thumbnailUrl}
                         alt={template.name}
-                        width={200}
-                        height={150}
+                        width={50}
+                        height={50}
                         unoptimized
+                        className={styles.thumbnailImage}
                       />
                     ) : (
-                      <div className={styles.cardPlaceholder}>
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                        >
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                          <path d="M3 15l6-6 3 3 6-6" />
-                          <circle cx="17" cy="7" r="1.5" />
-                        </svg>
+                      <div className={styles.typographicAnchor}>
+                        {template.name.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    {template.aspect_ratio && (
-                      <span className={styles.aspectRatio}>{template.aspect_ratio}</span>
-                    )}
                   </div>
-                  <div className={styles.cardInfo}>
-                    <span className={styles.cardName}>{template.name}</span>
-                    {template.description && (
-                      <span className={styles.cardDesc}>{template.description}</span>
-                    )}
-                  </div>
+                  <span className={styles.avatarLabel}>
+                    {template.name}
+                  </span>
                   {isSelected && (
                     <div className={styles.checkmark}>
                       <svg viewBox="0 0 24 24" fill="currentColor">
@@ -124,7 +114,7 @@ export function TemplateSelector({
                       </svg>
                     </div>
                   )}
-                </motion.button>
+                </motion.div>
               );
             })}
           </motion.div>

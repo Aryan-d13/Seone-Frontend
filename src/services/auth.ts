@@ -282,6 +282,7 @@ export async function authFetch(
   }
 
   const response = await fetch(getApiUrl(endpoint), {
+    cache: 'no-store',
     ...options,
     headers,
   });
