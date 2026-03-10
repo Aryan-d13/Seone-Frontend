@@ -114,13 +114,13 @@ export function JobsList() {
                 {['downloading', 'transcribing', 'analyzing', 'rendering'].includes(
                   job.status
                 ) && (
-                    <div className={styles.progressContainer}>
-                      <div
-                        className={styles.progressBar}
-                        style={{ width: `${job.progress}%` }}
-                      />
-                    </div>
-                  )}
+                  <div className={styles.progressContainer}>
+                    <div
+                      className={styles.progressBar}
+                      style={{ width: `${job.progress}%` }}
+                    />
+                  </div>
+                )}
               </motion.div>
             ))}
           </motion.div>

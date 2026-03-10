@@ -72,16 +72,13 @@ export function TemplateSelector({
             initial="initial"
             animate="animate"
           >
-            {categoryTemplates.map((template) => {
+            {categoryTemplates.map(template => {
               const isSelected = selectedTemplate === template.template_ref;
 
               return (
                 <motion.div
                   key={template.template_ref}
-                  className={cn(
-                    styles.avatarCard,
-                    isSelected && styles.avatarSelected
-                  )}
+                  className={cn(styles.avatarCard, isSelected && styles.avatarSelected)}
                   onClick={() => onSelect(template.template_ref)}
                   title={`${template.name} - ${template.description || 'Standard Sequence'}`}
                   variants={listItemVariants}
@@ -104,9 +101,7 @@ export function TemplateSelector({
                       </div>
                     )}
                   </div>
-                  <span className={styles.avatarLabel}>
-                    {template.name}
-                  </span>
+                  <span className={styles.avatarLabel}>{template.name}</span>
                   {isSelected && (
                     <div className={styles.checkmark}>
                       <svg viewBox="0 0 24 24" fill="currentColor">

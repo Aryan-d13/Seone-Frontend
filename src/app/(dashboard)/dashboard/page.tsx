@@ -159,7 +159,12 @@ export default function DashboardPage() {
                 onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
               >
                 <span className={styles.jobId}>{job.id.slice(0, 8)}</span>
-                <span className={styles.jobDate}>{new Date(job.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                <span className={styles.jobDate}>
+                  {new Date(job.created_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
                 <span className={styles.jobClips}>{job.clip_count} clips</span>
                 <span className={cn(styles.statusLabel, styles[job.status])}>
                   <span className={styles.statusDot} />
@@ -171,7 +176,12 @@ export default function DashboardPage() {
         ) : (
           <div className={styles.emptyState}>
             <p>Awaiting generation.</p>
-            <Button onClick={() => router.push('/dashboard/new')} variant="secondary" size="sm" className={styles.emptyAction}>
+            <Button
+              onClick={() => router.push('/dashboard/new')}
+              variant="secondary"
+              size="sm"
+              className={styles.emptyAction}
+            >
               Initialize First Sequence
             </Button>
           </div>
@@ -181,13 +191,7 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <motion.div className={styles.statCard} variants={listItemVariants}>
       <div className={styles.statContent}>

@@ -95,15 +95,15 @@ export function Sidebar() {
 
             const linkProps = item.external
               ? {
-                href: item.href,
-                target: '_blank',
-                rel: 'noopener noreferrer',
-                onClick: () => setSidebarOpen(false),
-              }
+                  href: item.href,
+                  target: '_blank',
+                  rel: 'noopener noreferrer',
+                  onClick: () => setSidebarOpen(false),
+                }
               : {
-                href: item.href,
-                onClick: () => setSidebarOpen(false),
-              };
+                  href: item.href,
+                  onClick: () => setSidebarOpen(false),
+                };
 
             const LinkComponent = item.external ? 'a' : Link;
 
