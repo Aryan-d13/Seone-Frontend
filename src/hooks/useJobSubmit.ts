@@ -123,9 +123,9 @@ export function useJobSubmit() {
 
     try {
       // Clamp and Round Duration (Data Correctness)
-      // Convert to minutes, clamp to [0.5, 10], round to 1 decimal
-      const minMinutes = Math.min(Math.max(formData.minDuration / 60, 0.5), 10);
-      const maxMinutes = Math.min(Math.max(formData.maxDuration / 60, 0.5), 10);
+      // Convert to minutes, clamp to [0.5, 30], round to 1 decimal
+      const minMinutes = Math.min(Math.max(formData.minDuration / 60, 0.5), 30);
+      const maxMinutes = Math.min(Math.max(formData.maxDuration / 60, 0.5), 30);
 
       // Ensure min <= max after clamping
       const finalMin = Number(Math.min(minMinutes, maxMinutes).toFixed(1));

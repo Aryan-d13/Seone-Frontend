@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Outfit, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { PageTransition } from '@/components/layout/PageTransition';
+import { WarmUp } from '@/components/layout/WarmUp';
 
 const outfit = Outfit({
   variable: '--font-sans',
@@ -31,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${outfit.variable} ${dmSans.variable}`}>
+        <WarmUp />
         <PageTransition>{children}</PageTransition>
       </body>
     </html>

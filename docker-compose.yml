@@ -1,0 +1,37 @@
+# ============================================
+# SEONE FRONTEND — Docker Compose
+# Reads NEXT_PUBLIC_* from .env.local automatically
+# ============================================
+#
+# Usage:
+#   docker compose build
+#   docker compose up -d
+#
+# All NEXT_PUBLIC_* vars from .env.local are auto-mapped
+# to build args with the same name — zero repetition.
+# ============================================
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL
+        - NEXT_PUBLIC_WS_URL
+        - NEXT_PUBLIC_DATA_URL
+        - NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        - NEXT_PUBLIC_FIREBASE_API_KEY
+        - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        - NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        - NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        - NEXT_PUBLIC_FIREBASE_DATABASE_URL
+        - NEXT_PUBLIC_PLUG_EDIT_URL
+        - NEXT_PUBLIC_TEMPLATE_BUILDER_URL
+        - NEXT_PUBLIC_ALLOWED_DOMAINS
+    env_file:
+      - .env.local
+    image: seone-frontend:latest
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
