@@ -64,7 +64,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         setJob(data);
         setFetchStatus('success');
       } catch (error: unknown) {
-        const err = error as { code?: number; message?: string;[key: string]: unknown };
+        const err = error as { code?: number; message?: string; [key: string]: unknown };
         console.error('Job fetch error:', err);
         const errorObj = {
           code: err.code && typeof err.code === 'number' ? err.code : 500,
@@ -125,7 +125,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           <div className={styles.headerContent}>
             <div className={styles.titleWrapper}>
               <h1 className={styles.title}>Job #{job.id.slice(0, 8)}</h1>
-              <span className={`${styles.status} ${styles[job.status]}`}>{job.status}</span>
+              <span className={`${styles.status} ${styles[job.status]}`}>
+                {job.status}
+              </span>
             </div>
             <div className={styles.metaContainer}>
               <div className={styles.metaItem}>

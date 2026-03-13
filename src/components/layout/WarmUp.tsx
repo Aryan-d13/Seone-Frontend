@@ -15,20 +15,20 @@ import { config } from '@/lib/config';
 const HEALTH_PATH = '/api/v1/health';
 
 export function WarmUp() {
-    const hasFired = useRef(false);
+  const hasFired = useRef(false);
 
-    useEffect(() => {
-        if (hasFired.current) return;
-        hasFired.current = true;
+  useEffect(() => {
+    if (hasFired.current) return;
+    hasFired.current = true;
 
-        const url = `${config.api.baseUrl}${HEALTH_PATH}`;
+    const url = `${config.api.baseUrl}${HEALTH_PATH}`;
 
-        // Fire-and-forget — no await, no error handling needed.
-        // We just need the TCP connection to wake the container.
-        fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {
-            // Silently swallow — this is best-effort.
-        });
-    }, []);
+    // Fire-and-forget — no await, no error handling needed.
+    // We just need the TCP connection to wake the container.
+    fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {
+      // Silently swallow — this is best-effort.
+    });
+  }, []);
 
-    return null; // Renders nothing
+  return null; // Renders nothing
 }
