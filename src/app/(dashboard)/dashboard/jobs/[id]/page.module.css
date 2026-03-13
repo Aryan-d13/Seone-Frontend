@@ -62,6 +62,24 @@
   letter-spacing: 0.05em;
 }
 
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.metaContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.metaItem {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
 .status.queued {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);

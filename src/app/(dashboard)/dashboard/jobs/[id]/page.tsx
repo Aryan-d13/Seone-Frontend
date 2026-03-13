@@ -11,6 +11,14 @@ import { ClipGallery } from '@/components/job/ClipGallery';
 import { Button } from '@/components/ui/Button';
 import styles from './page.module.css';
 
+function formatDuration(seconds?: number | null) {
+  if (seconds == null) return 'In progress';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}m ${s}s`;
+}
+
 interface JobDetailPageProps {
   params: Promise<{
     id: string;
@@ -56,7 +64,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         setJob(data);
         setFetchStatus('success');
       } catch (error: unknown) {
-        const err = error as { code?: number; message?: string; [key: string]: unknown };
+        const err = error as { code?: number; message?: string;[key: string]: unknown };
         console.error('Job fetch error:', err);
         const errorObj = {
           code: err.code && typeof err.code === 'number' ? err.code : 500,
@@ -114,9 +122,20 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className={styles.titleWrapper}>
-            <h1 className={styles.title}>Job #{job.id.slice(0, 8)}</h1>
-            <span className={`${styles.status} ${styles[job.status]}`}>{job.status}</span>
+          <div className={styles.headerContent}>
+            <div className={styles.titleWrapper}>
+              <h1 className={styles.title}>Job #{job.id.slice(0, 8)}</h1>
+              <span className={`${styles.status} ${styles[job.status]}`}>{job.status}</span>
+            </div>
+            <div className={styles.metaContainer}>
+              <div className={styles.metaItem}>
+                {new Date(job.created_at).toLocaleString()}
+              </div>
+              <div className={styles.metaItem}>•</div>
+              <div className={styles.metaItem}>
+                Duration: {formatDuration(job.processing_duration_seconds)}
+              </div>
+            </div>
           </div>
         </div>
       </div>

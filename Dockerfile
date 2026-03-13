@@ -1,21 +1,35 @@
 # ============================================
 # SEONE FRONTEND — Multi-stage Dockerfile
 # Next.js 16 standalone output
+# Aggressive BuildKit caching
 # ============================================
+# syntax=docker/dockerfile:1
 
 # ── Stage 1: Dependencies ──
 FROM node:20-alpine AS deps
 WORKDIR /app
 
+# Only copy lockfiles first — this layer is cached unless deps change
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+
+# Mount npm cache across builds so repeated installs are near-instant
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts
 
 # ── Stage 2: Build ──
 FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+
+# Copy config files first (rarely change → cached layer)
+COPY next.config.mjs tsconfig.json package.json ./
+
+# Copy public assets (change less often than src)
+COPY public ./public
+
+# Copy source last (changes most often)
+COPY src ./src
 
 # NEXT_PUBLIC_* vars must be present at build time (baked into client JS).
 # Pass via --build-arg or docker-compose args.
@@ -46,7 +60,10 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_ALLOWED_DOMAINS=$NEXT_PUBLIC_ALLOWED_DOMAINS \
     NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+# Mount Next.js build cache across builds — dramatically speeds up rebuilds
+# when only a few source files change (Turbopack/webpack can reuse prior work)
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # ── Stage 3: Runner ──
 FROM node:20-alpine AS runner

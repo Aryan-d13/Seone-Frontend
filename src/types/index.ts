@@ -101,6 +101,7 @@ export interface Job {
     clips: Clip[];
   };
   ws_url?: string;
+  processing_duration_seconds?: number;
 }
 
 /**

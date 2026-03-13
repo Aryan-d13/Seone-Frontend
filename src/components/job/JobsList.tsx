@@ -9,6 +9,14 @@ import { cn } from '@/lib/utils';
 import { staggerContainer, listItemVariants } from '@/lib/animations';
 import styles from './JobsList.module.css';
 
+function formatDuration(seconds?: number | null) {
+  if (seconds == null) return '-';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}m ${s}s`;
+}
+
 export function JobsList() {
   const router = useRouter();
   const { items, isLoading, hasMore, loadMore, error } = useJobs({ pageSize: 12 });
@@ -84,6 +92,7 @@ export function JobsList() {
             <div className={styles.listHeader}>
               <span>Job ID</span>
               <span>Time</span>
+              <span>Duration</span>
               <span>Output</span>
               <span>Status</span>
             </div>
@@ -100,6 +109,9 @@ export function JobsList() {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
+                </div>
+                <div className={styles.jobDuration}>
+                  {formatDuration(job.processing_duration_seconds)}
                 </div>
                 <div className={styles.jobClips}>
                   {job.status === 'completed' || job.status === 'failed'
