@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores';
+import { AuthBootstrapLoader } from './AuthBootstrapLoader';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -11,13 +12,14 @@ interface AuthGuardProps {
 }
 
 /**
- * AuthGuard component that handles authentication redirects
- * - If requireAuth=true and user is not authenticated -> redirect to login
- * - If requireAuth=false (login page) and user is authenticated -> redirect to dashboard
+ * AuthGuard component that handles authentication redirects.
+ * - If requireAuth=true and user is not authenticated -> redirect to login.
+ * - If requireAuth=false (login page) and user is authenticated -> redirect to dashboard.
+ * - If a cached protected session exists, render immediately while /auth/me revalidates.
  */
 export function AuthGuard({ children, requireAuth = true, redirectTo }: AuthGuardProps) {
   const router = useRouter();
-  const { isAuthenticated, isLoading, initialize } = useAuthStore();
+  const { user, isAuthenticated, isLoading, initialize } = useAuthStore();
 
   useEffect(() => {
     initialize();
@@ -33,16 +35,16 @@ export function AuthGuard({ children, requireAuth = true, redirectTo }: AuthGuar
     }
   }, [isAuthenticated, isLoading, requireAuth, redirectTo, router]);
 
-  // Show nothing while checking auth
+  const hasDisplaySession = requireAuth && isLoading && isAuthenticated && Boolean(user);
+
   if (isLoading) {
-    return (
-      <div className="auth-loading">
-        <div className="auth-loading-spinner" />
-      </div>
-    );
+    if (hasDisplaySession) {
+      return <>{children}</>;
+    }
+
+    return <AuthBootstrapLoader />;
   }
 
-  // Don't render children if redirect is needed
   if (requireAuth && !isAuthenticated) {
     return null;
   }

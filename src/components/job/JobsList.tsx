@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Job } from '@/types';
 import { useJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
+import { cn, formatLocalTime } from '@/lib/utils';
 import { staggerContainer, listItemVariants } from '@/lib/animations';
+import { Skeleton } from '@/components/ui/Skeleton';
 import styles from './JobsList.module.css';
 
 function formatDuration(seconds?: number | null) {
@@ -34,9 +35,26 @@ export function JobsList() {
 
   if (isLoading && items.length === 0) {
     return (
-      <div className={styles.grid}>
-        {[1, 2, 3, 4, 5, 6].map(i => (
-          <div key={i} className={styles.skeleton} />
+      <div className={styles.list} data-testid="jobs-list-loading">
+        <div className={styles.listHeader}>
+          <span>Job ID</span>
+          <span>Time</span>
+          <span>Duration</span>
+          <span>Output</span>
+          <span>Status</span>
+        </div>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div
+            key={i}
+            className={styles.jobRowSkeleton}
+            data-testid="jobs-list-loading-row"
+          >
+            <Skeleton className={styles.skeletonId} width="100px" height="14px" />
+            <Skeleton width="60px" height="14px" />
+            <Skeleton width="40px" height="14px" />
+            <Skeleton width="80px" height="14px" />
+            <Skeleton width="70px" height="14px" />
+          </div>
         ))}
       </div>
     );
@@ -105,10 +123,9 @@ export function JobsList() {
               >
                 <div className={styles.jobId}>#{job.id.slice(0, 8)}</div>
                 <div className={styles.jobTime}>
-                  {new Date(job.created_at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                  <time dateTime={job.created_at}>
+                    {formatLocalTime(job.created_at)}
+                  </time>
                 </div>
                 <div className={styles.jobDuration}>
                   {formatDuration(job.processing_duration_seconds)}
@@ -126,13 +143,13 @@ export function JobsList() {
                 {['downloading', 'transcribing', 'analyzing', 'rendering'].includes(
                   job.status
                 ) && (
-                  <div className={styles.progressContainer}>
-                    <div
-                      className={styles.progressBar}
-                      style={{ width: `${job.progress}%` }}
-                    />
-                  </div>
-                )}
+                    <div className={styles.progressContainer}>
+                      <div
+                        className={styles.progressBar}
+                        style={{ width: `${job.progress}%` }}
+                      />
+                    </div>
+                  )}
               </motion.div>
             ))}
           </motion.div>

@@ -11,7 +11,8 @@ import {
   staggerContainer,
   listItemVariants,
 } from '@/lib/animations';
-import { cn } from '@/lib/utils';
+import { cn, formatLocalDate } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/Skeleton';
 import styles from './page.module.css';
 
 export default function DashboardPage() {
@@ -27,11 +28,18 @@ export default function DashboardPage() {
   } = useJobs({ pageSize: 5 });
 
   // Stats fetches: Completed & Failed counts
-  const { total: completedJobs } = useJobs({ pageSize: 1, status: 'completed' });
-  const { total: failedJobs } = useJobs({ pageSize: 1, status: 'failed' });
+  const { total: completedJobs, isLoading: isLoadingCompleted } = useJobs({
+    pageSize: 1,
+    status: 'completed',
+  });
+  const { total: failedJobs, isLoading: isLoadingFailed } = useJobs({
+    pageSize: 1,
+    status: 'failed',
+  });
 
   // Derived Stats
   const processingJobs = Math.max(0, totalJobs - completedJobs - failedJobs);
+  const isLoadingProcessing = isLoadingRecent || isLoadingCompleted || isLoadingFailed;
 
   // Calculate "Recent Clips" (sum of clips in the last 5 jobs)
   const recentClipsCount = recentJobs.reduce(
@@ -105,19 +113,43 @@ export default function DashboardPage() {
       >
         <StatCard
           label="Total Jobs"
-          value={isLoadingRecent ? '-' : totalJobs.toString()}
+          value={
+            isLoadingRecent ? (
+              <Skeleton width="40px" height="24px" />
+            ) : (
+              totalJobs.toString()
+            )
+          }
         />
         <StatCard
           label="Completed"
-          value={isLoadingRecent ? '-' : completedJobs.toString()}
+          value={
+            isLoadingCompleted ? (
+              <Skeleton width="40px" height="24px" />
+            ) : (
+              completedJobs.toString()
+            )
+          }
         />
         <StatCard
           label="Processing"
-          value={isLoadingRecent ? '-' : processingJobs.toString()}
+          value={
+            isLoadingProcessing ? (
+              <Skeleton width="40px" height="24px" />
+            ) : (
+              processingJobs.toString()
+            )
+          }
         />
         <StatCard
           label="Recent Clips"
-          value={isLoadingRecent ? '-' : recentClipsCount.toString()}
+          value={
+            isLoadingRecent ? (
+              <Skeleton width="40px" height="24px" />
+            ) : (
+              recentClipsCount.toString()
+            )
+          }
         />
       </motion.section>
 
@@ -140,8 +172,21 @@ export default function DashboardPage() {
         </div>
 
         {isLoadingRecent ? (
-          <div className={styles.loadingState}>
-            <div className={styles.spinner} />
+          <div className={styles.jobsList}>
+            <div className={styles.jobsListHeader}>
+              <span>Job ID</span>
+              <span>Date</span>
+              <span>Output</span>
+              <span>Status</span>
+            </div>
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className={styles.jobRowSkeleton}>
+                <Skeleton width="80px" height="14px" />
+                <Skeleton width="60px" height="14px" />
+                <Skeleton width="50px" height="14px" />
+                <Skeleton width="70px" height="14px" />
+              </div>
+            ))}
           </div>
         ) : recentJobs.length > 0 ? (
           <div className={styles.jobsList}>
@@ -160,7 +205,7 @@ export default function DashboardPage() {
               >
                 <span className={styles.jobId}>{job.id.slice(0, 8)}</span>
                 <span className={styles.jobDate}>
-                  {new Date(job.created_at).toLocaleDateString(undefined, {
+                  {formatLocalDate(job.created_at, {
                     month: 'short',
                     day: 'numeric',
                   })}
@@ -191,7 +236,7 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
     <motion.div className={styles.statCard} variants={listItemVariants}>
       <div className={styles.statContent}>

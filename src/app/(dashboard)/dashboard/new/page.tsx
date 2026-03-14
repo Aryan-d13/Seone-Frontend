@@ -3,8 +3,10 @@
 import { motion } from 'framer-motion';
 import { SubmitPanel } from '@/components/job/SubmitPanel';
 import { TemplateSelector } from '@/components/job/TemplateSelector';
+import { DashboardCanvasLoading } from '@/components/layout/DashboardCanvasLoading';
 import { useJobSubmit } from '@/hooks/useJobSubmit';
 import { useServiceConfig } from '@/hooks/useServiceConfig';
+import { useTemplates } from '@/hooks/useTemplates';
 import { Button } from '@/components/ui';
 import { pageVariants, pageTransition } from '@/lib/animations';
 import styles from './page.module.css';
@@ -13,6 +15,11 @@ export default function NewJobPage() {
   const { formData, errors, state, updateField, selectTemplate, submit, reset } =
     useJobSubmit();
   const { killSwitch } = useServiceConfig();
+  const { isLoading: isLoadingTemplates } = useTemplates();
+
+  if (isLoadingTemplates) {
+    return <DashboardCanvasLoading variant="newJob" />;
+  }
 
   return (
     <motion.div
@@ -22,20 +29,16 @@ export default function NewJobPage() {
       variants={pageVariants}
       transition={pageTransition}
     >
-      {/* Page Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>New Job</h1>
         <p className={styles.subtitle}>Create AI-powered clips from YouTube content</p>
       </div>
 
-      {/* Two Column Layout */}
       <div className={styles.grid}>
-        {/* Left: Submit Panel */}
         <div className={styles.column}>
           <SubmitPanel formData={formData} errors={errors} onUpdateField={updateField} />
         </div>
 
-        {/* Right: Template Selector */}
         <div className={styles.column}>
           <TemplateSelector
             selectedTemplate={formData.selectedTemplate}
@@ -45,7 +48,6 @@ export default function NewJobPage() {
         </div>
       </div>
 
-      {/* Submit Button */}
       <div className={styles.actions}>
         {killSwitch && (
           <div className={styles.submitError}>

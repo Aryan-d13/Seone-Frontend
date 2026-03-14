@@ -108,3 +108,51 @@ export function generateId(): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+export function formatLocalTime(
+  dateString: string,
+  options?: Intl.DateTimeFormatOptions
+) {
+  return new Date(dateString).toLocaleTimeString(
+    undefined,
+    options || {
+      hour: '2-digit',
+      minute: '2-digit',
+    }
+  );
+}
+
+/**
+ * Static date formatter
+ */
+export function formatLocalDate(
+  dateString: string,
+  options?: Intl.DateTimeFormatOptions
+) {
+  return new Date(dateString).toLocaleDateString(
+    undefined,
+    options || {
+      month: 'short',
+      day: 'numeric',
+    }
+  );
+}
+
+/**
+ * Static date-time formatter for usage in client-fetched views
+ */
+export function formatLocalDateTime(
+  dateString: string,
+  options?: Intl.DateTimeFormatOptions
+) {
+  return new Date(dateString).toLocaleString(
+    undefined,
+    options || {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }
+  );
+}

@@ -9,6 +9,8 @@ import { endpoints } from '@/lib/config';
 import { PipelineTimeline } from '@/components/job/PipelineTimeline';
 import { ClipGallery } from '@/components/job/ClipGallery';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { formatLocalDateTime } from '@/lib/utils';
 import styles from './page.module.css';
 
 function formatDuration(seconds?: number | null) {
@@ -85,11 +87,36 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   //    Always pass id — no parent-driven toggling to prevent connect/close churn.
   useJobWebSocket(id);
 
-  if (fetchStatus === 'loading') {
+  if (fetchStatus === 'idle' || fetchStatus === 'loading') {
     return (
-      <div className={styles.loading}>
-        <div className={styles.spinner} />
-        <p>Loading job details...</p>
+      <div className={styles.container} data-testid="job-detail-loading">
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <Skeleton width="40px" height="40px" variant="circle" />
+            <div className={styles.headerContent}>
+              <Skeleton width="200px" height="24px" className={styles.skeletonTitle} />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <Skeleton width="120px" height="14px" />
+                <Skeleton width="80px" height="14px" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className={styles.content}>
+          <Skeleton width="100%" height="150px" />
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '24px',
+              marginTop: '24px',
+            }}
+          >
+            <Skeleton width="100%" height="400px" />
+            <Skeleton width="100%" height="400px" />
+            <Skeleton width="100%" height="400px" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -109,6 +136,8 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   }
 
   if (!job) return null;
+
+  const formattedJobDate = formatLocalDateTime(job.created_at);
 
   return (
     <div className={styles.container}>
@@ -130,9 +159,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
               </span>
             </div>
             <div className={styles.metaContainer}>
-              <div className={styles.metaItem}>
-                {new Date(job.created_at).toLocaleString()}
-              </div>
+              <div className={styles.metaItem}>{formattedJobDate}</div>
               <div className={styles.metaItem}>•</div>
               <div className={styles.metaItem}>
                 Duration: {formatDuration(job.processing_duration_seconds)}

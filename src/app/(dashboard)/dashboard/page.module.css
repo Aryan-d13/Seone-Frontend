@@ -221,19 +221,13 @@
 }
 
 /* Loading & Empty States */
-.loadingState {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-12);
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--border-subtle);
-  border-top-color: var(--text-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.jobRowSkeleton {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  align-items: center;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: var(--space-4);
 }
 
 .emptyState {
