@@ -110,7 +110,9 @@ export function applyWarmupDebugHeaders(
   headers.set(WARMUP_DEBUG_HEADERS.at, payload.at);
 }
 
-export function parseWarmupDebugPayload(headers: HeaderReader): WarmupDebugPayload | null {
+export function parseWarmupDebugPayload(
+  headers: HeaderReader
+): WarmupDebugPayload | null {
   if (headers.get(WARMUP_DEBUG_HEADERS.enabled) !== '1') {
     return null;
   }

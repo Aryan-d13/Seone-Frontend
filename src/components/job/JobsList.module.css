@@ -159,7 +159,6 @@
 }
 
 @media (max-width: 768px) {
-
   .listHeader,
   .jobRow {
     grid-template-columns: 1fr 1fr;

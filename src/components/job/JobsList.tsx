@@ -123,9 +123,7 @@ export function JobsList() {
               >
                 <div className={styles.jobId}>#{job.id.slice(0, 8)}</div>
                 <div className={styles.jobTime}>
-                  <time dateTime={job.created_at}>
-                    {formatLocalTime(job.created_at)}
-                  </time>
+                  <time dateTime={job.created_at}>{formatLocalTime(job.created_at)}</time>
                 </div>
                 <div className={styles.jobDuration}>
                   {formatDuration(job.processing_duration_seconds)}
@@ -143,13 +141,13 @@ export function JobsList() {
                 {['downloading', 'transcribing', 'analyzing', 'rendering'].includes(
                   job.status
                 ) && (
-                    <div className={styles.progressContainer}>
-                      <div
-                        className={styles.progressBar}
-                        style={{ width: `${job.progress}%` }}
-                      />
-                    </div>
-                  )}
+                  <div className={styles.progressContainer}>
+                    <div
+                      className={styles.progressBar}
+                      style={{ width: `${job.progress}%` }}
+                    />
+                  </div>
+                )}
               </motion.div>
             ))}
           </motion.div>

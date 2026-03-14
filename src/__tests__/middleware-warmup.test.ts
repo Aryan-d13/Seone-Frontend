@@ -100,9 +100,7 @@ describe('resolveWarmupTargets', () => {
 
     vi.stubEnv('NEXT_PUBLIC_API_URL', 'https://api.example.com');
     vi.stubEnv('SEONE_WORKER_WAKE_URL', '');
-    expect(resolveWarmupTargets()).toEqual([
-      `https://api.example.com${API_HEALTH_PATH}`,
-    ]);
+    expect(resolveWarmupTargets()).toEqual([`https://api.example.com${API_HEALTH_PATH}`]);
   });
 });
 
@@ -126,7 +124,10 @@ describe('wakeTarget', () => {
       });
     });
 
-    const wakePromise = wakeTarget('https://worker.example.com', fetchMock as typeof fetch);
+    const wakePromise = wakeTarget(
+      'https://worker.example.com',
+      fetchMock as typeof fetch
+    );
     await vi.advanceTimersByTimeAsync(WAKE_TIMEOUT_MS);
     await wakePromise;
 
@@ -174,7 +175,10 @@ describe('middleware warmup dispatch', () => {
     expect(payload).toMatchObject({
       eligible: true,
       path: '/dashboard/new',
-      targets: [`https://api.example.com${API_HEALTH_PATH}`, 'https://worker.example.com'],
+      targets: [
+        `https://api.example.com${API_HEALTH_PATH}`,
+        'https://worker.example.com',
+      ],
     });
 
     resolvers.forEach(resolve => resolve());
