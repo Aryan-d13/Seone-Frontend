@@ -1,0 +1,51 @@
+.canvas-workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-canvas);
+    position: relative;
+}
+
+.canvas-workspace__viewport {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    padding: 40px;
+}
+
+.canvas-workspace__canvas {
+    position: relative;
+    background: #222;
+    box-shadow:
+        0 0 0 1px var(--border-subtle),
+        0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    /* Crisp rendering for pixel-level fidelity */
+    image-rendering: auto;
+}
+
+.canvas-workspace__canvas--grid {
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+.canvas-workspace__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    gap: 8px;
+    pointer-events: none;
+    font-size: 13px;
+}
+
+.canvas-workspace__empty-icon {
+    opacity: 0.3;
+}

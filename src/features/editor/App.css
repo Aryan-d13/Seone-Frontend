@@ -1,0 +1,32 @@
+.app {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.app__toolbar-row {
+    display: flex;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.app__toolbar-row .toolbar {
+    flex: 1;
+}
+
+.app__body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.app--clip {
+    background: var(--bg-surface);
+}
+
+.app--clip .app__body {
+    background:
+        radial-gradient(circle at 50% 0%, rgba(182, 160, 255, 0.04), transparent 32%),
+        var(--bg-surface);
+}

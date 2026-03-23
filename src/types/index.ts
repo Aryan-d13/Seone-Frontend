@@ -53,6 +53,10 @@ export interface AuthMeWireResponse {
   user: AuthWireUser;
 }
 
+export interface AuthFirebaseTokenWireResponse {
+  custom_token: string;
+}
+
 export interface AuthErrorWireResponse {
   error: BackendAuthError;
   detail: string;

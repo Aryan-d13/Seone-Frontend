@@ -1,0 +1,114 @@
+/* ── RenderPreview ─────────────────────────────── */
+
+.render-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    margin: 0 12px 12px;
+    border-radius: 10px;
+    background: var(--panel-high);
+}
+
+.render-preview__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.render-preview__title {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted, #8888aa);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.render-preview__dismiss {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted, #555577);
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.render-preview__dismiss:hover {
+    background: var(--panel-top, #1e1e3e);
+    color: var(--text-primary, #e0e0f0);
+}
+
+.render-preview__render-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.1s ease;
+    box-shadow: 0 16px 32px rgba(79, 70, 229, 0.22);
+}
+
+.render-preview__render-btn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.render-preview__render-btn:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.render-preview__spin {
+    animation: render-spin 0.8s linear infinite;
+}
+
+@keyframes render-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.render-preview__video-wrap {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(72, 72, 71, 0.18);
+    background: #05070b;
+}
+
+.render-preview__video {
+    width: 100%;
+    display: block;
+    max-height: 240px;
+    object-fit: contain;
+}
+
+.render-preview__error {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 8px 10px;
+    background: rgba(255, 68, 68, 0.08);
+    border: 1px solid rgba(255, 68, 68, 0.2);
+    border-radius: 8px;
+    color: #f66;
+    font-size: 11px;
+    line-height: 1.4;
+}

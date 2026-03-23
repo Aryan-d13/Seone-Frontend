@@ -1,0 +1,271 @@
+.clip-studio-timeline {
+    border-top: 1px solid rgba(72, 72, 71, 0.16);
+    background:
+        linear-gradient(180deg, rgba(10, 10, 10, 0.98), rgba(4, 4, 4, 1));
+    min-height: 198px;
+    display: flex;
+    flex-direction: column;
+}
+
+.clip-studio-timeline--collapsed {
+    min-height: 52px;
+}
+
+.clip-studio-timeline__toolbar {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
+.clip-studio-timeline__toolbar-start {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.clip-studio-timeline__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.clip-studio-timeline__toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.clip-studio-timeline__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.clip-studio-timeline__meta {
+    display: flex;
+    gap: 14px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.clip-studio-timeline__tracks {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+.clip-studio-timeline__ruler {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0;
+    padding: 8px 18px 8px 160px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
+.clip-studio-timeline__ruler-mark {
+    position: relative;
+}
+
+.clip-studio-timeline__ruler-mark::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 14px;
+    width: 1px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.clip-studio-timeline__track-surface {
+    position: relative;
+    padding: 0 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.clip-studio-timeline__overlay-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -2px;
+}
+
+.clip-studio-timeline__overlay-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.clip-studio-timeline__overlay-toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.clip-studio-timeline__playhead {
+    position: absolute;
+    top: 0;
+    bottom: 18px;
+    margin-left: 159px;
+    width: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.clip-studio-timeline__playhead::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    transform: translateX(-50%);
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(182, 160, 255, 0.35);
+}
+
+.clip-studio-timeline__playhead-knob {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+    background: var(--accent);
+}
+
+.clip-studio-timeline__row {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+}
+
+.clip-studio-timeline__row--video {
+    margin-bottom: 8px;
+}
+
+.clip-studio-timeline__row-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.clip-studio-timeline__track {
+    position: relative;
+    height: 42px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+}
+
+.clip-studio-timeline__track--layer {
+    height: 30px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.clip-studio-timeline__trim-mask {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.58);
+    z-index: 1;
+}
+
+.clip-studio-timeline__trim-mask--right {
+    left: auto;
+}
+
+.clip-studio-timeline__time-window {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+}
+
+.clip-studio-timeline__window-fill {
+    position: absolute;
+    inset: 0;
+    border-top: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+    background:
+        linear-gradient(90deg, rgba(182, 160, 255, 0.18), rgba(74, 248, 227, 0.08));
+}
+
+.clip-studio-timeline__window-handle {
+    position: absolute;
+    top: 0;
+    width: 12px;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--accent);
+    cursor: ew-resize;
+    z-index: 3;
+}
+
+.clip-studio-timeline__window-handle--left {
+    left: 0;
+    transform: translateX(-50%);
+}
+
+.clip-studio-timeline__window-handle--right {
+    right: 0;
+    transform: translateX(50%);
+}
+
+.clip-studio-timeline__clip {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: white;
+}
+
+.clip-studio-timeline__clip--text {
+    background: linear-gradient(90deg, rgba(182, 160, 255, 0.36), rgba(182, 160, 255, 0.22));
+    border-left: 2px solid var(--accent);
+}
+
+.clip-studio-timeline__clip--image {
+    background: linear-gradient(90deg, rgba(74, 248, 227, 0.26), rgba(74, 248, 227, 0.16));
+    border-left: 2px solid var(--accent-secondary);
+}
+
+.clip-studio-timeline__clip--video {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08));
+    border-left: 2px solid rgba(255, 255, 255, 0.7);
+}

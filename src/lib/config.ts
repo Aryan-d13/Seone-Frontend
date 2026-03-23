@@ -23,14 +23,9 @@ export const config = {
     googleClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
     allowedDomain: process.env.NEXT_PUBLIC_ALLOWED_DOMAINS
       ? process.env.NEXT_PUBLIC_ALLOWED_DOMAINS.split(',').map(d =>
-          d.trim().toLowerCase()
-        )
-      : [
-          'creativefuel.io',
-          'sarcasm.co',
-          'scrawled.agency',
-          'shubhampanwar492@gmail.com',
-        ],
+        d.trim().toLowerCase()
+      )
+      : ['creativefuel.io', 'sarcasm.co', 'scrawled.agency', 'shubhampanwar492@gmail.com'],
     tokenCookieName: 'seone_token',
     // tokenExpiry removed — cookie TTL comes from backend expires_in
   },
@@ -49,6 +44,7 @@ export const endpoints = {
   auth: {
     google: '/api/v1/auth/google',
     me: '/api/v1/auth/me',
+    firebaseToken: '/api/v1/auth/firebase-token',
     // logout endpoint removed — logout is local-only (no backend endpoint)
   },
   jobs: {
@@ -56,6 +52,13 @@ export const endpoints = {
     create: '/api/v1/jobs',
     get: (id: string) => `/api/v1/jobs/${id}`,
     delete: (id: string) => `/api/v1/jobs/${id}`,
+    manifest: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/manifest`,
+    studio: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/studio`,
+    clipAsset: (id: string, clipIndex: number, assetKey: string) => `/api/v1/jobs/${id}/clips/${clipIndex}/assets/${assetKey}`,
+    copySuggestions: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/copy-suggestions`,
+    exportStudio: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/export`,
+    uploadAsset: (id: string) => `/api/v1/jobs/${id}/editor-assets`,
+    preview: '/api/v1/jobs/preview',
   },
   pages: {
     list: '/api/v1/pages',
@@ -80,12 +83,18 @@ export const getWsUrl = (endpoint: string): string => {
 export const getMediaUrl = (path: string): string => {
   const rawPath = path.trim();
   const baseUrl = config.media.dataBaseUrl.replace(/\/+$/, '');
+  const apiBaseUrl = config.api.baseUrl.replace(/\/+$/, '');
 
   if (!rawPath) return baseUrl;
 
   // Backend may return full URLs (e.g. GCS signed/public URLs). Do not proxy these through /data.
   if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(rawPath) || rawPath.startsWith('//')) {
     return rawPath;
+  }
+
+  if (/^\/?api\//.test(rawPath)) {
+    const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+    return `${apiBaseUrl}${normalizedPath}`;
   }
 
   // Remove leading slash for relative paths.
@@ -123,8 +132,8 @@ function validateWsConfig(): void {
   if (isSecurePage && !isSecureWs) {
     console.error(
       '[FATAL CONFIG] Secure page (https) attempting non-secure WebSocket (ws://).\n' +
-        `Current WS URL: ${config.ws.baseUrl}\n` +
-        'Fix NEXT_PUBLIC_WS_URL to use wss:// in production.'
+      `Current WS URL: ${config.ws.baseUrl}\n` +
+      'Fix NEXT_PUBLIC_WS_URL to use wss:// in production.'
     );
   }
 
@@ -132,7 +141,7 @@ function validateWsConfig(): void {
   if (process.env.NODE_ENV === 'production' && !isSecureWs) {
     console.warn(
       '[CONFIG WARNING] WebSocket URL is not secure (wss://).\n' +
-        'This may cause connection failures in production.'
+      'This may cause connection failures in production.'
     );
   }
 }

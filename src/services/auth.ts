@@ -13,6 +13,7 @@ import type {
   AuthWireUser,
   AuthLoginWireResponse,
   AuthMeWireResponse,
+  AuthFirebaseTokenWireResponse,
   AuthErrorWireResponse,
   BackendAuthError,
 } from '@/types';
@@ -140,6 +141,24 @@ export async function fetchMe(
       detail: err instanceof Error ? err.message : 'Network request failed',
     };
   }
+}
+
+export async function fetchFirebaseCustomToken(): Promise<string> {
+  const response = await authFetch(endpoints.auth.firebaseToken, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Firebase token request failed (${response.status}): ${errorText}`);
+  }
+
+  const payload: AuthFirebaseTokenWireResponse = await response.json();
+  if (!payload.custom_token) {
+    throw new Error('Firebase token response was missing custom_token');
+  }
+
+  return payload.custom_token;
 }
 
 // ============================================
@@ -275,13 +294,17 @@ export async function authFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const token = getAuthToken();
+  const requestUrl =
+    /^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(endpoint) || endpoint.startsWith('//')
+      ? endpoint
+      : getApiUrl(endpoint);
 
   const headers = new Headers(options.headers);
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(getApiUrl(endpoint), {
+  const response = await fetch(requestUrl, {
     cache: 'no-store',
     ...options,
     headers,

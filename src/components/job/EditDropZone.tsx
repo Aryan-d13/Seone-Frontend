@@ -2,36 +2,37 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { openClipStudioTab, type StudioDragPayload } from '@/features/editor/lib/routes';
 import styles from './EditDropZone.module.css';
 
 /**
- * URL of the plug&edit app.
+ * Fixed-position drop target that routes a generated clip into the in-app studio.
  */
-const PLUG_EDIT_URL =
-  process.env.NEXT_PUBLIC_PLUG_EDIT_URL || 'https://plugandedit.netlify.app';
+function readStudioDragPayload(dataTransfer: DataTransfer | null): StudioDragPayload | null {
+  if (!dataTransfer) return null;
+  const raw = dataTransfer.getData('text/x-seone-clip');
+  if (!raw) return null;
 
-/**
- * Opens plug&edit in a new tab with the video URL.
- *
- * Always passes `&proxy=<origin>` so plug&edit can route video URLs
- * through Seone's server-side proxy (/api/proxy-media). This works
- * for both local backend URLs and production GCS signed URLs.
- *
- * Must be called synchronously from a user gesture (click/drop).
- */
-export function openPlugEdit(videoUrl: string) {
-  const params = new URLSearchParams({
-    video: videoUrl,
-    proxy: window.location.origin,
-  });
+  try {
+    const parsed = JSON.parse(raw) as Partial<StudioDragPayload>;
+    if (
+      typeof parsed.jobId === 'string' &&
+      typeof parsed.clipIndex === 'number' &&
+      typeof parsed.url === 'string' &&
+      typeof parsed.filename === 'string'
+    ) {
+      return parsed as StudioDragPayload;
+    }
+  } catch {
+    return null;
+  }
 
-  const editorUrl = `${PLUG_EDIT_URL}?${params.toString()}`;
-  window.open(editorUrl, '_blank');
+  return null;
 }
 
 /**
  * A fixed-position drop target that becomes visible whenever the user
- * drags a clip card. On drop, opens plug&edit in a new window.
+ * drags a clip card. On drop, routes into the internal Seone studio.
  */
 export function EditDropZone() {
   const [visible, setVisible] = useState(false);
@@ -43,7 +44,7 @@ export function EditDropZone() {
     let depth = 0;
 
     const onEnter = (e: DragEvent) => {
-      if (!e.dataTransfer?.types.includes('text/x-clip-url')) return;
+      if (!e.dataTransfer?.types.includes('text/x-seone-clip')) return;
       depth++;
       if (depth === 1) setVisible(true);
     };
@@ -98,11 +99,10 @@ export function EditDropZone() {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const videoUrl = e.dataTransfer.getData('text/x-clip-url');
-    if (!videoUrl) return;
+    const payload = readStudioDragPayload(e.dataTransfer);
+    if (!payload) return;
 
-    // Synchronous — no popup blocker
-    openPlugEdit(videoUrl);
+    openClipStudioTab(payload.jobId, payload.clipIndex);
   }, []);
 
   return (
@@ -141,9 +141,9 @@ export function EditDropZone() {
               </svg>
             </div>
             <span className={styles.zoneLabel}>
-              {dragOver ? 'Release to edit' : 'Edit in Plug & Edit'}
+              {dragOver ? 'Release to edit' : 'Open in Studio'}
             </span>
-            <span className={styles.zoneSublabel}>Opens in a new window</span>
+            <span className={styles.zoneSublabel}>Keeps editing inside Seone</span>
           </motion.div>
         </>
       )}

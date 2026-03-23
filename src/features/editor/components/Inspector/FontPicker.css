@@ -1,0 +1,154 @@
+/* ── FontPicker ────────────────────────────────── */
+
+.font-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+}
+
+.font-picker__trigger {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg-input, #1a1a2e);
+    border: 1px solid var(--border-subtle, #2a2a4a);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-primary, #e0e0f0);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+    width: 100%;
+    text-align: left;
+}
+
+.font-picker__trigger:hover {
+    border-color: var(--border-medium, #3a3a6a);
+}
+
+.font-picker__current {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.font-picker__script-tag {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.45;
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: var(--bg-elevated, #222244);
+}
+
+.font-picker__chevron {
+    opacity: 0.5;
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+
+/* ── Dropdown ─────────────────────────────── */
+
+.font-picker__dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    margin-top: 4px;
+    background: var(--bg-panel, #12122a);
+    border: 1px solid var(--border-subtle, #2a2a4a);
+    border-radius: var(--radius-sm, 4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+.font-picker__search {
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle, #2a2a4a);
+    background: var(--bg-input, #1a1a2e);
+    color: var(--text-primary, #e0e0f0);
+    font-size: 11px;
+    outline: none;
+}
+
+.font-picker__search::placeholder {
+    color: var(--text-muted, #555577);
+}
+
+.font-picker__list {
+    max-height: 220px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.font-picker__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary, #e0e0f0);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.1s ease;
+}
+
+.font-picker__option:hover {
+    background: var(--bg-hover, #1e1e3e);
+}
+
+.font-picker__option--selected {
+    background: var(--accent-muted, #2a2a5a);
+}
+
+.font-picker__option-name {
+    flex: 1;
+}
+
+.font-picker__option-meta {
+    font-size: 9px;
+    opacity: 0.4;
+    font-family: var(--font-mono);
+    letter-spacing: 0.3px;
+}
+
+.font-picker__empty {
+    padding: 12px 10px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted, #555577);
+    font-style: italic;
+}
+
+/* ── Weight selector ──────────────────────── */
+
+.font-picker__weight {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.font-picker__weight-label {
+    font-size: 10px;
+    color: var(--text-secondary, #999);
+    min-width: 40px;
+}
+
+.font-picker__weight-select {
+    flex: 1;
+    padding: 3px 6px;
+    background: var(--bg-input, #1a1a2e);
+    border: 1px solid var(--border-subtle, #2a2a4a);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-primary, #e0e0f0);
+    font-size: 11px;
+}
