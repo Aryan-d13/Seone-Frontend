@@ -13,7 +13,8 @@ describe('mergeTemplateForStudioSwitch', () => {
         font_custom_700: {
           type: 'font',
           path: 'users/user-1/jobs/job-1/editor_assets/fonts/custom.ttf',
-          source_uri: 'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/fonts/custom.ttf',
+          source_uri:
+            'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/fonts/custom.ttf',
           family: 'Custom Sans',
           weight: 700,
           style: 'normal',
@@ -32,13 +33,17 @@ describe('mergeTemplateForStudioSwitch', () => {
       assets: {},
     };
 
-    const merged = mergeTemplateForStudioSwitch(currentTemplate as any, nextTemplate as any);
+    const merged = mergeTemplateForStudioSwitch(
+      currentTemplate as any,
+      nextTemplate as any
+    );
 
     expect(merged.assets.font_custom_700).toMatchObject({
       type: 'font',
       family: 'Custom Sans',
       weight: 700,
-      source_uri: 'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/fonts/custom.ttf',
+      source_uri:
+        'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/fonts/custom.ttf',
     });
   });
 
@@ -54,7 +59,8 @@ describe('mergeTemplateForStudioSwitch', () => {
         logo_mark: {
           type: 'image',
           path: 'users/user-1/jobs/job-1/editor_assets/images/logo.png',
-          source_uri: 'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/images/logo.png',
+          source_uri:
+            'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/images/logo.png',
         },
       },
     };
@@ -74,13 +80,16 @@ describe('mergeTemplateForStudioSwitch', () => {
       },
     };
 
-    const merged = mergeTemplateForStudioSwitch(currentTemplate as any, nextTemplate as any);
+    const merged = mergeTemplateForStudioSwitch(
+      currentTemplate as any,
+      nextTemplate as any
+    );
 
     expect(merged.assets.logo_mark.source_uri).toBe(
-      'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/images/logo.png',
+      'http://localhost:8000/data/users/user-1/jobs/job-1/editor_assets/images/logo.png'
     );
     expect(merged.assets.logo_mark.path).toBe(
-      'users/user-1/jobs/job-1/editor_assets/images/logo.png',
+      'users/user-1/jobs/job-1/editor_assets/images/logo.png'
     );
   });
 });

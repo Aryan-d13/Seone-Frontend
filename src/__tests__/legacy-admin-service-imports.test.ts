@@ -24,7 +24,7 @@ describe('legacy Firebase admin service imports', () => {
   it('is not imported anywhere in the shipped frontend source tree', () => {
     const srcRoot = path.join(process.cwd(), 'src');
     const sourceFiles = collectSourceFiles(srcRoot);
-    const importingFiles = sourceFiles.filter((filePath) => {
+    const importingFiles = sourceFiles.filter(filePath => {
       const normalizedPath = filePath.split(path.sep).join('/');
       if (
         normalizedPath.endsWith('/src/services/admin.ts') ||
@@ -35,9 +35,9 @@ describe('legacy Firebase admin service imports', () => {
 
       const contents = fs.readFileSync(filePath, 'utf-8');
       return (
-        contents.includes("@/services/admin") ||
-        contents.includes("../services/admin") ||
-        contents.includes("/services/admin")
+        contents.includes('@/services/admin') ||
+        contents.includes('../services/admin') ||
+        contents.includes('/services/admin')
       );
     });
 

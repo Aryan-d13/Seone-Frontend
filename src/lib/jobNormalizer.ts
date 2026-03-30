@@ -59,7 +59,11 @@ function inferStatusFromLegacy(raw: JobLike): JobStatus {
   if (currentStep === 'smart_render' || phase === 'rendering') return 'rendering';
   if (currentStep === 'analyze') return 'analyzing';
   if (currentStep === 'transcribe') return 'transcribing';
-  if (currentStep === 'download' || currentStep === 'download_video' || phase === 'downloading') {
+  if (
+    currentStep === 'download' ||
+    currentStep === 'download_video' ||
+    phase === 'downloading'
+  ) {
     return 'downloading';
   }
   if (phase === 'completed') return 'completed';
@@ -92,9 +96,7 @@ function normalizeUiState(raw: JobLike, status: JobStatus, progress: number): Jo
   return {
     status,
     label:
-      canReuseIncoming &&
-      typeof incoming?.label === 'string' &&
-      incoming.label.trim()
+      canReuseIncoming && typeof incoming?.label === 'string' && incoming.label.trim()
         ? incoming.label.trim()
         : STATUS_LABELS[status],
     sublabel:
@@ -106,9 +108,10 @@ function normalizeUiState(raw: JobLike, status: JobStatus, progress: number): Jo
     progress: canReuseIncoming
       ? normalizeProgress(incoming?.progress, progress)
       : progress,
-    active_step: canReuseIncoming && incoming?.active_step
-      ? incoming.active_step
-      : inferActiveStep(status),
+    active_step:
+      canReuseIncoming && incoming?.active_step
+        ? incoming.active_step
+        : inferActiveStep(status),
     parallel_hint:
       canReuseIncoming &&
       typeof incoming?.parallel_hint === 'string' &&
@@ -150,9 +153,13 @@ function normalizeClips(clips: unknown): Clip[] {
           ? clip.startTime
           : undefined,
       endTime:
-        typeof clip.endTime === 'number' && Number.isFinite(clip.endTime) ? clip.endTime : undefined,
+        typeof clip.endTime === 'number' && Number.isFinite(clip.endTime)
+          ? clip.endTime
+          : undefined,
       duration:
-        typeof clip.duration === 'number' && Number.isFinite(clip.duration) ? clip.duration : undefined,
+        typeof clip.duration === 'number' && Number.isFinite(clip.duration)
+          ? clip.duration
+          : undefined,
       thumbnailPath:
         typeof clip.thumbnailPath === 'string' ? clip.thumbnailPath : undefined,
     }));
@@ -166,7 +173,19 @@ export function buildOptimisticUiState(
     status,
     label: STATUS_LABELS[status],
     sublabel: undefined,
-    progress: overrides.progress ?? (status === 'rendering' ? 70 : status === 'analyzing' ? 62 : status === 'transcribing' ? 35 : status === 'downloading' ? 12 : status === 'completed' ? 100 : 3),
+    progress:
+      overrides.progress ??
+      (status === 'rendering'
+        ? 70
+        : status === 'analyzing'
+          ? 62
+          : status === 'transcribing'
+            ? 35
+            : status === 'downloading'
+              ? 12
+              : status === 'completed'
+                ? 100
+                : 3),
     active_step: overrides.active_step ?? inferActiveStep(status),
     parallel_hint: overrides.parallel_hint,
   };
@@ -175,7 +194,9 @@ export function buildOptimisticUiState(
 export function normalizeJob(raw: JobLike): Job {
   const explicitStatus = isJobStatus(raw.status) ? raw.status : undefined;
   const incomingUiStatus =
-    raw.ui_state?.status && isJobStatus(raw.ui_state.status) ? raw.ui_state.status : undefined;
+    raw.ui_state?.status && isJobStatus(raw.ui_state.status)
+      ? raw.ui_state.status
+      : undefined;
   const status = explicitStatus ?? incomingUiStatus ?? inferStatusFromLegacy(raw);
   const progress =
     incomingUiStatus === status

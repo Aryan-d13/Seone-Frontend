@@ -87,7 +87,9 @@ describe('JobLivePanel', () => {
 
     await waitFor(() => expect(mockAuthFetch).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByTestId('job-live-panel')).toHaveTextContent('Pulling source video');
+    expect(screen.getByTestId('job-live-panel')).toHaveTextContent(
+      'Pulling source video'
+    );
     expect(screen.getByTestId('job-live-whisper')).toHaveTextContent('Meanwhile');
     expect(screen.getByTestId('job-live-whisper')).toHaveTextContent(
       'Botanically, bananas count as berries while strawberries do not.'

@@ -53,7 +53,8 @@ describe('buildStudioManifest', () => {
           logo_mark: {
             type: 'image',
             path: 'users/user-123/jobs/job-1/editor_assets/logo.png',
-            source_uri: 'http://localhost:8000/data/users/user-123/jobs/job-1/editor_assets/logo.png',
+            source_uri:
+              'http://localhost:8000/data/users/user-123/jobs/job-1/editor_assets/logo.png',
           },
         },
       },
@@ -82,7 +83,7 @@ describe('buildStudioManifest', () => {
     });
 
     expect(manifest?.assets.logo_mark).toBe(
-      'http://localhost:8000/data/users/user-123/jobs/job-1/editor_assets/logo.png',
+      'http://localhost:8000/data/users/user-123/jobs/job-1/editor_assets/logo.png'
     );
   });
 
@@ -130,7 +131,7 @@ describe('buildStudioManifest', () => {
     });
 
     expect(manifest?.assets.logo_mark).toBe(
-      'http://localhost:8000/api/v1/jobs/job-1/clips/1/assets/logo_mark',
+      'http://localhost:8000/api/v1/jobs/job-1/clips/1/assets/logo_mark'
     );
   });
 
@@ -179,10 +180,10 @@ describe('buildStudioManifest', () => {
     });
 
     expect(manifest?.template_ir.assets.logo_mark.source_uri).toBe(
-      'templates/chaturnath_v1/assets/logo.png',
+      'templates/chaturnath_v1/assets/logo.png'
     );
     expect(manifest?.template_ir.assets.logo_mark.gcs_path).toBe(
-      'templates/chaturnath/assets/logo.png',
+      'templates/chaturnath/assets/logo.png'
     );
   });
 });

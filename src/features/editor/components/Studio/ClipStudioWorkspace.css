@@ -1,578 +1,585 @@
 .clip-studio-workspace {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    background:
-        radial-gradient(circle at top, rgba(182, 160, 255, 0.05), transparent 26%),
-        linear-gradient(180deg, rgba(11, 11, 11, 0.98), rgba(7, 7, 7, 1));
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background:
+    radial-gradient(circle at top, rgba(182, 160, 255, 0.05), transparent 26%),
+    linear-gradient(180deg, rgba(11, 11, 11, 0.98), rgba(7, 7, 7, 1));
 }
 
 .clip-studio-workspace__master-video {
-    position: absolute;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    pointer-events: none;
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .clip-studio-workspace__preview-sheet {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    z-index: 20;
-    width: min(360px, calc(100% - 28px));
-    padding: 10px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(18, 18, 18, 0.96);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.36);
-    backdrop-filter: blur(16px);
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 20;
+  width: min(360px, calc(100% - 28px));
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.96);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(16px);
 }
 
 .clip-studio-workspace__preview-sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 0 2px 8px;
-    color: var(--text-secondary);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .clip-studio-workspace__preview-sheet-header button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 999px;
-    color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: var(--text-secondary);
 }
 
 .clip-studio-workspace__preview-sheet-header button:hover {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
 }
 
 .clip-studio-workspace__header {
-    position: relative;
-    z-index: 10;
-    padding: 10px 14px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    background: rgba(10, 10, 10, 0.88);
-    backdrop-filter: blur(18px);
+  position: relative;
+  z-index: 10;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(10, 10, 10, 0.88);
+  backdrop-filter: blur(18px);
 }
 
 .clip-studio-workspace__header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .clip-studio-workspace__header-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .clip-studio-workspace__header-group--end {
-    justify-content: flex-end;
+  justify-content: flex-end;
 }
 
 .clip-studio-workspace__status {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
 }
 
 .clip-studio-workspace__status strong {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clip-studio-workspace__status span {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clip-studio-workspace__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    height: 32px;
-    padding: 0 12px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid transparent;
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 600;
-    transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out), color 150ms var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    background 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    color 150ms var(--ease-out);
 }
 
 .clip-studio-workspace__chip:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
 }
 
 .clip-studio-workspace__chip--active {
-    background: rgba(182, 160, 255, 0.14);
-    border-color: rgba(182, 160, 255, 0.26);
-    color: var(--text-primary);
+  background: rgba(182, 160, 255, 0.14);
+  border-color: rgba(182, 160, 255, 0.26);
+  color: var(--text-primary);
 }
 
 .clip-studio-workspace__chip--icon {
-    width: 32px;
-    justify-content: center;
-    padding: 0;
+  width: 32px;
+  justify-content: center;
+  padding: 0;
 }
 
 .clip-studio-workspace__canvas-size {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .clip-studio-workspace__canvas-size label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 8px;
-    height: 28px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.03);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .clip-studio-workspace__canvas-size span {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .clip-studio-workspace__canvas-size input {
-    width: 56px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-primary);
+  width: 56px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
 }
 
 .clip-studio-workspace__transport {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    background: rgba(182, 160, 255, 0.16);
-    color: #f7f2ff;
-    border: 1px solid rgba(182, 160, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(182, 160, 255, 0.16);
+  color: #f7f2ff;
+  border: 1px solid rgba(182, 160, 255, 0.2);
 }
 
 .clip-studio-workspace__transport:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .clip-studio-workspace__zoom {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .clip-studio-workspace__zoom button {
-    height: 28px;
-    min-width: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-primary);
-    font-size: 12px;
-    font-weight: 700;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .clip-studio-workspace__zoom span {
-    min-width: 42px;
-    text-align: center;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-secondary);
+  min-width: 42px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .clip-studio-workspace__drawer,
 .clip-studio-workspace__utility-menu {
-    position: absolute;
-    top: calc(100% - 2px);
-    min-width: 280px;
-    max-width: 320px;
-    padding: 10px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(18, 18, 18, 0.96);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.36);
-    backdrop-filter: blur(16px);
+  position: absolute;
+  top: calc(100% - 2px);
+  min-width: 280px;
+  max-width: 320px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 18, 18, 0.96);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(16px);
 }
 
 .clip-studio-workspace__drawer {
-    left: 14px;
+  left: 14px;
 }
 
 .clip-studio-workspace__utility-menu {
-    right: 14px;
+  right: 14px;
 }
 
 .clip-studio-workspace__drawer-actions,
 .clip-studio-workspace__utility-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .clip-studio-workspace__drawer-action,
 .clip-studio-workspace__utility-actions button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 600;
-    text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
 }
 
 .clip-studio-workspace__drawer-action:hover,
 .clip-studio-workspace__utility-actions button:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
 }
 
 .clip-studio-workspace__utility-actions button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .clip-studio-workspace__drawer-list {
-    margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .clip-studio-workspace__layer-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    text-align: left;
-    color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+  color: var(--text-secondary);
 }
 
 .clip-studio-workspace__layer-item:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
 }
 
 .clip-studio-workspace__layer-item--selected {
-    background: rgba(182, 160, 255, 0.14);
-    color: var(--text-primary);
-    box-shadow: inset 2px 0 0 var(--accent);
+  background: rgba(182, 160, 255, 0.14);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .clip-studio-workspace__layer-swatch {
-    width: 8px;
-    height: 8px;
-    flex-shrink: 0;
-    border-radius: 50%;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
 }
 
 .clip-studio-workspace__layer-swatch--text {
-    background: var(--zone-text);
+  background: var(--zone-text);
 }
 
 .clip-studio-workspace__layer-swatch--image {
-    background: var(--zone-image);
+  background: var(--zone-image);
 }
 
 .clip-studio-workspace__layer-swatch--video {
-    background: var(--zone-video);
+  background: var(--zone-video);
 }
 
 .clip-studio-workspace__layer-copy {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .clip-studio-workspace__layer-copy strong,
 .clip-studio-workspace__layer-copy span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clip-studio-workspace__layer-copy strong {
-    font-size: 12px;
-    font-weight: 700;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .clip-studio-workspace__layer-copy span {
-    font-size: 10px;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
 .clip-studio-workspace__utility-menu .render-preview {
-    margin: 10px 0 0;
-    padding: 0;
-    background: transparent;
+  margin: 10px 0 0;
+  padding: 0;
+  background: transparent;
 }
 
 .clip-studio-workspace__preview-sheet .render-preview {
-    margin: 0;
-    padding: 0;
-    background: transparent;
+  margin: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .clip-studio-workspace__viewport {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    position: relative;
-    cursor: grab;
-    overscroll-behavior: contain;
-    scrollbar-width: auto;
-    scrollbar-color: rgba(182, 160, 255, 0.55) rgba(255, 255, 255, 0.06);
-    background:
-        radial-gradient(circle at center, rgba(182, 160, 255, 0.05), transparent 48%),
-        linear-gradient(180deg, rgba(12, 12, 12, 0.98), rgba(7, 7, 7, 1));
-    scrollbar-gutter: stable both-edges;
-    -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  cursor: grab;
+  overscroll-behavior: contain;
+  scrollbar-width: auto;
+  scrollbar-color: rgba(182, 160, 255, 0.55) rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at center, rgba(182, 160, 255, 0.05), transparent 48%),
+    linear-gradient(180deg, rgba(12, 12, 12, 0.98), rgba(7, 7, 7, 1));
+  scrollbar-gutter: stable both-edges;
+  -webkit-overflow-scrolling: touch;
 }
 
 .clip-studio-workspace__viewport--space-pan,
 .clip-studio-workspace__viewport--space-pan .clip-studio-workspace__stage,
 .clip-studio-workspace__viewport--space-pan .clip-studio-workspace__plane {
-    cursor: grab;
+  cursor: grab;
 }
 
 .clip-studio-workspace__viewport--panning,
 .clip-studio-workspace__viewport--panning .clip-studio-workspace__stage,
 .clip-studio-workspace__viewport--panning .clip-studio-workspace__plane {
-    cursor: grabbing;
-    user-select: none;
+  cursor: grabbing;
+  user-select: none;
 }
 
 .clip-studio-workspace__viewport::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+  width: 12px;
+  height: 12px;
 }
 
 .clip-studio-workspace__viewport::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .clip-studio-workspace__viewport::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    border: 2px solid rgba(10, 10, 10, 0.88);
-    background: linear-gradient(180deg, rgba(182, 160, 255, 0.78), rgba(126, 81, 255, 0.82));
+  border-radius: 999px;
+  border: 2px solid rgba(10, 10, 10, 0.88);
+  background: linear-gradient(
+    180deg,
+    rgba(182, 160, 255, 0.78),
+    rgba(126, 81, 255, 0.82)
+  );
 }
 
 .clip-studio-workspace__viewport::-webkit-scrollbar-corner {
-    background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .clip-studio-workspace__plane {
-    position: relative;
-    min-width: 100%;
-    min-height: 100%;
-    background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 48px 48px;
-    transform: translateZ(0);
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: translateZ(0);
 }
 
 .clip-studio-workspace__stage-shell {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    cursor: inherit;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: inherit;
 }
 
 .clip-studio-workspace__stage-chrome {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .clip-studio-workspace__stage-label {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: rgba(14, 14, 14, 0.88);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.26);
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(14, 14, 14, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.26);
 }
 
 .clip-studio-workspace__stage-label strong {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .clip-studio-workspace__stage-tools {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(14, 14, 14, 0.88);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.26);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(14, 14, 14, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.26);
 }
 
 .clip-studio-workspace__stage {
-    position: relative;
-    background: #000;
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: inherit;
-    transform: translateZ(0);
-    will-change: transform;
-    box-shadow:
-        0 28px 80px rgba(0, 0, 0, 0.55),
-        0 0 0 1px rgba(255, 255, 255, 0.05),
-        0 0 0 10px rgba(5, 5, 5, 0.78);
+  position: relative;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: inherit;
+  transform: translateZ(0);
+  will-change: transform;
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 0 10px rgba(5, 5, 5, 0.78);
 }
 
 .clip-studio-workspace__stage-loading {
-    position: absolute;
-    inset: 0;
-    z-index: 3;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding: 22px;
-    pointer-events: none;
-    background: rgba(0, 0, 0, 0.28);
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.28);
 }
 
 .clip-studio-workspace__stage-loading-video {
-    flex: 1;
-    width: 100%;
-    border-radius: 4px;
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
-        rgba(255, 255, 255, 0.04);
+  flex: 1;
+  width: 100%;
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.04);
 }
 
 .clip-studio-workspace__stage-loading-top {
-    position: absolute;
-    left: 22px;
-    right: 22px;
-    top: 22px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .clip-studio-workspace__stage-loading-logo {
-    width: 64px;
-    height: 64px;
-    border-radius: 999px;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
 }
 
 .clip-studio-workspace__stage-loading-title {
-    flex: 1;
-    height: 84px;
-    border-radius: 2px;
+  flex: 1;
+  height: 84px;
+  border-radius: 2px;
 }
 
 .clip-studio-workspace__viewport--space-pan .zone-renderer,
 .clip-studio-workspace__viewport--space-pan .zone-renderer *,
 .clip-studio-workspace__viewport--panning .zone-renderer,
 .clip-studio-workspace__viewport--panning .zone-renderer * {
-    cursor: inherit !important;
+  cursor: inherit !important;
 }
 
 .clip-studio-workspace__empty {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    color: var(--text-secondary);
-    text-align: center;
-    padding: 20px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 20px;
 }
 
 .clip-studio-workspace__empty strong {
-    color: var(--text-primary);
-    font-size: 16px;
+  color: var(--text-primary);
+  font-size: 16px;
 }
 
 .clip-studio-workspace__zone-muted {
-    opacity: 0.5;
+  opacity: 0.5;
 }
 
 .clip-studio-workspace__trim-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-primary);
-    font-size: 11px;
-    font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .clip-studio-workspace__trim-toggle:hover {
-    background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 1220px) {
-    .clip-studio-workspace__stage-chrome {
-        flex-direction: column;
-        align-items: flex-start;
-    }
+  .clip-studio-workspace__stage-chrome {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

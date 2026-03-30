@@ -1,102 +1,102 @@
 .canvas-workspace {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--bg-canvas);
-    position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-canvas);
+  position: relative;
 }
 
 .canvas-workspace__viewport {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    position: relative;
-    cursor: grab;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable both-edges;
-    background:
-        radial-gradient(circle at center, rgba(182, 160, 255, 0.05), transparent 48%),
-        linear-gradient(180deg, rgba(12, 12, 12, 0.98), rgba(7, 7, 7, 1));
-    scrollbar-width: auto;
-    scrollbar-color: rgba(182, 160, 255, 0.55) rgba(255, 255, 255, 0.05);
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  cursor: grab;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  background:
+    radial-gradient(circle at center, rgba(182, 160, 255, 0.05), transparent 48%),
+    linear-gradient(180deg, rgba(12, 12, 12, 0.98), rgba(7, 7, 7, 1));
+  scrollbar-width: auto;
+  scrollbar-color: rgba(182, 160, 255, 0.55) rgba(255, 255, 255, 0.05);
 }
 
 .canvas-workspace__viewport::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+  width: 12px;
+  height: 12px;
 }
 
 .canvas-workspace__viewport::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .canvas-workspace__viewport::-webkit-scrollbar-thumb {
-    background: rgba(182, 160, 255, 0.45);
-    border-radius: 999px;
-    border: 2px solid rgba(7, 7, 7, 0.95);
+  background: rgba(182, 160, 255, 0.45);
+  border-radius: 999px;
+  border: 2px solid rgba(7, 7, 7, 0.95);
 }
 
 .canvas-workspace__viewport::-webkit-scrollbar-thumb:hover {
-    background: rgba(182, 160, 255, 0.62);
+  background: rgba(182, 160, 255, 0.62);
 }
 
 .canvas-workspace__viewport--space-pan,
 .canvas-workspace__viewport--space-pan .canvas-workspace__canvas,
 .canvas-workspace__viewport--space-pan .canvas-workspace__plane {
-    cursor: grab;
+  cursor: grab;
 }
 
 .canvas-workspace__viewport--panning,
 .canvas-workspace__viewport--panning .canvas-workspace__canvas,
 .canvas-workspace__viewport--panning .canvas-workspace__plane {
-    cursor: grabbing;
-    user-select: none;
+  cursor: grabbing;
+  user-select: none;
 }
 
 .canvas-workspace__plane {
-    position: relative;
-    min-width: 100%;
-    min-height: 100%;
-    background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 48px 48px;
-    transform: translateZ(0);
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  transform: translateZ(0);
 }
 
 .canvas-workspace__canvas {
-    position: relative;
-    position: absolute;
-    background: #222;
-    box-shadow:
-        0 0 0 1px var(--border-subtle),
-        0 20px 60px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
-    image-rendering: auto;
-    transform: translateZ(0);
-    will-change: transform;
+  position: relative;
+  position: absolute;
+  background: #222;
+  box-shadow:
+    0 0 0 1px var(--border-subtle),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  image-rendering: auto;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .canvas-workspace__canvas--grid {
-    background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 }
 
 .canvas-workspace__empty {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    gap: 8px;
-    pointer-events: none;
-    font-size: 13px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  gap: 8px;
+  pointer-events: none;
+  font-size: 13px;
 }
 
 .canvas-workspace__empty-icon {
-    opacity: 0.3;
+  opacity: 0.3;
 }

@@ -11,7 +11,9 @@ describe('ensureFirebaseStudioAuth', () => {
   });
 
   it('signs into Firebase with a backend custom token when no session exists', async () => {
-    vi.spyOn(authService, 'fetchFirebaseCustomToken').mockResolvedValueOnce('firebase-custom-token');
+    vi.spyOn(authService, 'fetchFirebaseCustomToken').mockResolvedValueOnce(
+      'firebase-custom-token'
+    );
     vi.mocked(signInWithCustomToken).mockImplementationOnce(async () => {
       Object.assign(auth, { currentUser: { uid: 'firebase-user' } });
       return { user: { uid: 'firebase-user' } } as never;

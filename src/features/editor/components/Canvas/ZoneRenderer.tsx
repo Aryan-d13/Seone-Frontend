@@ -1,986 +1,1052 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Film, ImageIcon, Lock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { PROTECTED_ASSET_AUTH_MESSAGE, PROTECTED_ASSET_LOAD_MESSAGE } from '../../lib/protectedAssetLoader';
+import {
+  PROTECTED_ASSET_AUTH_MESSAGE,
+  PROTECTED_ASSET_LOAD_MESSAGE,
+} from '../../lib/protectedAssetLoader';
 import { useProtectedAssetUrl } from '../../hooks/useProtectedAssetUrl';
 import { useTemplateStore } from '../../store/templateStore';
 import type { ResolvedTextLayout, ResolvedZone } from '../../types/manifest';
 import type { ZoneSpec } from '../../types/template';
 import { getAssetPreviewUrl, getTemplateAssetProxyUrl } from '../../utils/assetPreview';
-import { clampVideoRectPosition, normalizeVideoRect, readBoundsAspectRatio } from '../../utils/videoBounds';
+import {
+  clampVideoRectPosition,
+  normalizeVideoRect,
+  readBoundsAspectRatio,
+} from '../../utils/videoBounds';
 import './ZoneRenderer.css';
 
 interface Props {
-    zone: ZoneSpec;
-    scale: number;
-    videoSrc?: string | null;
-    currentTime?: number;
-    isPlaying?: boolean;
-    resolvedZone?: ResolvedZone;
-    renderMode?: 'editor' | 'rendered' | 'clip';
-    assetResolving?: boolean;
-    assetFailed?: boolean;
+  zone: ZoneSpec;
+  scale: number;
+  videoSrc?: string | null;
+  currentTime?: number;
+  isPlaying?: boolean;
+  resolvedZone?: ResolvedZone;
+  renderMode?: 'editor' | 'rendered' | 'clip';
+  assetResolving?: boolean;
+  assetFailed?: boolean;
 }
 
 type ResizeDirection =
-    | 'top'
-    | 'right'
-    | 'bottom'
-    | 'left'
-    | 'topRight'
-    | 'bottomRight'
-    | 'bottomLeft'
-    | 'topLeft';
+  | 'top'
+  | 'right'
+  | 'bottom'
+  | 'left'
+  | 'topRight'
+  | 'bottomRight'
+  | 'bottomLeft'
+  | 'topLeft';
 
 interface RectState {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 function coerceNumber(value: unknown, fallback: number): number {
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 function readLengthSpec(value: unknown, fallback: number): number {
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 function cropAnchorToObjectPosition(anchor: unknown): string {
-    switch (anchor) {
-        case 'top':
-            return 'center top';
-        case 'bottom':
-            return 'center bottom';
-        default:
-            return 'center center';
-    }
+  switch (anchor) {
+    case 'top':
+      return 'center top';
+    case 'bottom':
+      return 'center bottom';
+    default:
+      return 'center center';
+  }
 }
 
-function normalizeCropFocus(
-    value: unknown,
-): { x: number; y: number } | null {
-    if (!value || typeof value !== 'object') return null;
-    const focus = value as Record<string, unknown>;
-    const x = typeof focus.x === 'number' && Number.isFinite(focus.x) ? focus.x : 0.5;
-    const y = typeof focus.y === 'number' && Number.isFinite(focus.y) ? focus.y : 0.5;
-    return {
-        x: Math.min(Math.max(x, 0), 1),
-        y: Math.min(Math.max(y, 0), 1),
-    };
+function normalizeCropFocus(value: unknown): { x: number; y: number } | null {
+  if (!value || typeof value !== 'object') return null;
+  const focus = value as Record<string, unknown>;
+  const x = typeof focus.x === 'number' && Number.isFinite(focus.x) ? focus.x : 0.5;
+  const y = typeof focus.y === 'number' && Number.isFinite(focus.y) ? focus.y : 0.5;
+  return {
+    x: Math.min(Math.max(x, 0), 1),
+    y: Math.min(Math.max(y, 0), 1),
+  };
 }
 
-function verticalAlignToJustifyContent(value: unknown): 'flex-start' | 'center' | 'flex-end' {
-    if (value === 'top') return 'flex-start';
-    if (value === 'bottom') return 'flex-end';
-    return 'center';
+function verticalAlignToJustifyContent(
+  value: unknown
+): 'flex-start' | 'center' | 'flex-end' {
+  if (value === 'top') return 'flex-start';
+  if (value === 'bottom') return 'flex-end';
+  return 'center';
 }
 
 function horizontalAlignToItems(value: unknown): 'flex-start' | 'center' | 'flex-end' {
-    if (value === 'left') return 'flex-start';
-    if (value === 'right') return 'flex-end';
-    return 'center';
+  if (value === 'left') return 'flex-start';
+  if (value === 'right') return 'flex-end';
+  return 'center';
 }
 
 function horizontalAlignToText(value: unknown): 'left' | 'center' | 'right' {
-    if (value === 'left' || value === 'right') return value;
-    return 'center';
+  if (value === 'left' || value === 'right') return value;
+  return 'center';
 }
 
 function isResolvedTextLayout(value: unknown): value is ResolvedTextLayout {
-    return Boolean(value) && typeof value === 'object';
+  return Boolean(value) && typeof value === 'object';
 }
 
 function clampRectDimension(value: number): number {
-    return Math.max(10, Math.round(value));
+  return Math.max(10, Math.round(value));
 }
 
 function resizeRect(
-    origin: RectState,
-    direction: ResizeDirection,
-    deltaX: number,
-    deltaY: number,
-    aspectRatio?: number | null,
+  origin: RectState,
+  direction: ResizeDirection,
+  deltaX: number,
+  deltaY: number,
+  aspectRatio?: number | null
 ): RectState {
-    const next: RectState = { ...origin };
+  const next: RectState = { ...origin };
 
-    if (direction.includes('right')) {
-        next.width = clampRectDimension(origin.width + deltaX);
-    }
-    if (direction.includes('left')) {
-        const nextWidth = clampRectDimension(origin.width - deltaX);
-        next.x = origin.x + (origin.width - nextWidth);
-        next.width = nextWidth;
-    }
-    if (direction.includes('bottom')) {
-        next.height = clampRectDimension(origin.height + deltaY);
-    }
-    if (direction.includes('top')) {
-        const nextHeight = clampRectDimension(origin.height - deltaY);
-        next.y = origin.y + (origin.height - nextHeight);
-        next.height = nextHeight;
-    }
+  if (direction.includes('right')) {
+    next.width = clampRectDimension(origin.width + deltaX);
+  }
+  if (direction.includes('left')) {
+    const nextWidth = clampRectDimension(origin.width - deltaX);
+    next.x = origin.x + (origin.width - nextWidth);
+    next.width = nextWidth;
+  }
+  if (direction.includes('bottom')) {
+    next.height = clampRectDimension(origin.height + deltaY);
+  }
+  if (direction.includes('top')) {
+    const nextHeight = clampRectDimension(origin.height - deltaY);
+    next.y = origin.y + (origin.height - nextHeight);
+    next.height = nextHeight;
+  }
 
-    if (!aspectRatio || aspectRatio <= 0) {
-        return next;
-    }
-
-    const includesHorizontal = direction.includes('left') || direction.includes('right');
-    const includesVertical = direction.includes('top') || direction.includes('bottom');
-
-    if (includesHorizontal && !includesVertical) {
-        next.height = clampRectDimension(next.width / aspectRatio);
-        return next;
-    }
-
-    if (includesVertical && !includesHorizontal) {
-        next.width = clampRectDimension(next.height * aspectRatio);
-        if (direction.includes('left')) {
-            next.x = origin.x + (origin.width - next.width);
-        }
-        return next;
-    }
-
-    const widthFromHeight = clampRectDimension(next.height * aspectRatio);
-    const heightFromWidth = clampRectDimension(next.width / aspectRatio);
-    const widthDelta = Math.abs(next.width - origin.width);
-    const heightDelta = Math.abs(next.height - origin.height);
-
-    if (widthDelta >= heightDelta) {
-        next.height = heightFromWidth;
-    } else {
-        next.width = widthFromHeight;
-    }
-
-    if (direction.includes('left')) {
-        next.x = origin.x + (origin.width - next.width);
-    }
-    if (direction.includes('top')) {
-        next.y = origin.y + (origin.height - next.height);
-    }
-
+  if (!aspectRatio || aspectRatio <= 0) {
     return next;
+  }
+
+  const includesHorizontal = direction.includes('left') || direction.includes('right');
+  const includesVertical = direction.includes('top') || direction.includes('bottom');
+
+  if (includesHorizontal && !includesVertical) {
+    next.height = clampRectDimension(next.width / aspectRatio);
+    return next;
+  }
+
+  if (includesVertical && !includesHorizontal) {
+    next.width = clampRectDimension(next.height * aspectRatio);
+    if (direction.includes('left')) {
+      next.x = origin.x + (origin.width - next.width);
+    }
+    return next;
+  }
+
+  const widthFromHeight = clampRectDimension(next.height * aspectRatio);
+  const heightFromWidth = clampRectDimension(next.width / aspectRatio);
+  const widthDelta = Math.abs(next.width - origin.width);
+  const heightDelta = Math.abs(next.height - origin.height);
+
+  if (widthDelta >= heightDelta) {
+    next.height = heightFromWidth;
+  } else {
+    next.width = widthFromHeight;
+  }
+
+  if (direction.includes('left')) {
+    next.x = origin.x + (origin.width - next.width);
+  }
+  if (direction.includes('top')) {
+    next.y = origin.y + (origin.height - next.height);
+  }
+
+  return next;
 }
 
 export default function ZoneRenderer({
-    zone,
-    scale,
-    videoSrc = null,
-    currentTime = 0,
-    isPlaying = false,
-    resolvedZone,
-    renderMode = 'editor',
-    assetResolving = false,
-    assetFailed = false,
+  zone,
+  scale,
+  videoSrc = null,
+  currentTime = 0,
+  isPlaying = false,
+  resolvedZone,
+  renderMode = 'editor',
+  assetResolving = false,
+  assetFailed = false,
 }: Props) {
-    const {
-        template,
-        selectedZoneId,
-        interactionMode,
-        editingTextZoneId,
-        selectZone,
-        beginTextEditing,
-        endTextEditing,
-        updateZoneBounds,
-        updateZone,
-        isLocked,
-        previewTexts,
-        setPreviewText,
-        setAssetPreviewError,
-        uploadedImages,
-        activeManifest,
-        sourceVideoAspectRatio,
-    } = useTemplateStore();
+  const {
+    template,
+    selectedZoneId,
+    interactionMode,
+    editingTextZoneId,
+    selectZone,
+    beginTextEditing,
+    endTextEditing,
+    updateZoneBounds,
+    updateZone,
+    isLocked,
+    previewTexts,
+    setPreviewText,
+    setAssetPreviewError,
+    uploadedImages,
+    activeManifest,
+    sourceVideoAspectRatio,
+  } = useTemplateStore();
 
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const textEditorRef = useRef<HTMLTextAreaElement>(null);
-    const liveRectRef = useRef<RectState>({ x: 0, y: 0, width: 0, height: 0 });
-    const liveRectFrameRef = useRef<number | null>(null);
-    const pendingLiveRectRef = useRef<RectState | null>(null);
-    const pointerSessionRef = useRef<{
-        pointerId: number;
-        mode: 'move' | 'resize';
-        direction?: ResizeDirection;
-        startX: number;
-        startY: number;
-        origin: RectState;
-        moved: boolean;
-    } | null>(null);
-    const suppressNextClickRef = useRef(false);
-    const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
-    const [imageLoadFailed, setImageLoadFailed] = useState(false);
-    const [imageLoading, setImageLoading] = useState(false);
-    const [videoLoading, setVideoLoading] = useState(false);
-    const [videoLoadFailed, setVideoLoadFailed] = useState(false);
-    const [liveRect, setLiveRect] = useState<RectState>({
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const textEditorRef = useRef<HTMLTextAreaElement>(null);
+  const liveRectRef = useRef<RectState>({ x: 0, y: 0, width: 0, height: 0 });
+  const liveRectFrameRef = useRef<number | null>(null);
+  const pendingLiveRectRef = useRef<RectState | null>(null);
+  const pointerSessionRef = useRef<{
+    pointerId: number;
+    mode: 'move' | 'resize';
+    direction?: ResizeDirection;
+    startX: number;
+    startY: number;
+    origin: RectState;
+    moved: boolean;
+  } | null>(null);
+  const suppressNextClickRef = useRef(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoLoadFailed, setVideoLoadFailed] = useState(false);
+  const [liveRect, setLiveRect] = useState<RectState>({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
+  const [interactionState, setInteractionState] = useState<'drag' | 'resize' | null>(
+    null
+  );
+
+  const selected = selectedZoneId === zone.id;
+  const locked = isLocked(zone.id);
+  const isRenderedMode = renderMode === 'rendered';
+  const isClipMode = renderMode === 'clip';
+  const isEditingText =
+    renderMode !== 'rendered' &&
+    interactionMode === 'editing_text' &&
+    editingTextZoneId === zone.id &&
+    zone.type === 'text';
+
+  const bounds = zone.bounds;
+  const resolvedRect = resolvedZone?.rect;
+  const x = readLengthSpec(bounds.x, coerceNumber(resolvedRect?.x, 0));
+  const y = readLengthSpec(bounds.y, coerceNumber(resolvedRect?.y, 0));
+  const w = readLengthSpec(bounds.width, coerceNumber(resolvedRect?.w, 0));
+  const isAutoHeight = bounds.height === undefined;
+
+  const assetKey = zone.asset_ref || zone.id;
+  const templateAsset = zone.type === 'image' ? template.assets[assetKey] : undefined;
+  const manifestAssetUrl =
+    zone.type === 'image' ? activeManifest?.assets?.[assetKey] : undefined;
+  const templateAssetProxyUrl =
+    zone.type === 'image' && !activeManifest && templateAsset
+      ? getTemplateAssetProxyUrl(template.id, assetKey)
+      : null;
+  const { resolvedUrl: hydratedTemplateAssetUrl, error: protectedAssetError } =
+    useProtectedAssetUrl(templateAssetProxyUrl);
+  const imageSrc =
+    uploadedImages[zone.id] ||
+    hydratedTemplateAssetUrl ||
+    getAssetPreviewUrl(templateAsset, manifestAssetUrl) ||
+    null;
+
+  const contentRef = zone.content_ref || '';
+  const previewText = contentRef ? previewTexts[contentRef] : undefined;
+  const hasVideoPreview = zone.type === 'video' && Boolean(videoSrc);
+  const isLogoZone = zone.type === 'image' && zone.role === 'logo';
+
+  const style = zone.style_ref ? template.styles[zone.style_ref] : undefined;
+  let bgColor: string | undefined;
+  let textColor: string | undefined;
+  let shapeColor: string | undefined;
+  if (zone.type === 'text' && style) {
+    bgColor = style.bg_fill;
+    textColor = style.fill;
+  }
+  if (zone.type === 'shape' && style) {
+    shapeColor = style.fill || style.bg_fill;
+  }
+
+  const textLayout = isResolvedTextLayout(resolvedZone?.resolved?.text_layout)
+    ? resolvedZone.resolved.text_layout
+    : undefined;
+  const resolvedSourceText =
+    typeof textLayout?.source_text === 'string' ? textLayout.source_text : '';
+  const editableText = typeof previewText === 'string' ? previewText : resolvedSourceText;
+
+  const mediaFit =
+    zone.media?.fit ??
+    (isRenderedMode ? resolvedZone?.resolved?.fit : undefined) ??
+    'cover';
+  const cropFocus = normalizeCropFocus(
+    zone.media?.crop_focus ??
+      (isRenderedMode ? resolvedZone?.resolved?.crop_focus : undefined)
+  );
+  const mediaObjectPosition = cropFocus
+    ? `${Math.round(cropFocus.x * 100)}% ${Math.round(cropFocus.y * 100)}%`
+    : cropAnchorToObjectPosition(
+        zone.media?.crop_anchor ??
+          (isRenderedMode ? resolvedZone?.resolved?.crop_anchor : undefined)
+      );
+  const videoAspectRatio =
+    zone.type === 'video'
+      ? (readBoundsAspectRatio(zone.bounds) ?? sourceVideoAspectRatio)
+      : null;
+
+  const h = useMemo(() => {
+    if (!isAutoHeight) {
+      return readLengthSpec(bounds.height, coerceNumber(resolvedRect?.h, w));
+    }
+    if (zone.type === 'image' && imageAspectRatio && imageAspectRatio > 0) {
+      return Math.max(1, Math.round(w / imageAspectRatio));
+    }
+    return coerceNumber(resolvedRect?.h, w);
+  }, [bounds.height, imageAspectRatio, isAutoHeight, resolvedRect?.h, w, zone.type]);
+
+  useEffect(() => {
+    if (renderMode === 'clip' || activeManifest) return;
+    if (!templateAssetProxyUrl) return;
+    if (protectedAssetError?.code === 'unauthorized') {
+      setAssetPreviewError(PROTECTED_ASSET_AUTH_MESSAGE);
+      return;
+    }
+    if (protectedAssetError) {
+      setAssetPreviewError(PROTECTED_ASSET_LOAD_MESSAGE);
+      return;
+    }
+    if (hydratedTemplateAssetUrl) {
+      setAssetPreviewError(null);
+    }
+  }, [
+    activeManifest,
+    hydratedTemplateAssetUrl,
+    protectedAssetError,
+    renderMode,
+    setAssetPreviewError,
+    templateAssetProxyUrl,
+  ]);
+
+  const textMetrics = useMemo(() => {
+    const liveText = zone.text;
+    const fontSizeBase =
+      liveText?.font?.size ?? coerceNumber(textLayout?.font_size_used, 40) ?? 40;
+    const paddingXBase = Math.max(12, Math.round(fontSizeBase * 0.24));
+    const paddingYBase = Math.max(8, Math.round(fontSizeBase * 0.16));
+    const paddingXPx = paddingXBase * scale;
+    const paddingYPx = paddingYBase * scale;
+    const usableWidth = Math.max(w * scale - paddingXPx * 2, 1);
+    const liveWidthPercent = liveText?.width_percent;
+    const textWidthPx =
+      typeof liveWidthPercent === 'number' && Number.isFinite(liveWidthPercent)
+        ? (usableWidth * liveWidthPercent) / 100
+        : usableWidth;
+
+    const fontSizePx = fontSizeBase * scale;
+    const lineSpacingBase = coerceNumber(
+      liveText?.line_spacing_px,
+      coerceNumber(textLayout?.line_spacing_px, 0)
+    );
+    const lineSpacingPx = lineSpacingBase * scale;
+    const resolvedLineHeightPx =
+      coerceNumber(textLayout?.line_height_px, fontSizeBase * 0.92) * scale;
+    const lineHeightPx = Math.max(
+      fontSizePx * 0.95,
+      resolvedLineHeightPx + lineSpacingPx * 0.15
+    );
+    const blockWidthPx = Math.min(Math.max(textWidthPx, 1), usableWidth);
+    const resolvedLineCount = Math.max(
+      1,
+      Math.round(coerceNumber(textLayout?.line_count, 1))
+    );
+    const resolvedBlockHeightPx = Math.max(
+      coerceNumber(textLayout?.block_height_px, 0) * scale,
+      resolvedLineCount * lineHeightPx
+    );
+    const blockHeightPx = Math.max(
+      h * scale - paddingYPx * 2,
+      resolvedBlockHeightPx + fontSizePx * 0.18
+    );
+    const maxLines =
+      typeof liveText?.max_lines === 'number' && Number.isFinite(liveText.max_lines)
+        ? Math.max(1, liveText.max_lines)
+        : Math.max(1, coerceNumber(textLayout?.line_count, 3));
+
+    return {
+      color: textColor || '#000000',
+      backgroundColor: isClipMode ? 'transparent' : bgColor || '#FFFFFF',
+      fontFamily: liveText?.font?.family || textLayout?.font_family_used || 'sans-serif',
+      fontWeight: liveText?.font?.weight ?? coerceNumber(textLayout?.font_weight, 400),
+      fontSizePx,
+      lineHeightPx: Math.max(lineHeightPx, fontSizePx),
+      lineSpacingPx,
+      blockWidthPx,
+      blockHeightPx,
+      maxLines,
+      paddingXPx,
+      paddingYPx,
+      justifyContent: verticalAlignToJustifyContent(
+        liveText?.vertical_align ?? textLayout?.vertical_align
+      ),
+      alignItems: horizontalAlignToItems(
+        liveText?.horizontal_align ?? textLayout?.horizontal_align
+      ),
+      textAlign: horizontalAlignToText(
+        liveText?.horizontal_align ?? textLayout?.horizontal_align
+      ),
+    };
+  }, [
+    bgColor,
+    scale,
+    textColor,
+    textLayout,
+    h,
+    w,
+    zone.text?.font?.family,
+    zone.text?.font?.size,
+    zone.text?.font?.weight,
+    zone.text?.horizontal_align,
+    zone.text?.line_spacing_px,
+    zone.text?.vertical_align,
+    zone.text?.width_percent,
+  ]);
+
+  const showChrome = isClipMode ? selected : !isRenderedMode || selected;
+  const showLabel = !isClipMode && !isRenderedMode && showChrome && !isEditingText;
+  const showPlaceholder = !isClipMode && !isRenderedMode;
+  const showCropFocusControl =
+    (isRenderedMode || isClipMode) &&
+    selected &&
+    zone.type === 'video' &&
+    mediaFit === 'cover' &&
+    !locked;
+  const showImageSkeleton =
+    zone.type === 'image' && (assetResolving || (Boolean(imageSrc) && imageLoading));
+  const showVideoSkeleton =
+    zone.type === 'video' && hasVideoPreview && videoLoading && !videoLoadFailed;
+  const showImageUnavailable =
+    zone.type === 'image' &&
+    assetFailed &&
+    !showImageSkeleton &&
+    (!imageSrc || imageLoadFailed);
+  const loadingTestId = `zone-loading-${zone.id}`;
+
+  useEffect(() => {
+    if (interactionState) return;
+    setLiveRect({
+      x: x * scale,
+      y: y * scale,
+      width: w * scale,
+      height: h * scale,
     });
-    const [interactionState, setInteractionState] = useState<'drag' | 'resize' | null>(null);
+  }, [h, interactionState, scale, w, x, y]);
 
-    const selected = selectedZoneId === zone.id;
-    const locked = isLocked(zone.id);
-    const isRenderedMode = renderMode === 'rendered';
-    const isClipMode = renderMode === 'clip';
-    const isEditingText =
-        renderMode !== 'rendered' &&
-        interactionMode === 'editing_text' &&
-        editingTextZoneId === zone.id &&
-        zone.type === 'text';
+  useEffect(() => {
+    liveRectRef.current = liveRect;
+  }, [liveRect]);
 
-    const bounds = zone.bounds;
-    const resolvedRect = resolvedZone?.rect;
-    const x = readLengthSpec(bounds.x, coerceNumber(resolvedRect?.x, 0));
-    const y = readLengthSpec(bounds.y, coerceNumber(resolvedRect?.y, 0));
-    const w = readLengthSpec(bounds.width, coerceNumber(resolvedRect?.w, 0));
-    const isAutoHeight = bounds.height === undefined;
+  useEffect(() => {
+    return () => {
+      if (liveRectFrameRef.current !== null) {
+        window.cancelAnimationFrame(liveRectFrameRef.current);
+      }
+    };
+  }, []);
 
-    const assetKey = zone.asset_ref || zone.id;
-    const templateAsset = zone.type === 'image' ? template.assets[assetKey] : undefined;
-    const manifestAssetUrl = zone.type === 'image' ? activeManifest?.assets?.[assetKey] : undefined;
-    const templateAssetProxyUrl =
-        zone.type === 'image' && !activeManifest && templateAsset
-            ? getTemplateAssetProxyUrl(template.id, assetKey)
-            : null;
-    const {
-        resolvedUrl: hydratedTemplateAssetUrl,
-        error: protectedAssetError,
-    } = useProtectedAssetUrl(templateAssetProxyUrl);
-    const imageSrc =
-        uploadedImages[zone.id] ||
-        hydratedTemplateAssetUrl ||
-        getAssetPreviewUrl(templateAsset, manifestAssetUrl) ||
-        null;
+  const scheduleLiveRect = (nextRect: RectState) => {
+    liveRectRef.current = nextRect;
+    pendingLiveRectRef.current = nextRect;
 
-    const contentRef = zone.content_ref || '';
-    const previewText = contentRef ? previewTexts[contentRef] : undefined;
-    const hasVideoPreview = zone.type === 'video' && Boolean(videoSrc);
-    const isLogoZone = zone.type === 'image' && zone.role === 'logo';
+    if (liveRectFrameRef.current !== null) return;
 
-    const style = zone.style_ref ? template.styles[zone.style_ref] : undefined;
-    let bgColor: string | undefined;
-    let textColor: string | undefined;
-    let shapeColor: string | undefined;
-    if (zone.type === 'text' && style) {
-        bgColor = style.bg_fill;
-        textColor = style.fill;
-    }
-    if (zone.type === 'shape' && style) {
-        shapeColor = style.fill || style.bg_fill;
+    liveRectFrameRef.current = window.requestAnimationFrame(() => {
+      liveRectFrameRef.current = null;
+      const pendingRect = pendingLiveRectRef.current;
+      if (!pendingRect) return;
+      pendingLiveRectRef.current = null;
+      setLiveRect(pendingRect);
+    });
+  };
+
+  useEffect(() => {
+    if (zone.type !== 'image' || !imageSrc) {
+      setImageAspectRatio(null);
+      setImageLoadFailed(false);
+      setImageLoading(assetResolving);
+      return;
     }
 
-    const textLayout = isResolvedTextLayout(resolvedZone?.resolved?.text_layout)
-        ? resolvedZone.resolved.text_layout
-        : undefined;
-    const resolvedSourceText =
-        typeof textLayout?.source_text === 'string' ? textLayout.source_text : '';
-    const editableText = typeof previewText === 'string' ? previewText : resolvedSourceText;
+    let cancelled = false;
+    setImageLoading(true);
+    const image = new window.Image();
+    image.onload = () => {
+      if (!cancelled && image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setImageAspectRatio(image.naturalWidth / image.naturalHeight);
+        setImageLoadFailed(false);
+        setImageLoading(false);
+      }
+    };
+    image.onerror = () => {
+      if (!cancelled) {
+        setImageAspectRatio(null);
+        setImageLoadFailed(true);
+        setImageLoading(false);
+      }
+    };
+    image.src = imageSrc;
 
-    const mediaFit = zone.media?.fit ?? (isRenderedMode ? resolvedZone?.resolved?.fit : undefined) ?? 'cover';
-    const cropFocus = normalizeCropFocus(
-        zone.media?.crop_focus ?? (isRenderedMode ? resolvedZone?.resolved?.crop_focus : undefined),
+    return () => {
+      cancelled = true;
+    };
+  }, [assetResolving, imageSrc, zone.type]);
+
+  useEffect(() => {
+    if (zone.type !== 'video' || !hasVideoPreview) {
+      setVideoLoading(false);
+      setVideoLoadFailed(false);
+      return;
+    }
+
+    setVideoLoading(true);
+    setVideoLoadFailed(false);
+  }, [hasVideoPreview, videoSrc, zone.type]);
+
+  useEffect(() => {
+    if (!hasVideoPreview || !videoRef.current) return;
+
+    const element = videoRef.current;
+    if (Math.abs(element.currentTime - currentTime) > 0.15) {
+      try {
+        element.currentTime = currentTime;
+      } catch {
+        // Ignore seek jitter while metadata is still loading.
+      }
+    }
+  }, [currentTime, hasVideoPreview]);
+
+  useEffect(() => {
+    if (!hasVideoPreview || !videoRef.current) return;
+
+    const element = videoRef.current;
+    if (isPlaying) {
+      void element.play().catch(() => {
+        // Ignore autoplay/promise failures; the master transport owns playback state.
+      });
+    } else {
+      element.pause();
+    }
+  }, [hasVideoPreview, isPlaying]);
+
+  useEffect(() => {
+    if (!isEditingText || !textEditorRef.current) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const input = textEditorRef.current;
+      if (!input) return;
+      input.focus();
+      const caretPosition = input.value.length;
+      input.setSelectionRange(caretPosition, caretPosition);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isEditingText, zone.id]);
+
+  useEffect(() => {
+    if (!isEditingText || !textEditorRef.current) return;
+
+    const input = textEditorRef.current;
+    input.style.height = '0px';
+    const nextHeight = Math.min(
+      Math.max(input.scrollHeight, textMetrics.blockHeightPx),
+      h * scale
     );
-    const mediaObjectPosition = cropFocus
-        ? `${Math.round(cropFocus.x * 100)}% ${Math.round(cropFocus.y * 100)}%`
-        : cropAnchorToObjectPosition(
-            zone.media?.crop_anchor ?? (isRenderedMode ? resolvedZone?.resolved?.crop_anchor : undefined),
+    input.style.height = `${Math.max(nextHeight, textMetrics.fontSizePx)}px`;
+  }, [
+    editableText,
+    h,
+    isEditingText,
+    scale,
+    textMetrics.blockHeightPx,
+    textMetrics.fontSizePx,
+  ]);
+
+  const handleTextDoubleClick = (event: React.MouseEvent) => {
+    if (renderMode === 'rendered' || zone.type !== 'text' || !contentRef) return;
+    event.stopPropagation();
+    beginTextEditing(zone.id);
+  };
+
+  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!contentRef) return;
+    setPreviewText(contentRef, event.target.value);
+  };
+
+  const handleTextEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      endTextEditing(true);
+    }
+  };
+
+  const patchCropFocus = (nextFocus: { x: number; y: number }) => {
+    updateZone(zone.id, {
+      media: {
+        fit: zone.media?.fit ?? 'cover',
+        crop_anchor: zone.media?.crop_anchor ?? 'center',
+        ...zone.media,
+        crop_focus: nextFocus,
+      },
+    });
+  };
+
+  const handleCropFocusPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!showCropFocusControl) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const fillElement = event.currentTarget.parentElement;
+    if (!fillElement) return;
+
+    const updateFromPoint = (clientX: number, clientY: number) => {
+      const rect = fillElement.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      patchCropFocus({
+        x: Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1),
+        y: Math.min(Math.max((clientY - rect.top) / rect.height, 0), 1),
+      });
+    };
+
+    updateFromPoint(event.clientX, event.clientY);
+
+    const onMove = (moveEvent: PointerEvent) => {
+      updateFromPoint(moveEvent.clientX, moveEvent.clientY);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp, { once: true });
+  };
+
+  const resizeHandles =
+    !locked && !isEditingText && !isRenderedMode
+      ? {
+          top: true,
+          right: true,
+          bottom: true,
+          left: true,
+          topRight: true,
+          bottomRight: true,
+          bottomLeft: true,
+          topLeft: true,
+        }
+      : false;
+
+  const nonInteractiveBackground = isClipMode && zone.type === 'shape' && locked;
+
+  const commitRect = (nextRect: RectState, mode: 'move' | 'resize' | null = null) => {
+    const update: Record<string, number> = {
+      x: Math.round(nextRect.x / scale),
+      y: Math.round(nextRect.y / scale),
+    };
+    const includeSize = !(zone.type === 'video' && mode === 'move');
+    if (includeSize) {
+      update.width = Math.round(nextRect.width / scale);
+      if (!isAutoHeight || zone.type !== 'image') {
+        update.height = Math.round(nextRect.height / scale);
+      }
+    }
+    updateZoneBounds(zone.id, update);
+  };
+
+  const clipResizeHandles: ResizeDirection[] = [
+    'topLeft',
+    'top',
+    'topRight',
+    'right',
+    'bottomRight',
+    'bottom',
+    'bottomLeft',
+    'left',
+  ];
+
+  const startPointerSession = (
+    event: React.PointerEvent<HTMLElement>,
+    mode: 'move' | 'resize',
+    direction?: ResizeDirection
+  ) => {
+    if (isRenderedMode || locked || isEditingText || nonInteractiveBackground) return;
+    if (event.button !== 0) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    selectZone(zone.id);
+
+    pointerSessionRef.current = {
+      pointerId: event.pointerId,
+      mode,
+      direction,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin: liveRectRef.current,
+      moved: false,
+    };
+    setInteractionState(mode === 'move' ? 'drag' : 'resize');
+  };
+
+  useEffect(() => {
+    if (isRenderedMode) return undefined;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const session = pointerSessionRef.current;
+      if (!session || session.pointerId !== event.pointerId) return;
+
+      const deltaX = event.clientX - session.startX;
+      const deltaY = event.clientY - session.startY;
+      const moved = Math.abs(deltaX) + Math.abs(deltaY) > 2;
+      session.moved = session.moved || moved;
+      suppressNextClickRef.current = session.moved;
+
+      if (session.mode === 'move') {
+        const nextRect = {
+          x: session.origin.x + deltaX,
+          y: session.origin.y + deltaY,
+          width: session.origin.width,
+          height: session.origin.height,
+        };
+        scheduleLiveRect(
+          zone.type === 'video'
+            ? clampVideoRectPosition(nextRect, {
+                width: template.canvas.width * scale,
+                height: template.canvas.height * scale,
+              })
+            : nextRect
         );
-    const videoAspectRatio = zone.type === 'video'
-        ? readBoundsAspectRatio(zone.bounds) ?? sourceVideoAspectRatio
-        : null;
+        return;
+      }
 
-    const h = useMemo(() => {
-        if (!isAutoHeight) {
-            return readLengthSpec(bounds.height, coerceNumber(resolvedRect?.h, w));
-        }
-        if (zone.type === 'image' && imageAspectRatio && imageAspectRatio > 0) {
-            return Math.max(1, Math.round(w / imageAspectRatio));
-        }
-        return coerceNumber(resolvedRect?.h, w);
-    }, [bounds.height, imageAspectRatio, isAutoHeight, resolvedRect?.h, w, zone.type]);
-
-    useEffect(() => {
-        if (renderMode === 'clip' || activeManifest) return;
-        if (!templateAssetProxyUrl) return;
-        if (protectedAssetError?.code === 'unauthorized') {
-            setAssetPreviewError(PROTECTED_ASSET_AUTH_MESSAGE);
-            return;
-        }
-        if (protectedAssetError) {
-            setAssetPreviewError(PROTECTED_ASSET_LOAD_MESSAGE);
-            return;
-        }
-        if (hydratedTemplateAssetUrl) {
-            setAssetPreviewError(null);
-        }
-    }, [
-        activeManifest,
-        hydratedTemplateAssetUrl,
-        protectedAssetError,
-        renderMode,
-        setAssetPreviewError,
-        templateAssetProxyUrl,
-    ]);
-
-    const textMetrics = useMemo(() => {
-        const liveText = zone.text;
-        const fontSizeBase = liveText?.font?.size ?? coerceNumber(textLayout?.font_size_used, 40) ?? 40;
-        const paddingXBase = Math.max(12, Math.round(fontSizeBase * 0.24));
-        const paddingYBase = Math.max(8, Math.round(fontSizeBase * 0.16));
-        const paddingXPx = paddingXBase * scale;
-        const paddingYPx = paddingYBase * scale;
-        const usableWidth = Math.max(w * scale - paddingXPx * 2, 1);
-        const liveWidthPercent = liveText?.width_percent;
-        const textWidthPx =
-            typeof liveWidthPercent === 'number' && Number.isFinite(liveWidthPercent)
-                ? (usableWidth * liveWidthPercent) / 100
-                : usableWidth;
-
-        const fontSizePx = fontSizeBase * scale;
-        const lineSpacingBase = coerceNumber(
-            liveText?.line_spacing_px,
-            coerceNumber(textLayout?.line_spacing_px, 0),
-        );
-        const lineSpacingPx = lineSpacingBase * scale;
-        const resolvedLineHeightPx = coerceNumber(textLayout?.line_height_px, fontSizeBase * 0.92) * scale;
-        const lineHeightPx = Math.max(
-            fontSizePx * 0.95,
-            resolvedLineHeightPx + lineSpacingPx * 0.15,
-        );
-        const blockWidthPx = Math.min(Math.max(textWidthPx, 1), usableWidth);
-        const resolvedLineCount = Math.max(1, Math.round(coerceNumber(textLayout?.line_count, 1)));
-        const resolvedBlockHeightPx = Math.max(
-            coerceNumber(textLayout?.block_height_px, 0) * scale,
-            resolvedLineCount * lineHeightPx,
-        );
-        const blockHeightPx = Math.max(
-            h * scale - paddingYPx * 2,
-            resolvedBlockHeightPx + fontSizePx * 0.18,
-        );
-        const maxLines =
-            typeof liveText?.max_lines === 'number' && Number.isFinite(liveText.max_lines)
-                ? Math.max(1, liveText.max_lines)
-                : Math.max(1, coerceNumber(textLayout?.line_count, 3));
-
-        return {
-            color: textColor || '#000000',
-            backgroundColor: isClipMode ? 'transparent' : bgColor || '#FFFFFF',
-            fontFamily: liveText?.font?.family || textLayout?.font_family_used || 'sans-serif',
-            fontWeight: liveText?.font?.weight ?? coerceNumber(textLayout?.font_weight, 400),
-            fontSizePx,
-            lineHeightPx: Math.max(lineHeightPx, fontSizePx),
-            lineSpacingPx,
-            blockWidthPx,
-            blockHeightPx,
-            maxLines,
-            paddingXPx,
-            paddingYPx,
-            justifyContent: verticalAlignToJustifyContent(liveText?.vertical_align ?? textLayout?.vertical_align),
-            alignItems: horizontalAlignToItems(liveText?.horizontal_align ?? textLayout?.horizontal_align),
-            textAlign: horizontalAlignToText(liveText?.horizontal_align ?? textLayout?.horizontal_align),
-        };
-    }, [
-        bgColor,
-        scale,
-        textColor,
-        textLayout,
-        h,
-        w,
-        zone.text?.font?.family,
-        zone.text?.font?.size,
-            zone.text?.font?.weight,
-            zone.text?.horizontal_align,
-            zone.text?.line_spacing_px,
-            zone.text?.vertical_align,
-            zone.text?.width_percent,
-    ]);
-
-    const showChrome = isClipMode ? selected : !isRenderedMode || selected;
-    const showLabel = !isClipMode && !isRenderedMode && showChrome && !isEditingText;
-    const showPlaceholder = !isClipMode && !isRenderedMode;
-    const showCropFocusControl =
-        (isRenderedMode || isClipMode) &&
-        selected &&
-        zone.type === 'video' &&
-        mediaFit === 'cover' &&
-        !locked;
-    const showImageSkeleton = zone.type === 'image' && (assetResolving || (Boolean(imageSrc) && imageLoading));
-    const showVideoSkeleton = zone.type === 'video' && hasVideoPreview && videoLoading && !videoLoadFailed;
-    const showImageUnavailable = zone.type === 'image' && assetFailed && !showImageSkeleton && (!imageSrc || imageLoadFailed);
-    const loadingTestId = `zone-loading-${zone.id}`;
-
-    useEffect(() => {
-        if (interactionState) return;
-        setLiveRect({
-            x: x * scale,
-            y: y * scale,
-            width: w * scale,
-            height: h * scale,
-        });
-    }, [h, interactionState, scale, w, x, y]);
-
-    useEffect(() => {
-        liveRectRef.current = liveRect;
-    }, [liveRect]);
-
-    useEffect(() => {
-        return () => {
-            if (liveRectFrameRef.current !== null) {
-                window.cancelAnimationFrame(liveRectFrameRef.current);
-            }
-        };
-    }, []);
-
-    const scheduleLiveRect = (nextRect: RectState) => {
-        liveRectRef.current = nextRect;
-        pendingLiveRectRef.current = nextRect;
-
-        if (liveRectFrameRef.current !== null) return;
-
-        liveRectFrameRef.current = window.requestAnimationFrame(() => {
-            liveRectFrameRef.current = null;
-            const pendingRect = pendingLiveRectRef.current;
-            if (!pendingRect) return;
-            pendingLiveRectRef.current = null;
-            setLiveRect(pendingRect);
-        });
+      const nextRect = resizeRect(
+        session.origin,
+        session.direction || 'bottomRight',
+        deltaX,
+        deltaY,
+        zone.type === 'image'
+          ? imageAspectRatio
+          : zone.type === 'video'
+            ? videoAspectRatio
+            : null
+      );
+      scheduleLiveRect(
+        zone.type === 'video'
+          ? normalizeVideoRect(
+              nextRect,
+              {
+                width: template.canvas.width * scale,
+                height: template.canvas.height * scale,
+              },
+              videoAspectRatio
+            )
+          : nextRect
+      );
     };
 
-    useEffect(() => {
-        if (zone.type !== 'image' || !imageSrc) {
-            setImageAspectRatio(null);
-            setImageLoadFailed(false);
-            setImageLoading(assetResolving);
-            return;
-        }
+    const handlePointerUp = (event: PointerEvent) => {
+      const session = pointerSessionRef.current;
+      if (!session || session.pointerId !== event.pointerId) return;
 
-        let cancelled = false;
-        setImageLoading(true);
-        const image = new window.Image();
-        image.onload = () => {
-            if (!cancelled && image.naturalWidth > 0 && image.naturalHeight > 0) {
-                setImageAspectRatio(image.naturalWidth / image.naturalHeight);
-                setImageLoadFailed(false);
-                setImageLoading(false);
-            }
-        };
-        image.onerror = () => {
-            if (!cancelled) {
-                setImageAspectRatio(null);
-                setImageLoadFailed(true);
-                setImageLoading(false);
-            }
-        };
-        image.src = imageSrc;
-
-        return () => {
-            cancelled = true;
-        };
-    }, [assetResolving, imageSrc, zone.type]);
-
-    useEffect(() => {
-        if (zone.type !== 'video' || !hasVideoPreview) {
-            setVideoLoading(false);
-            setVideoLoadFailed(false);
-            return;
-        }
-
-        setVideoLoading(true);
-        setVideoLoadFailed(false);
-    }, [hasVideoPreview, videoSrc, zone.type]);
-
-    useEffect(() => {
-        if (!hasVideoPreview || !videoRef.current) return;
-
-        const element = videoRef.current;
-        if (Math.abs(element.currentTime - currentTime) > 0.15) {
-            try {
-                element.currentTime = currentTime;
-            } catch {
-                // Ignore seek jitter while metadata is still loading.
-            }
-        }
-    }, [currentTime, hasVideoPreview]);
-
-    useEffect(() => {
-        if (!hasVideoPreview || !videoRef.current) return;
-
-        const element = videoRef.current;
-        if (isPlaying) {
-            void element.play().catch(() => {
-                // Ignore autoplay/promise failures; the master transport owns playback state.
-            });
-        } else {
-            element.pause();
-        }
-    }, [hasVideoPreview, isPlaying]);
-
-    useEffect(() => {
-        if (!isEditingText || !textEditorRef.current) return;
-
-        const frame = window.requestAnimationFrame(() => {
-            const input = textEditorRef.current;
-            if (!input) return;
-            input.focus();
-            const caretPosition = input.value.length;
-            input.setSelectionRange(caretPosition, caretPosition);
-        });
-
-        return () => window.cancelAnimationFrame(frame);
-    }, [isEditingText, zone.id]);
-
-    useEffect(() => {
-        if (!isEditingText || !textEditorRef.current) return;
-
-        const input = textEditorRef.current;
-        input.style.height = '0px';
-        const nextHeight = Math.min(Math.max(input.scrollHeight, textMetrics.blockHeightPx), h * scale);
-        input.style.height = `${Math.max(nextHeight, textMetrics.fontSizePx)}px`;
-    }, [editableText, h, isEditingText, scale, textMetrics.blockHeightPx, textMetrics.fontSizePx]);
-
-    const handleTextDoubleClick = (event: React.MouseEvent) => {
-        if (renderMode === 'rendered' || zone.type !== 'text' || !contentRef) return;
-        event.stopPropagation();
-        beginTextEditing(zone.id);
+      pointerSessionRef.current = null;
+      setInteractionState(null);
+      if (session.moved) {
+        commitRect(liveRectRef.current, session.mode);
+      }
+      window.setTimeout(() => {
+        suppressNextClickRef.current = false;
+      }, 0);
     };
 
-    const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-        if (!contentRef) return;
-        setPreviewText(contentRef, event.target.value);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
+  }, [
+    commitRect,
+    imageAspectRatio,
+    isRenderedMode,
+    scale,
+    template.canvas.height,
+    template.canvas.width,
+    videoAspectRatio,
+    zone.type,
+  ]);
 
-    const handleTextEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        event.stopPropagation();
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            endTextEditing(true);
-        }
-    };
-
-    const patchCropFocus = (nextFocus: { x: number; y: number }) => {
-        updateZone(zone.id, {
-            media: {
-                fit: zone.media?.fit ?? 'cover',
-                crop_anchor: zone.media?.crop_anchor ?? 'center',
-                ...zone.media,
-                crop_focus: nextFocus,
-            },
-        });
-    };
-
-    const handleCropFocusPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
-        if (!showCropFocusControl) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        const fillElement = event.currentTarget.parentElement;
-        if (!fillElement) return;
-
-        const updateFromPoint = (clientX: number, clientY: number) => {
-            const rect = fillElement.getBoundingClientRect();
-            if (rect.width <= 0 || rect.height <= 0) return;
-            patchCropFocus({
-                x: Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1),
-                y: Math.min(Math.max((clientY - rect.top) / rect.height, 0), 1),
-            });
-        };
-
-        updateFromPoint(event.clientX, event.clientY);
-
-        const onMove = (moveEvent: PointerEvent) => {
-            updateFromPoint(moveEvent.clientX, moveEvent.clientY);
-        };
-
-        const onUp = () => {
-            window.removeEventListener('pointermove', onMove);
-            window.removeEventListener('pointerup', onUp);
-        };
-
-        window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', onUp, { once: true });
-    };
-
-    const resizeHandles =
-        !locked && !isEditingText && !isRenderedMode
-            ? {
-                top: true,
-                right: true,
-                bottom: true,
-                left: true,
-                topRight: true,
-                bottomRight: true,
-                bottomLeft: true,
-                topLeft: true,
-            }
-            : false;
-
-    const nonInteractiveBackground = isClipMode && zone.type === 'shape' && locked;
-
-    const commitRect = (nextRect: RectState, mode: 'move' | 'resize' | null = null) => {
-        const update: Record<string, number> = {
-            x: Math.round(nextRect.x / scale),
-            y: Math.round(nextRect.y / scale),
-        };
-        const includeSize = !(zone.type === 'video' && mode === 'move');
-        if (includeSize) {
-            update.width = Math.round(nextRect.width / scale);
-            if (!isAutoHeight || zone.type !== 'image') {
-                update.height = Math.round(nextRect.height / scale);
-            }
-        }
-        updateZoneBounds(zone.id, update);
-    };
-
-    const clipResizeHandles: ResizeDirection[] = [
-        'topLeft',
-        'top',
-        'topRight',
-        'right',
-        'bottomRight',
-        'bottom',
-        'bottomLeft',
-        'left',
-    ];
-
-    const startPointerSession = (
-        event: React.PointerEvent<HTMLElement>,
-        mode: 'move' | 'resize',
-        direction?: ResizeDirection,
-    ) => {
-        if (isRenderedMode || locked || isEditingText || nonInteractiveBackground) return;
-        if (event.button !== 0) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-        selectZone(zone.id);
-
-        pointerSessionRef.current = {
-            pointerId: event.pointerId,
-            mode,
-            direction,
-            startX: event.clientX,
-            startY: event.clientY,
-            origin: liveRectRef.current,
-            moved: false,
-        };
-        setInteractionState(mode === 'move' ? 'drag' : 'resize');
-    };
-
-    useEffect(() => {
-        if (isRenderedMode) return undefined;
-
-        const handlePointerMove = (event: PointerEvent) => {
-            const session = pointerSessionRef.current;
-            if (!session || session.pointerId !== event.pointerId) return;
-
-            const deltaX = event.clientX - session.startX;
-            const deltaY = event.clientY - session.startY;
-            const moved = Math.abs(deltaX) + Math.abs(deltaY) > 2;
-            session.moved = session.moved || moved;
-            suppressNextClickRef.current = session.moved;
-
-            if (session.mode === 'move') {
-                const nextRect = {
-                    x: session.origin.x + deltaX,
-                    y: session.origin.y + deltaY,
-                    width: session.origin.width,
-                    height: session.origin.height,
-                };
-                scheduleLiveRect(
-                    zone.type === 'video'
-                        ? clampVideoRectPosition(
-                            nextRect,
-                            {
-                                width: template.canvas.width * scale,
-                                height: template.canvas.height * scale,
-                            },
-                        )
-                        : nextRect,
-                );
-                return;
-            }
-
-            const nextRect = resizeRect(
-                session.origin,
-                session.direction || 'bottomRight',
-                deltaX,
-                deltaY,
-                zone.type === 'image' ? imageAspectRatio : zone.type === 'video' ? videoAspectRatio : null,
-            );
-            scheduleLiveRect(
-                zone.type === 'video'
-                    ? normalizeVideoRect(
-                        nextRect,
-                        {
-                            width: template.canvas.width * scale,
-                            height: template.canvas.height * scale,
-                        },
-                        videoAspectRatio,
-                    )
-                    : nextRect,
-            );
-        };
-
-        const handlePointerUp = (event: PointerEvent) => {
-            const session = pointerSessionRef.current;
-            if (!session || session.pointerId !== event.pointerId) return;
-
-            pointerSessionRef.current = null;
-            setInteractionState(null);
-            if (session.moved) {
-                commitRect(liveRectRef.current, session.mode);
-            }
-            window.setTimeout(() => {
-                suppressNextClickRef.current = false;
-            }, 0);
-        };
-
-        window.addEventListener('pointermove', handlePointerMove);
-        window.addEventListener('pointerup', handlePointerUp);
-        window.addEventListener('pointercancel', handlePointerUp);
-
-        return () => {
-            window.removeEventListener('pointermove', handlePointerMove);
-            window.removeEventListener('pointerup', handlePointerUp);
-            window.removeEventListener('pointercancel', handlePointerUp);
-        };
-    }, [commitRect, imageAspectRatio, isRenderedMode, scale, template.canvas.height, template.canvas.width, videoAspectRatio, zone.type]);
-
-    const layerContent = (
-        <div
-            className={`zone-renderer__fill zone-renderer__fill--${zone.type}${isLogoZone ? ' zone-renderer__fill--logo' : ''} zone-renderer__drag-surface`}
-            style={
-                !isRenderedMode && !isClipMode && bgColor
-                    ? { background: `${bgColor}22`, borderColor: `${bgColor}55` }
-                    : undefined
-            }
-        >
-            {hasVideoPreview ? (
-                <>
-                    {showVideoSkeleton && (
-                        <div className="zone-renderer__loading" data-testid={loadingTestId}>
-                            <Skeleton className="zone-renderer__loading-skeleton" />
-                        </div>
-                    )}
-                    <video
-                        ref={videoRef}
-                        src={videoSrc || undefined}
-                        className="zone-renderer__video"
-                        muted
-                        playsInline
-                        preload="metadata"
-                        style={{ objectFit: mediaFit, objectPosition: mediaObjectPosition }}
-                        onLoadedMetadata={() => {
-                            setVideoLoading(false);
-                            setVideoLoadFailed(false);
-                        }}
-                        onCanPlay={() => {
-                            setVideoLoading(false);
-                            setVideoLoadFailed(false);
-                        }}
-                        onError={() => {
-                            setVideoLoading(false);
-                            setVideoLoadFailed(true);
-                        }}
-                    />
-                </>
-            ) : zone.type === 'image' && imageSrc && !imageLoadFailed ? (
-                <>
-                    {showImageSkeleton && (
-                        <div className="zone-renderer__loading" data-testid={loadingTestId}>
-                            <Skeleton className="zone-renderer__loading-skeleton" />
-                        </div>
-                    )}
-                    <img
-                        src={imageSrc}
-                        alt={zone.id}
-                        className={`zone-renderer__uploaded-img${isLogoZone ? ' zone-renderer__uploaded-img--logo' : ''}`}
-                        style={{ objectFit: mediaFit, objectPosition: mediaObjectPosition }}
-                        onLoad={() => {
-                            setImageLoadFailed(false);
-                            setImageLoading(false);
-                        }}
-                        onError={() => {
-                            setImageLoadFailed(true);
-                            setImageLoading(false);
-                        }}
-                        draggable={false}
-                    />
-                </>
-            ) : zone.type === 'image' && showImageSkeleton ? (
-                <div className="zone-renderer__loading" data-testid={loadingTestId}>
-                    <Skeleton className="zone-renderer__loading-skeleton" />
-                </div>
-            ) : showImageUnavailable ? (
-                <div className="zone-renderer__unavailable" data-testid={`zone-unavailable-${zone.id}`}>
-                    <ImageIcon size={20} className="zone-renderer__type-icon" style={{ opacity: 0.45 }} />
-                    <span>Logo unavailable</span>
-                </div>
-            ) : zone.type === 'shape' ? (
-                <div
-                    className="zone-renderer__shape"
-                    style={{ backgroundColor: shapeColor || '#FFFFFF' }}
-                />
-            ) : zone.type === 'text' ? (
-                <div
-                    className={`zone-renderer__text-render ${isEditingText ? 'zone-renderer__text-render--editing' : ''}`}
-                    style={{
-                        backgroundColor: textMetrics.backgroundColor,
-                        justifyContent: textMetrics.justifyContent,
-                        alignItems: textMetrics.alignItems,
-                        padding: `${textMetrics.paddingYPx}px ${textMetrics.paddingXPx}px`,
-                        pointerEvents: isEditingText ? 'auto' : 'none',
-                    }}
-                >
-                    {isEditingText ? (
-                        <textarea
-                            ref={textEditorRef}
-                            className="zone-renderer__text-editor"
-                            value={editableText}
-                            onChange={handleTextChange}
-                            onBlur={() => endTextEditing(true)}
-                            onKeyDown={handleTextEditorKeyDown}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            onClick={(event) => event.stopPropagation()}
-                            spellCheck={false}
-                            style={{
-                                width: `${textMetrics.blockWidthPx}px`,
-                                minHeight: `${textMetrics.blockHeightPx}px`,
-                                color: textMetrics.color,
-                                fontFamily: textMetrics.fontFamily,
-                                fontWeight: textMetrics.fontWeight,
-                                fontSize: `${textMetrics.fontSizePx}px`,
-                                lineHeight: `${textMetrics.lineHeightPx}px`,
-                                textAlign: textMetrics.textAlign,
-                            }}
-                        />
-                    ) : (
-                        <div
-                            className="zone-renderer__text-block"
-                            style={{
-                                width: `${textMetrics.blockWidthPx}px`,
-                                minHeight: `${textMetrics.blockHeightPx}px`,
-                                color: textMetrics.color,
-                                fontFamily: textMetrics.fontFamily,
-                                fontWeight: textMetrics.fontWeight,
-                                fontSize: `${textMetrics.fontSizePx}px`,
-                                lineHeight: `${textMetrics.lineHeightPx}px`,
-                                textAlign: textMetrics.textAlign,
-                            }}
-                        >
-                            <div
-                            className="zone-renderer__text-live"
-                            style={{
-                                display: 'block',
-                                overflow: 'visible',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'anywhere',
-                            }}
-                        >
-                                {editableText}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ) : showPlaceholder ? (
-                <>
-                    {zone.type === 'video' && <Film size={24} className="zone-renderer__type-icon" />}
-                    {zone.type === 'image' && (
-                        <ImageIcon size={20} className="zone-renderer__type-icon" style={{ opacity: 0.4 }} />
-                    )}
-                </>
-            ) : null}
-            {showCropFocusControl && cropFocus && (
-                <>
-                    <button
-                        type="button"
-                        className="zone-renderer__crop-handle"
-                        style={{
-                            left: `${cropFocus.x * 100}%`,
-                            top: `${cropFocus.y * 100}%`,
-                        }}
-                        onPointerDown={handleCropFocusPointerDown}
-                        onClick={(event) => event.stopPropagation()}
-                        aria-label="Adjust crop focus"
-                    />
-                    <button
-                        type="button"
-                        className="zone-renderer__crop-reset"
-                        onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            patchCropFocus({ x: 0.5, y: 0.5 });
-                        }}
-                    >
-                        Reset crop
-                    </button>
-                </>
-            )}
-            {showLabel && (
-                <span className={`zone-renderer__label zone-renderer__label--${zone.type}`}>
-                    {zone.id}
-                    {zone.role && <span className="zone-renderer__role">{zone.role}</span>}
-                    {isAutoHeight && <span className="zone-renderer__auto-badge">auto-h</span>}
-                    {locked && <Lock size={10} style={{ marginLeft: 4 }} />}
-                </span>
-            )}
+  const layerContent = (
+    <div
+      className={`zone-renderer__fill zone-renderer__fill--${zone.type}${isLogoZone ? ' zone-renderer__fill--logo' : ''} zone-renderer__drag-surface`}
+      style={
+        !isRenderedMode && !isClipMode && bgColor
+          ? { background: `${bgColor}22`, borderColor: `${bgColor}55` }
+          : undefined
+      }
+    >
+      {hasVideoPreview ? (
+        <>
+          {showVideoSkeleton && (
+            <div className="zone-renderer__loading" data-testid={loadingTestId}>
+              <Skeleton className="zone-renderer__loading-skeleton" />
+            </div>
+          )}
+          <video
+            ref={videoRef}
+            src={videoSrc || undefined}
+            className="zone-renderer__video"
+            muted
+            playsInline
+            preload="metadata"
+            style={{ objectFit: mediaFit, objectPosition: mediaObjectPosition }}
+            onLoadedMetadata={() => {
+              setVideoLoading(false);
+              setVideoLoadFailed(false);
+            }}
+            onCanPlay={() => {
+              setVideoLoading(false);
+              setVideoLoadFailed(false);
+            }}
+            onError={() => {
+              setVideoLoading(false);
+              setVideoLoadFailed(true);
+            }}
+          />
+        </>
+      ) : zone.type === 'image' && imageSrc && !imageLoadFailed ? (
+        <>
+          {showImageSkeleton && (
+            <div className="zone-renderer__loading" data-testid={loadingTestId}>
+              <Skeleton className="zone-renderer__loading-skeleton" />
+            </div>
+          )}
+          <img
+            src={imageSrc}
+            alt={zone.id}
+            className={`zone-renderer__uploaded-img${isLogoZone ? ' zone-renderer__uploaded-img--logo' : ''}`}
+            style={{ objectFit: mediaFit, objectPosition: mediaObjectPosition }}
+            onLoad={() => {
+              setImageLoadFailed(false);
+              setImageLoading(false);
+            }}
+            onError={() => {
+              setImageLoadFailed(true);
+              setImageLoading(false);
+            }}
+            draggable={false}
+          />
+        </>
+      ) : zone.type === 'image' && showImageSkeleton ? (
+        <div className="zone-renderer__loading" data-testid={loadingTestId}>
+          <Skeleton className="zone-renderer__loading-skeleton" />
         </div>
-    );
-
-    return (
+      ) : showImageUnavailable ? (
         <div
-            data-testid={`zone-${zone.id}`}
-            data-zone-id={zone.id}
-            className={`zone-renderer ${selected ? 'zone-renderer--selected' : ''} ${locked ? 'zone-renderer--locked' : ''} ${isRenderedMode ? 'zone-renderer--rendered' : isClipMode ? 'zone-renderer--clip' : 'zone-renderer--editor'}`}
+          className="zone-renderer__unavailable"
+          data-testid={`zone-unavailable-${zone.id}`}
+        >
+          <ImageIcon
+            size={20}
+            className="zone-renderer__type-icon"
+            style={{ opacity: 0.45 }}
+          />
+          <span>Logo unavailable</span>
+        </div>
+      ) : zone.type === 'shape' ? (
+        <div
+          className="zone-renderer__shape"
+          style={{ backgroundColor: shapeColor || '#FFFFFF' }}
+        />
+      ) : zone.type === 'text' ? (
+        <div
+          className={`zone-renderer__text-render ${isEditingText ? 'zone-renderer__text-render--editing' : ''}`}
+          style={{
+            backgroundColor: textMetrics.backgroundColor,
+            justifyContent: textMetrics.justifyContent,
+            alignItems: textMetrics.alignItems,
+            padding: `${textMetrics.paddingYPx}px ${textMetrics.paddingXPx}px`,
+            pointerEvents: isEditingText ? 'auto' : 'none',
+          }}
+        >
+          {isEditingText ? (
+            <textarea
+              ref={textEditorRef}
+              className="zone-renderer__text-editor"
+              value={editableText}
+              onChange={handleTextChange}
+              onBlur={() => endTextEditing(true)}
+              onKeyDown={handleTextEditorKeyDown}
+              onPointerDown={event => event.stopPropagation()}
+              onClick={event => event.stopPropagation()}
+              spellCheck={false}
+              style={{
+                width: `${textMetrics.blockWidthPx}px`,
+                minHeight: `${textMetrics.blockHeightPx}px`,
+                color: textMetrics.color,
+                fontFamily: textMetrics.fontFamily,
+                fontWeight: textMetrics.fontWeight,
+                fontSize: `${textMetrics.fontSizePx}px`,
+                lineHeight: `${textMetrics.lineHeightPx}px`,
+                textAlign: textMetrics.textAlign,
+              }}
+            />
+          ) : (
+            <div
+              className="zone-renderer__text-block"
+              style={{
+                width: `${textMetrics.blockWidthPx}px`,
+                minHeight: `${textMetrics.blockHeightPx}px`,
+                color: textMetrics.color,
+                fontFamily: textMetrics.fontFamily,
+                fontWeight: textMetrics.fontWeight,
+                fontSize: `${textMetrics.fontSizePx}px`,
+                lineHeight: `${textMetrics.lineHeightPx}px`,
+                textAlign: textMetrics.textAlign,
+              }}
+            >
+              <div
+                className="zone-renderer__text-live"
+                style={{
+                  display: 'block',
+                  overflow: 'visible',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {editableText}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : showPlaceholder ? (
+        <>
+          {zone.type === 'video' && (
+            <Film size={24} className="zone-renderer__type-icon" />
+          )}
+          {zone.type === 'image' && (
+            <ImageIcon
+              size={20}
+              className="zone-renderer__type-icon"
+              style={{ opacity: 0.4 }}
+            />
+          )}
+        </>
+      ) : null}
+      {showCropFocusControl && cropFocus && (
+        <>
+          <button
+            type="button"
+            className="zone-renderer__crop-handle"
             style={{
-                left: liveRect.x,
-                top: liveRect.y,
-                width: liveRect.width,
-                height: liveRect.height,
-                zIndex: zone.z,
-                pointerEvents: nonInteractiveBackground ? 'none' : 'auto',
+              left: `${cropFocus.x * 100}%`,
+              top: `${cropFocus.y * 100}%`,
             }}
-            onPointerDown={(event) => {
-                if (nonInteractiveBackground || isRenderedMode) return;
-                const target = event.target as HTMLElement | null;
-                if (
-                    target?.closest('.zone-renderer__handle') ||
-                    target?.closest('.zone-renderer__text-editor') ||
-                    target?.closest('.zone-renderer__crop-handle') ||
-                    target?.closest('.zone-renderer__crop-reset')
-                ) {
-                    return;
-                }
-                startPointerSession(event, 'move');
+            onPointerDown={handleCropFocusPointerDown}
+            onClick={event => event.stopPropagation()}
+            aria-label="Adjust crop focus"
+          />
+          <button
+            type="button"
+            className="zone-renderer__crop-reset"
+            onClick={event => {
+              event.preventDefault();
+              event.stopPropagation();
+              patchCropFocus({ x: 0.5, y: 0.5 });
             }}
-            onClick={(event: React.MouseEvent) => {
-                if (nonInteractiveBackground) return;
-                if (suppressNextClickRef.current) {
-                    suppressNextClickRef.current = false;
-                    return;
-                }
-                event.stopPropagation();
-                if (isEditingText) return;
-                selectZone(zone.id);
-            }}
-            onDoubleClick={handleTextDoubleClick}
-        >
-            {layerContent}
-            {selected && resizeHandles && clipResizeHandles.map((direction) => (
-                <button
-                    key={direction}
-                    type="button"
-                    data-testid={`zone-handle-${zone.id}-${direction}`}
-                    className={`zone-renderer__handle zone-renderer__handle--${direction}`}
-                    onPointerDown={(event) => startPointerSession(event, 'resize', direction)}
-                    onClick={(event) => event.stopPropagation()}
-                    aria-label={`Resize ${direction}`}
-                />
-            ))}
-        </div>
-    );
+          >
+            Reset crop
+          </button>
+        </>
+      )}
+      {showLabel && (
+        <span className={`zone-renderer__label zone-renderer__label--${zone.type}`}>
+          {zone.id}
+          {zone.role && <span className="zone-renderer__role">{zone.role}</span>}
+          {isAutoHeight && <span className="zone-renderer__auto-badge">auto-h</span>}
+          {locked && <Lock size={10} style={{ marginLeft: 4 }} />}
+        </span>
+      )}
+    </div>
+  );
+
+  return (
+    <div
+      data-testid={`zone-${zone.id}`}
+      data-zone-id={zone.id}
+      className={`zone-renderer ${selected ? 'zone-renderer--selected' : ''} ${locked ? 'zone-renderer--locked' : ''} ${isRenderedMode ? 'zone-renderer--rendered' : isClipMode ? 'zone-renderer--clip' : 'zone-renderer--editor'}`}
+      style={{
+        left: liveRect.x,
+        top: liveRect.y,
+        width: liveRect.width,
+        height: liveRect.height,
+        zIndex: zone.z,
+        pointerEvents: nonInteractiveBackground ? 'none' : 'auto',
+      }}
+      onPointerDown={event => {
+        if (nonInteractiveBackground || isRenderedMode) return;
+        const target = event.target as HTMLElement | null;
+        if (
+          target?.closest('.zone-renderer__handle') ||
+          target?.closest('.zone-renderer__text-editor') ||
+          target?.closest('.zone-renderer__crop-handle') ||
+          target?.closest('.zone-renderer__crop-reset')
+        ) {
+          return;
+        }
+        startPointerSession(event, 'move');
+      }}
+      onClick={(event: React.MouseEvent) => {
+        if (nonInteractiveBackground) return;
+        if (suppressNextClickRef.current) {
+          suppressNextClickRef.current = false;
+          return;
+        }
+        event.stopPropagation();
+        if (isEditingText) return;
+        selectZone(zone.id);
+      }}
+      onDoubleClick={handleTextDoubleClick}
+    >
+      {layerContent}
+      {selected &&
+        resizeHandles &&
+        clipResizeHandles.map(direction => (
+          <button
+            key={direction}
+            type="button"
+            data-testid={`zone-handle-${zone.id}-${direction}`}
+            className={`zone-renderer__handle zone-renderer__handle--${direction}`}
+            onPointerDown={event => startPointerSession(event, 'resize', direction)}
+            onClick={event => event.stopPropagation()}
+            aria-label={`Resize ${direction}`}
+          />
+        ))}
+    </div>
+  );
 }

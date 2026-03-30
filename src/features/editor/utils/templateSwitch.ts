@@ -16,12 +16,14 @@ function hasUsableAssetRef(value: unknown): boolean {
 
 function hasRemoteAssetRef(asset: Record<string, unknown> | undefined): boolean {
   if (!asset) return false;
-  return ['source_uri', 'gcs_path', 'path'].some((field) => hasUsableAssetRef(asset[field]));
+  return ['source_uri', 'gcs_path', 'path'].some(field =>
+    hasUsableAssetRef(asset[field])
+  );
 }
 
 export function mergeTemplateForStudioSwitch(
   currentTemplate: TemplateJSON,
-  nextTemplate: TemplateJSON,
+  nextTemplate: TemplateJSON
 ): TemplateJSON {
   const mergedTemplate = cloneTemplate(nextTemplate);
   const currentAssets = currentTemplate.assets || {};

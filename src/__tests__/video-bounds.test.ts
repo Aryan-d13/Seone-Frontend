@@ -17,8 +17,8 @@ describe('video bounds normalization', () => {
           width: 1620,
           height: 1450,
         },
-        { width: 1080, height: 1080 },
-      ),
+        { width: 1080, height: 1080 }
+      )
     ).toEqual({
       x: 0,
       y: 170,
@@ -58,7 +58,9 @@ describe('video bounds normalization', () => {
     } as any);
 
     useTemplateStore.getState().setSourceVideoAspectRatio(1920 / 1080);
-    const videoZone = useTemplateStore.getState().template.zones.find((zone) => zone.id === 'video_main');
+    const videoZone = useTemplateStore
+      .getState()
+      .template.zones.find(zone => zone.id === 'video_main');
 
     expect(videoZone?.bounds).toEqual({
       x: 0,
@@ -86,7 +88,12 @@ describe('video bounds normalization', () => {
             text: {
               max_lines: 3,
               overflow: 'shrink',
-              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              font: {
+                family: 'NotoSansDevanagari',
+                weight: 700,
+                fallbacks: [],
+                size: 60,
+              },
               width_percent: 75,
               min_font_size: 24,
               horizontal_align: 'center',
@@ -174,7 +181,9 @@ describe('video bounds normalization', () => {
 
     useTemplateStore.getState().setSourceVideoAspectRatio(1920 / 1080);
     useTemplateStore.getState().updateZoneBounds('video_main', { width: 600 });
-    const resized = useTemplateStore.getState().template.zones.find((zone) => zone.id === 'video_main');
+    const resized = useTemplateStore
+      .getState()
+      .template.zones.find(zone => zone.id === 'video_main');
 
     expect(resized?.bounds).toEqual({
       x: 0,
@@ -202,7 +211,12 @@ describe('video bounds normalization', () => {
             text: {
               max_lines: 3,
               overflow: 'shrink',
-              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              font: {
+                family: 'NotoSansDevanagari',
+                weight: 700,
+                fallbacks: [],
+                size: 60,
+              },
               width_percent: 100,
               min_font_size: 24,
               horizontal_align: 'center',
@@ -260,9 +274,15 @@ describe('video bounds normalization', () => {
       width: 920,
     });
 
-    const backgroundZone = useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band__bg');
-    const videoZone = useTemplateStore.getState().template.zones.find((zone) => zone.id === 'video_main');
-    const textZone = useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band');
+    const backgroundZone = useTemplateStore
+      .getState()
+      .template.zones.find(zone => zone.id === 'title_band__bg');
+    const videoZone = useTemplateStore
+      .getState()
+      .template.zones.find(zone => zone.id === 'video_main');
+    const textZone = useTemplateStore
+      .getState()
+      .template.zones.find(zone => zone.id === 'title_band');
 
     expect(backgroundZone?.bounds).toMatchObject({
       x: 80,
@@ -273,6 +293,8 @@ describe('video bounds normalization', () => {
       width: 920,
     });
     expect(Number(textZone?.bounds.x)).toBeGreaterThanOrEqual(80);
-    expect(Number(textZone?.bounds.x) + Number(textZone?.bounds.width)).toBeLessThanOrEqual(1000);
+    expect(
+      Number(textZone?.bounds.x) + Number(textZone?.bounds.width)
+    ).toBeLessThanOrEqual(1000);
   });
 });

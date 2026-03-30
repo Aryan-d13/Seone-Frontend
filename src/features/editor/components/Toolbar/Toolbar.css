@@ -1,91 +1,91 @@
 .toolbar {
-    height: var(--toolbar-h);
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border-subtle);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 12px;
+  height: var(--toolbar-h);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
 }
 
 .toolbar__group {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .toolbar__separator {
-    width: 1px;
-    height: 24px;
-    background: var(--border-subtle);
-    margin: 0 4px;
+  width: 1px;
+  height: 24px;
+  background: var(--border-subtle);
+  margin: 0 4px;
 }
 
 .toolbar__btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    color: var(--text-secondary);
-    transition: all 150ms var(--ease-out);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: all 150ms var(--ease-out);
 }
 
 .toolbar__btn:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .toolbar__btn--active {
-    background: var(--accent-soft);
-    color: var(--text-accent);
+  background: var(--accent-soft);
+  color: var(--text-accent);
 }
 
 .toolbar__zoom-display {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    min-width: 42px;
-    text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 42px;
+  text-align: center;
 }
 
 .toolbar__info {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .toolbar__info-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .toolbar__compositing-badge {
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .toolbar__compositing-badge--stack {
-    background: rgba(61, 133, 198, 0.15);
-    color: var(--zone-text);
+  background: rgba(61, 133, 198, 0.15);
+  color: var(--zone-text);
 }
 
 .toolbar__compositing-badge--overlay {
-    background: rgba(232, 169, 64, 0.15);
-    color: var(--zone-video);
+  background: rgba(232, 169, 64, 0.15);
+  color: var(--zone-video);
 }
 
 .toolbar__compositing-badge--clip {
-    background: var(--accent-soft);
-    color: var(--text-accent);
+  background: var(--accent-soft);
+  color: var(--text-accent);
 }

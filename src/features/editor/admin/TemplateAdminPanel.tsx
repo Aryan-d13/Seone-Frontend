@@ -63,7 +63,12 @@ interface NamingModalState {
   allowCanvasPresetChange: boolean;
 }
 
-const CANVAS_PRESETS: Array<{ key: CanvasPresetKey; label: string; width: number; height: number }> = [
+const CANVAS_PRESETS: Array<{
+  key: CanvasPresetKey;
+  label: string;
+  width: number;
+  height: number;
+}> = [
   { key: '1080x1080', label: 'Square 1080×1080', width: 1080, height: 1080 },
   { key: '1080x1350', label: 'Portrait 1080×1350', width: 1080, height: 1350 },
   { key: '1920x1080', label: 'Landscape 1920×1080', width: 1920, height: 1080 },
@@ -74,11 +79,13 @@ function cloneTemplate(template: TemplateJSON): TemplateJSON {
 }
 
 function slugifyTemplateName(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '') || 'untitled';
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'untitled'
+  );
 }
 
 function buildTemplateId(name: string, version: string): string {
@@ -88,11 +95,12 @@ function buildTemplateId(name: string, version: string): string {
 
 function parseTemplateId(templateId: string): { name: string; version: string } {
   const [rawName = 'untitled', rawVersion = 'v1'] = templateId.split('/');
-  const name = rawName
-    .split(/[_-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ') || 'Untitled';
+  const name =
+    rawName
+      .split(/[_-]+/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ') || 'Untitled';
   return { name, version: rawVersion };
 }
 
@@ -107,7 +115,12 @@ function buildUniqueId(prefix: string, existingValues: Iterable<string>): string
   return candidate;
 }
 
-function createBaseTemplate(name: string, version: string, width: number, height: number): TemplateJSON {
+function createBaseTemplate(
+  name: string,
+  version: string,
+  width: number,
+  height: number
+): TemplateJSON {
   return {
     template_version: '1.0',
     id: buildTemplateId(name, version),
@@ -129,7 +142,11 @@ function formatUpdatedAt(value?: string): string {
   if (!value) return 'Recently updated';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Recently updated';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function mapAdminError(error: unknown, fallback: string): string {
@@ -153,7 +170,9 @@ function mapAdminError(error: unknown, fallback: string): string {
   return message || fallback;
 }
 
-export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPanelProps) {
+export default function TemplateAdminPanel({
+  userEmail = null,
+}: TemplateAdminPanelProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const {
     template: storeTemplate,
@@ -184,7 +203,9 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [editorLoading, setEditorLoading] = useState(false);
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>(
+    'idle'
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showLibraryAdvanced, setShowLibraryAdvanced] = useState(false);
@@ -193,21 +214,26 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
   const [baselineTemplate, setBaselineTemplate] = useState<TemplateJSON | null>(null);
   const [isUnsavedTemplate, setIsUnsavedTemplate] = useState(false);
 
-  const selectedZone = zones.find((zone) => zone.id === selectedZoneId) ?? null;
+  const selectedZone = zones.find(zone => zone.id === selectedZoneId) ?? null;
   const selectedZoneLocked = selectedZoneId ? isLocked(selectedZoneId) : false;
 
   const baselineSerialized = useMemo(
     () => (baselineTemplate ? JSON.stringify(baselineTemplate) : ''),
-    [baselineTemplate],
+    [baselineTemplate]
   );
   const currentSerialized = useMemo(() => JSON.stringify(template), [template]);
-  const isDirty = view === 'editor' && baselineTemplate ? baselineSerialized !== currentSerialized : false;
+  const isDirty =
+    view === 'editor' && baselineTemplate
+      ? baselineSerialized !== currentSerialized
+      : false;
   const currentTemplateMeta = parseTemplateId(template.id);
   const filteredTemplates = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return templates;
-    return templates.filter((item) =>
-      item.name.toLowerCase().includes(query) || item.templateId.toLowerCase().includes(query),
+    return templates.filter(
+      item =>
+        item.name.toLowerCase().includes(query) ||
+        item.templateId.toLowerCase().includes(query)
     );
   }, [search, templates]);
 
@@ -331,9 +357,12 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
       const sourceTemplate = await getTemplate(docId);
       if (!sourceTemplate) throw new Error('Template not found');
       const meta = parseTemplateId(sourceTemplate.id);
-      const preset = CANVAS_PRESETS.find(
-        (option) => option.width === sourceTemplate.canvas.width && option.height === sourceTemplate.canvas.height,
-      )?.key ?? '1080x1080';
+      const preset =
+        CANVAS_PRESETS.find(
+          option =>
+            option.width === sourceTemplate.canvas.width &&
+            option.height === sourceTemplate.canvas.height
+        )?.key ?? '1080x1080';
       setNamingModal({
         mode: 'duplicate',
         name: `${meta.name} Copy`,
@@ -350,9 +379,12 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
   };
 
   const openSaveAsModal = () => {
-    const preset = CANVAS_PRESETS.find(
-      (option) => option.width === template.canvas.width && option.height === template.canvas.height,
-    )?.key ?? '1080x1080';
+    const preset =
+      CANVAS_PRESETS.find(
+        option =>
+          option.width === template.canvas.width &&
+          option.height === template.canvas.height
+      )?.key ?? '1080x1080';
     setNamingModal({
       mode: 'saveAs',
       name: `${currentTemplateMeta.name} Copy`,
@@ -363,7 +395,10 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
     });
   };
 
-  const uploadPendingAssets = async (templateToSave: TemplateJSON, docId: string): Promise<TemplateJSON> => {
+  const uploadPendingAssets = async (
+    templateToSave: TemplateJSON,
+    docId: string
+  ): Promise<TemplateJSON> => {
     const pendingFiles = useTemplateStore.getState().getPendingFiles();
     if (Object.keys(pendingFiles).length === 0) {
       return cloneTemplate(templateToSave);
@@ -374,7 +409,10 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
 
     const nextTemplate = cloneTemplate(templateToSave);
     for (const [assetKey, file] of Object.entries(pendingFiles)) {
-      const existingAsset = nextTemplate.assets[assetKey] || { type: 'image', path: file.name };
+      const existingAsset = nextTemplate.assets[assetKey] || {
+        type: 'image',
+        path: file.name,
+      };
       const assetType = existingAsset.type === 'font' ? 'font' : 'image';
       const { sourceUri } = await uploadAssetToAzure(docId, file.name, file, {
         assetType,
@@ -404,7 +442,7 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
       setSaveState('saved');
       await refreshTemplates();
       window.setTimeout(() => {
-        setSaveState((current) => (current === 'saved' ? 'idle' : current));
+        setSaveState(current => (current === 'saved' ? 'idle' : current));
       }, 1400);
     } catch (error) {
       setSaveState('error');
@@ -416,16 +454,28 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
     event.preventDefault();
     if (!namingModal) return;
 
-    const preset = CANVAS_PRESETS.find((option) => option.key === namingModal.preset) ?? CANVAS_PRESETS[0];
+    const preset =
+      CANVAS_PRESETS.find(option => option.key === namingModal.preset) ??
+      CANVAS_PRESETS[0];
     if (namingModal.mode === 'create') {
-      const nextTemplate = createBaseTemplate(namingModal.name || 'Untitled', namingModal.version, preset.width, preset.height);
+      const nextTemplate = createBaseTemplate(
+        namingModal.name || 'Untitled',
+        namingModal.version,
+        preset.width,
+        preset.height
+      );
       openEditor(nextTemplate, { unsaved: true });
       setNamingModal(null);
       return;
     }
 
-    const sourceTemplate = namingModal.sourceTemplate ? cloneTemplate(namingModal.sourceTemplate) : cloneTemplate(template);
-    sourceTemplate.id = buildTemplateId(namingModal.name || 'Untitled', namingModal.version);
+    const sourceTemplate = namingModal.sourceTemplate
+      ? cloneTemplate(namingModal.sourceTemplate)
+      : cloneTemplate(template);
+    sourceTemplate.id = buildTemplateId(
+      namingModal.name || 'Untitled',
+      namingModal.version
+    );
 
     if (namingModal.mode === 'duplicate') {
       openEditor(sourceTemplate, { unsaved: true });
@@ -450,7 +500,10 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
   };
 
   const handleBackToLibrary = () => {
-    if ((isDirty || isUnsavedTemplate) && !window.confirm('Discard unsaved changes and return to the template library?')) {
+    if (
+      (isDirty || isUnsavedTemplate) &&
+      !window.confirm('Discard unsaved changes and return to the template library?')
+    ) {
       return;
     }
     setView('library');
@@ -471,17 +524,22 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
   };
 
   const handleAddText = () => {
-    const zoneId = buildUniqueId('text_overlay', zones.map((zone) => zone.id));
+    const zoneId = buildUniqueId(
+      'text_overlay',
+      zones.map(zone => zone.id)
+    );
     const contentRef = buildUniqueId(
       'text_content',
-      zones.map((zone) => zone.content_ref).filter((value): value is string => Boolean(value)),
+      zones
+        .map(zone => zone.content_ref)
+        .filter((value): value is string => Boolean(value))
     );
     const firstStyleKey = Object.keys(template.styles)[0];
     const zone = {
       ...createTextZone(canvas.width, canvas.height),
       id: zoneId,
       content_ref: contentRef,
-      z: Math.max(10, ...zones.map((entry) => entry.z + 1)),
+      z: Math.max(10, ...zones.map(entry => entry.z + 1)),
       style_ref: template.styles.title_style ? 'title_style' : firstStyleKey || undefined,
     };
     addZone(zone);
@@ -489,23 +547,29 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
   };
 
   const handleAddImage = () => {
-    const zoneId = buildUniqueId('graphic_layer', zones.map((zone) => zone.id));
+    const zoneId = buildUniqueId(
+      'graphic_layer',
+      zones.map(zone => zone.id)
+    );
     const zone: ZoneSpec = {
       ...createImageZone(),
       id: zoneId,
       asset_ref: zoneId,
       role: 'graphic',
-      z: Math.max(20, ...zones.map((entry) => entry.z + 1)),
+      z: Math.max(20, ...zones.map(entry => entry.z + 1)),
     };
     addZone(zone);
   };
 
   const handleAddVideo = () => {
-    const zoneId = buildUniqueId('video_layer', zones.map((zone) => zone.id));
+    const zoneId = buildUniqueId(
+      'video_layer',
+      zones.map(zone => zone.id)
+    );
     const zone: ZoneSpec = {
       ...createVideoZone(canvas.width, canvas.height),
       id: zoneId,
-      z: Math.max(0, ...zones.map((entry) => entry.z + 1)),
+      z: Math.max(0, ...zones.map(entry => entry.z + 1)),
     };
     addZone(zone);
   };
@@ -529,7 +593,11 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
             <div className={styles.modalHeader}>
               <div>
                 <div className={styles.modalEyebrow}>
-                  {namingModal.mode === 'create' ? 'Create template' : namingModal.mode === 'duplicate' ? 'Duplicate template' : 'Save as new'}
+                  {namingModal.mode === 'create'
+                    ? 'Create template'
+                    : namingModal.mode === 'duplicate'
+                      ? 'Duplicate template'
+                      : 'Save as new'}
                 </div>
                 <h2 className={styles.modalTitle}>
                   {namingModal.mode === 'create' ? 'New template' : 'Template details'}
@@ -541,7 +609,9 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <input
                 type="text"
                 value={namingModal.name}
-                onChange={(event) => setNamingModal({ ...namingModal, name: event.target.value })}
+                onChange={event =>
+                  setNamingModal({ ...namingModal, name: event.target.value })
+                }
                 placeholder="Chaturnath"
                 required
               />
@@ -551,7 +621,9 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <input
                 type="text"
                 value={namingModal.version}
-                onChange={(event) => setNamingModal({ ...namingModal, version: event.target.value })}
+                onChange={event =>
+                  setNamingModal({ ...namingModal, version: event.target.value })
+                }
                 placeholder="v1"
                 required
               />
@@ -561,11 +633,14 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <select
                 value={namingModal.preset}
                 disabled={!namingModal.allowCanvasPresetChange}
-                onChange={(event) =>
-                  setNamingModal({ ...namingModal, preset: event.target.value as CanvasPresetKey })
+                onChange={event =>
+                  setNamingModal({
+                    ...namingModal,
+                    preset: event.target.value as CanvasPresetKey,
+                  })
                 }
               >
-                {CANVAS_PRESETS.map((preset) => (
+                {CANVAS_PRESETS.map(preset => (
                   <option key={preset.key} value={preset.key}>
                     {preset.label}
                   </option>
@@ -594,11 +669,21 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
             <div>
               <div className={styles.eyebrow}>Template library</div>
               <h1 className={styles.title}>Templates</h1>
-              <p className={styles.subtitle}>Create, open, and manage reusable Seone layouts without dropping into a raw editor first.</p>
+              <p className={styles.subtitle}>
+                Create, open, and manage reusable Seone layouts without dropping into a
+                raw editor first.
+              </p>
             </div>
             <div className={styles.headerActions}>
-              <button className={styles.secondaryButton} onClick={() => setShowLibraryAdvanced((value) => !value)}>
-                {showLibraryAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <button
+                className={styles.secondaryButton}
+                onClick={() => setShowLibraryAdvanced(value => !value)}
+              >
+                {showLibraryAdvanced ? (
+                  <ChevronUp size={16} />
+                ) : (
+                  <ChevronDown size={16} />
+                )}
                 Advanced
               </button>
               <button className={styles.primaryButton} onClick={openCreateModal}>
@@ -614,11 +699,15 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <input
                 type="text"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={event => setSearch(event.target.value)}
                 placeholder="Search templates"
               />
             </label>
-            <button className={styles.iconButton} onClick={() => void refreshTemplates()} aria-label="Refresh templates">
+            <button
+              className={styles.iconButton}
+              onClick={() => void refreshTemplates()}
+              aria-label="Refresh templates"
+            >
               <RefreshCw size={16} />
             </button>
           </div>
@@ -645,7 +734,9 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
             </div>
           ) : filteredTemplates.length === 0 ? (
             <div className={styles.emptyState}>
-              <h2>{templates.length === 0 ? 'No templates yet' : 'No matching templates'}</h2>
+              <h2>
+                {templates.length === 0 ? 'No templates yet' : 'No matching templates'}
+              </h2>
               <p>
                 {templates.length === 0
                   ? 'Start with a clean template and save it once you are happy with the layout.'
@@ -660,7 +751,7 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
             </div>
           ) : (
             <div className={styles.cardGrid}>
-              {filteredTemplates.map((item) => (
+              {filteredTemplates.map(item => (
                 <article key={item.docId} className={styles.templateCard}>
                   <div className={styles.templateCardHeader}>
                     <div>
@@ -669,17 +760,28 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
                         {item.canvasWidth}×{item.canvasHeight} · {item.zoneCount} zones
                       </p>
                     </div>
-                    <span className={styles.templateCardStamp}>{formatUpdatedAt(item.updatedAt)}</span>
+                    <span className={styles.templateCardStamp}>
+                      {formatUpdatedAt(item.updatedAt)}
+                    </span>
                   </div>
                   <div className={styles.templateCardFooter}>
-                    <button className={styles.secondaryButton} onClick={() => void handleOpenTemplate(item.docId)}>
+                    <button
+                      className={styles.secondaryButton}
+                      onClick={() => void handleOpenTemplate(item.docId)}
+                    >
                       Open
                     </button>
-                    <button className={styles.secondaryButton} onClick={() => void openDuplicateModal(item.docId)}>
+                    <button
+                      className={styles.secondaryButton}
+                      onClick={() => void openDuplicateModal(item.docId)}
+                    >
                       <CopyPlus size={15} />
                       Duplicate
                     </button>
-                    <button className={styles.dangerButton} onClick={() => void handleDeleteTemplate(item.docId)}>
+                    <button
+                      className={styles.dangerButton}
+                      onClick={() => void handleDeleteTemplate(item.docId)}
+                    >
                       <Trash2 size={15} />
                       Delete
                     </button>
@@ -700,22 +802,38 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <div className={styles.editorTitleBlock}>
                 <div className={styles.editorTitleRow}>
                   <h1 className={styles.editorTitle}>{currentTemplateMeta.name}</h1>
-                  <span className={styles.editorVersion}>{currentTemplateMeta.version}</span>
+                  <span className={styles.editorVersion}>
+                    {currentTemplateMeta.version}
+                  </span>
                   {(isUnsavedTemplate || isDirty) && (
-                    <span className={styles.dirtyBadge}>{isUnsavedTemplate ? 'Unsaved' : 'Modified'}</span>
+                    <span className={styles.dirtyBadge}>
+                      {isUnsavedTemplate ? 'Unsaved' : 'Modified'}
+                    </span>
                   )}
-                  {saveState === 'saved' && <span className={styles.savedBadge}>Saved</span>}
+                  {saveState === 'saved' && (
+                    <span className={styles.savedBadge}>Saved</span>
+                  )}
                 </div>
-                <p className={styles.editorSubtitle}>{canvas.width}×{canvas.height} · {zones.length} layers</p>
+                <p className={styles.editorSubtitle}>
+                  {canvas.width}×{canvas.height} · {zones.length} layers
+                </p>
               </div>
             </div>
 
             <div className={styles.editorTopbarCenter}>
-              <button className={styles.iconButton} onClick={() => setZoom(zoom - 0.1)} aria-label="Zoom out">
+              <button
+                className={styles.iconButton}
+                onClick={() => setZoom(zoom - 0.1)}
+                aria-label="Zoom out"
+              >
                 <ZoomOut size={16} />
               </button>
               <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
-              <button className={styles.iconButton} onClick={() => setZoom(zoom + 0.1)} aria-label="Zoom in">
+              <button
+                className={styles.iconButton}
+                onClick={() => setZoom(zoom + 0.1)}
+                aria-label="Zoom in"
+              >
                 <ZoomIn size={16} />
               </button>
               <button className={styles.secondaryButton} onClick={() => setZoom(1)}>
@@ -725,12 +843,18 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
             </div>
 
             <div className={styles.editorTopbarRight}>
-              <button className={styles.secondaryButton} onClick={() => setShowEditorAdvanced((value) => !value)}>
+              <button
+                className={styles.secondaryButton}
+                onClick={() => setShowEditorAdvanced(value => !value)}
+              >
                 {showEditorAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 Advanced
               </button>
               {selectedZone && (
-                <button className={styles.dangerButton} onClick={handleDeleteSelectedLayer}>
+                <button
+                  className={styles.dangerButton}
+                  onClick={handleDeleteSelectedLayer}
+                >
                   <Trash2 size={15} />
                   Delete Layer
                 </button>
@@ -738,11 +862,23 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <button className={styles.secondaryButton} onClick={openSaveAsModal}>
                 Save as New
               </button>
-              <button className={styles.secondaryButton} onClick={handleDiscard} disabled={!isDirty}>
+              <button
+                className={styles.secondaryButton}
+                onClick={handleDiscard}
+                disabled={!isDirty}
+              >
                 Discard
               </button>
-              <button className={styles.primaryButton} onClick={() => void handleSave()} disabled={saveButtonDisabled}>
-                {saveState === 'saving' ? <Loader2 size={16} className={styles.spinner} /> : <Save size={16} />}
+              <button
+                className={styles.primaryButton}
+                onClick={() => void handleSave()}
+                disabled={saveButtonDisabled}
+              >
+                {saveState === 'saving' ? (
+                  <Loader2 size={16} className={styles.spinner} />
+                ) : (
+                  <Save size={16} />
+                )}
                 Save
               </button>
             </div>
@@ -764,15 +900,21 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <section className={styles.panelSection}>
                 <div className={styles.panelSectionTitle}>Add</div>
                 <button className={styles.addButton} onClick={handleAddText}>
-                  <span className={`${styles.addIcon} ${styles.addIconText}`}><Type size={16} /></span>
+                  <span className={`${styles.addIcon} ${styles.addIconText}`}>
+                    <Type size={16} />
+                  </span>
                   <span>Text</span>
                 </button>
                 <button className={styles.addButton} onClick={handleAddImage}>
-                  <span className={`${styles.addIcon} ${styles.addIconImage}`}><ImageIcon size={16} /></span>
+                  <span className={`${styles.addIcon} ${styles.addIconImage}`}>
+                    <ImageIcon size={16} />
+                  </span>
                   <span>Image</span>
                 </button>
                 <button className={styles.addButton} onClick={handleAddVideo}>
-                  <span className={`${styles.addIcon} ${styles.addIconVideo}`}><Film size={16} /></span>
+                  <span className={`${styles.addIcon} ${styles.addIconVideo}`}>
+                    <Film size={16} />
+                  </span>
                   <span>Video</span>
                 </button>
               </section>
@@ -780,7 +922,7 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
               <section className={styles.panelSection}>
                 <div className={styles.panelSectionTitle}>Layers</div>
                 <div className={styles.layerList}>
-                  {orderedZones.map((zone) => (
+                  {orderedZones.map(zone => (
                     <button
                       key={zone.id}
                       type="button"
@@ -801,7 +943,10 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
                   ))}
                 </div>
                 {selectedZone && (
-                  <button className={styles.layerDeleteButton} onClick={handleDeleteSelectedLayer}>
+                  <button
+                    className={styles.layerDeleteButton}
+                    onClick={handleDeleteSelectedLayer}
+                  >
                     <Trash2 size={15} />
                     Delete selected layer
                   </button>
@@ -813,11 +958,19 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
                   <div className={styles.panelSectionTitle}>Advanced</div>
                   <div className={styles.advancedActions}>
                     <div className={styles.inlineActions}>
-                      <button className={styles.secondaryButton} onClick={undo} disabled={!canUndo()}>
+                      <button
+                        className={styles.secondaryButton}
+                        onClick={undo}
+                        disabled={!canUndo()}
+                      >
                         <Undo2 size={15} />
                         Undo
                       </button>
-                      <button className={styles.secondaryButton} onClick={redo} disabled={!canRedo()}>
+                      <button
+                        className={styles.secondaryButton}
+                        onClick={redo}
+                        disabled={!canRedo()}
+                      >
                         <RotateCcw size={15} />
                         Redo
                       </button>
@@ -826,7 +979,10 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
                       <Download size={15} />
                       Export JSON
                     </button>
-                    <button className={styles.secondaryButton} onClick={handleImportTemplate}>
+                    <button
+                      className={styles.secondaryButton}
+                      onClick={handleImportTemplate}
+                    >
                       <Upload size={15} />
                       Import JSON
                     </button>
@@ -836,15 +992,24 @@ export default function TemplateAdminPanel({ userEmail = null }: TemplateAdminPa
                     </button>
                     {selectedZone && (
                       <>
-                        <button className={styles.secondaryButton} onClick={() => duplicateZone(selectedZone.id)}>
+                        <button
+                          className={styles.secondaryButton}
+                          onClick={() => duplicateZone(selectedZone.id)}
+                        >
                           <CopyPlus size={15} />
                           Duplicate layer
                         </button>
-                        <button className={styles.secondaryButton} onClick={() => toggleLock(selectedZone.id)}>
+                        <button
+                          className={styles.secondaryButton}
+                          onClick={() => toggleLock(selectedZone.id)}
+                        >
                           {selectedZoneLocked ? <Unlock size={15} /> : <Lock size={15} />}
                           {selectedZoneLocked ? 'Unlock layer' : 'Lock layer'}
                         </button>
-                        <button className={styles.dangerButton} onClick={() => removeZone(selectedZone.id)}>
+                        <button
+                          className={styles.dangerButton}
+                          onClick={() => removeZone(selectedZone.id)}
+                        >
                           <Trash2 size={15} />
                           Delete layer
                         </button>

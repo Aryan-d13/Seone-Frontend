@@ -23,9 +23,14 @@ export const config = {
     googleClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
     allowedDomain: process.env.NEXT_PUBLIC_ALLOWED_DOMAINS
       ? process.env.NEXT_PUBLIC_ALLOWED_DOMAINS.split(',').map(d =>
-        d.trim().toLowerCase()
-      )
-      : ['creativefuel.io', 'sarcasm.co', 'scrawled.agency', 'shubhampanwar492@gmail.com'],
+          d.trim().toLowerCase()
+        )
+      : [
+          'creativefuel.io',
+          'sarcasm.co',
+          'scrawled.agency',
+          'shubhampanwar492@gmail.com',
+        ],
     tokenCookieName: 'seone_token',
     // tokenExpiry removed — cookie TTL comes from backend expires_in
   },
@@ -52,11 +57,16 @@ export const endpoints = {
     create: '/api/v1/jobs',
     get: (id: string) => `/api/v1/jobs/${id}`,
     delete: (id: string) => `/api/v1/jobs/${id}`,
-    manifest: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/manifest`,
-    studio: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/studio`,
-    clipAsset: (id: string, clipIndex: number, assetKey: string) => `/api/v1/jobs/${id}/clips/${clipIndex}/assets/${assetKey}`,
-    copySuggestions: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/copy-suggestions`,
-    exportStudio: (id: string, clipIndex: number) => `/api/v1/jobs/${id}/clips/${clipIndex}/export`,
+    manifest: (id: string, clipIndex: number) =>
+      `/api/v1/jobs/${id}/clips/${clipIndex}/manifest`,
+    studio: (id: string, clipIndex: number) =>
+      `/api/v1/jobs/${id}/clips/${clipIndex}/studio`,
+    clipAsset: (id: string, clipIndex: number, assetKey: string) =>
+      `/api/v1/jobs/${id}/clips/${clipIndex}/assets/${assetKey}`,
+    copySuggestions: (id: string, clipIndex: number) =>
+      `/api/v1/jobs/${id}/clips/${clipIndex}/copy-suggestions`,
+    exportStudio: (id: string, clipIndex: number) =>
+      `/api/v1/jobs/${id}/clips/${clipIndex}/export`,
     uploadAsset: (id: string) => `/api/v1/jobs/${id}/editor-assets`,
     preview: '/api/v1/jobs/preview',
   },
@@ -67,7 +77,8 @@ export const endpoints = {
     document: (id: string) => `/api/v1/pages/document/${encodeURIComponent(id)}`,
     adminTemplates: '/api/v1/pages/admin/templates',
     adminTemplate: (docId: string) => `/api/v1/pages/admin/templates/${docId}`,
-    adminTemplateAsset: (docId: string, assetKey: string) => `/api/v1/pages/admin/templates/${docId}/assets/${assetKey}`,
+    adminTemplateAsset: (docId: string, assetKey: string) =>
+      `/api/v1/pages/admin/templates/${docId}/assets/${assetKey}`,
   },
   ux: {
     facts: (params?: { slot?: string; count?: number; jobId?: string }) => {
@@ -147,8 +158,8 @@ function validateWsConfig(): void {
   if (isSecurePage && !isSecureWs) {
     console.error(
       '[FATAL CONFIG] Secure page (https) attempting non-secure WebSocket (ws://).\n' +
-      `Current WS URL: ${config.ws.baseUrl}\n` +
-      'Fix NEXT_PUBLIC_WS_URL to use wss:// in production.'
+        `Current WS URL: ${config.ws.baseUrl}\n` +
+        'Fix NEXT_PUBLIC_WS_URL to use wss:// in production.'
     );
   }
 
@@ -156,7 +167,7 @@ function validateWsConfig(): void {
   if (process.env.NODE_ENV === 'production' && !isSecureWs) {
     console.warn(
       '[CONFIG WARNING] WebSocket URL is not secure (wss://).\n' +
-      'This may cause connection failures in production.'
+        'This may cause connection failures in production.'
     );
   }
 }

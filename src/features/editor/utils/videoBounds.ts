@@ -20,7 +20,11 @@ function clampDimension(value: number, max: number): number {
 }
 
 export function readBoundsAspectRatio(
-  bounds: Pick<BoundsSpec, 'width' | 'height'> | Pick<NumericRect, 'width' | 'height'> | null | undefined,
+  bounds:
+    | Pick<BoundsSpec, 'width' | 'height'>
+    | Pick<NumericRect, 'width' | 'height'>
+    | null
+    | undefined
 ): number | null {
   if (!bounds) return null;
   const width = toFiniteNumber(bounds.width, 0);
@@ -31,14 +35,21 @@ export function readBoundsAspectRatio(
 
 export function clampVideoRectPosition(
   rect: NumericRect,
-  canvas: Pick<CanvasSpec, 'width' | 'height'>,
+  canvas: Pick<CanvasSpec, 'width' | 'height'>
 ): NumericRect {
   const width = clampDimension(toFiniteNumber(rect.width, canvas.width), canvas.width);
-  const height = clampDimension(toFiniteNumber(rect.height, canvas.height), canvas.height);
+  const height = clampDimension(
+    toFiniteNumber(rect.height, canvas.height),
+    canvas.height
+  );
 
   return {
     x: clamp(Math.round(toFiniteNumber(rect.x, 0)), 0, Math.max(canvas.width - width, 0)),
-    y: clamp(Math.round(toFiniteNumber(rect.y, 0)), 0, Math.max(canvas.height - height, 0)),
+    y: clamp(
+      Math.round(toFiniteNumber(rect.y, 0)),
+      0,
+      Math.max(canvas.height - height, 0)
+    ),
     width,
     height,
   };
@@ -47,10 +58,18 @@ export function clampVideoRectPosition(
 export function normalizeVideoRect(
   rect: NumericRect,
   canvas: Pick<CanvasSpec, 'width' | 'height'>,
-  _aspectRatio?: number | null,
+  _aspectRatio?: number | null
 ): NumericRect {
-  const x = clamp(Math.round(toFiniteNumber(rect.x, 0)), 0, Math.max(canvas.width - 10, 0));
-  const y = clamp(Math.round(toFiniteNumber(rect.y, 0)), 0, Math.max(canvas.height - 10, 0));
+  const x = clamp(
+    Math.round(toFiniteNumber(rect.x, 0)),
+    0,
+    Math.max(canvas.width - 10, 0)
+  );
+  const y = clamp(
+    Math.round(toFiniteNumber(rect.y, 0)),
+    0,
+    Math.max(canvas.height - 10, 0)
+  );
   const maxWidth = Math.max(canvas.width - x, 10);
   const maxHeight = Math.max(canvas.height - y, 10);
   const width = clampDimension(toFiniteNumber(rect.width, maxWidth), maxWidth);
@@ -67,7 +86,7 @@ export function normalizeVideoRect(
 export function normalizeVideoBounds(
   bounds: BoundsSpec,
   canvas: Pick<CanvasSpec, 'width' | 'height'>,
-  aspectRatio?: number | null,
+  aspectRatio?: number | null
 ): BoundsSpec {
   const normalized = normalizeVideoRect(
     {
@@ -77,7 +96,7 @@ export function normalizeVideoBounds(
       height: toFiniteNumber(bounds.height, canvas.height),
     },
     canvas,
-    aspectRatio,
+    aspectRatio
   );
 
   return {
@@ -90,7 +109,7 @@ export function normalizeVideoBounds(
 
 export function clampVideoBoundsPosition(
   bounds: BoundsSpec,
-  canvas: Pick<CanvasSpec, 'width' | 'height'>,
+  canvas: Pick<CanvasSpec, 'width' | 'height'>
 ): BoundsSpec {
   const normalized = clampVideoRectPosition(
     {
@@ -99,7 +118,7 @@ export function clampVideoBoundsPosition(
       width: toFiniteNumber(bounds.width, canvas.width),
       height: toFiniteNumber(bounds.height, canvas.height),
     },
-    canvas,
+    canvas
   );
 
   return {

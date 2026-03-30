@@ -30,7 +30,8 @@ vi.mock('@/features/editor/lib/firestoreService', () => ({
 vi.mock('@/features/editor/lib/storageService', () => ({
   uploadAssetToAzure: (...args: unknown[]) => uploadAssetToAzureMock(...args),
   isAzureAssetUploadConfigured: () => isAzureAssetUploadConfiguredMock(),
-  AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE: 'Logo upload is not configured in this environment.',
+  AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE:
+    'Logo upload is not configured in this environment.',
 }));
 
 const initialStoreState = useTemplateStore.getState();
@@ -122,11 +123,17 @@ describe('Template admin panel', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
 
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
-    expect(await screen.findByRole('button', { name: /back to library/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /back to library/i })
+    ).toBeInTheDocument();
     expect(screen.getByText('Kapil Kappu')).toBeInTheDocument();
     expect(screen.getByText('Unsaved')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^save$/i })).toBeEnabled();
@@ -142,9 +149,13 @@ describe('Template admin panel', () => {
     await screen.findByText(/no templates yet/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
@@ -155,7 +166,7 @@ describe('Template admin panel', () => {
         expect.objectContaining({
           id: 'kapil_kappu/v2',
         }),
-        'admin@example.com',
+        'admin@example.com'
       );
     });
 
@@ -176,14 +187,23 @@ describe('Template admin panel', () => {
     await screen.findByText(/no templates yet/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
     await screen.findByRole('button', { name: /back to library/i });
 
     act(() => {
-      useTemplateStore.getState().setPendingFile('logo_mark', new File(['png'], 'logo.png', { type: 'image/png' }));
+      useTemplateStore
+        .getState()
+        .setPendingFile(
+          'logo_mark',
+          new File(['png'], 'logo.png', { type: 'image/png' })
+        );
       useTemplateStore.getState().setAsset('logo_mark', {
         type: 'image',
         gcs_path: 'templates/legacy/assets/logo.png',
@@ -202,9 +222,9 @@ describe('Template admin panel', () => {
         expect.objectContaining({
           assetKey: 'logo_mark',
           assetType: 'image',
-        }),
+        })
       );
-        expect(saveTemplateMock).toHaveBeenCalledWith(
+      expect(saveTemplateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           assets: expect.objectContaining({
             logo_mark: expect.objectContaining({
@@ -213,7 +233,7 @@ describe('Template admin panel', () => {
             }),
           }),
         }),
-        'admin@example.com',
+        'admin@example.com'
       );
     });
 
@@ -229,22 +249,30 @@ describe('Template admin panel', () => {
     await screen.findByText(/no templates yet/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
     await screen.findByRole('button', { name: /back to library/i });
 
     fireEvent.click(screen.getByRole('button', { name: 'title_band' }));
 
     expect(screen.getByRole('button', { name: /delete layer/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /delete selected layer/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /delete selected layer/i })
+    ).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.keyDown(window, { key: 'Delete' });
     });
 
-    expect(useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band')).toBeUndefined();
+    expect(
+      useTemplateStore.getState().template.zones.find(zone => zone.id === 'title_band')
+    ).toBeUndefined();
   });
 
   it('does not trigger keyboard delete while typing in an input', async () => {
@@ -255,9 +283,13 @@ describe('Template admin panel', () => {
     await screen.findByText(/no templates yet/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
     await screen.findByRole('button', { name: /back to library/i });
 
@@ -273,26 +305,32 @@ describe('Template admin panel', () => {
       fireEvent.keyDown(nameInput, { key: 'Backspace' });
     });
 
-    expect(useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band')).toBeDefined();
+    expect(
+      useTemplateStore.getState().template.zones.find(zone => zone.id === 'title_band')
+    ).toBeDefined();
   });
 
   it('maps 401 admin failures to an explicit session message', async () => {
-    listTemplatesMock.mockRejectedValue(new Error('Failed to list templates (401): unauthorized'));
+    listTemplatesMock.mockRejectedValue(
+      new Error('Failed to list templates (401): unauthorized')
+    );
 
     render(<TemplateAdminPanel userEmail="admin@example.com" />);
 
     expect(await screen.findByTestId('admin-library-error')).toHaveTextContent(
-      'Your session is missing or expired. Sign in again to manage templates.',
+      'Your session is missing or expired. Sign in again to manage templates.'
     );
   });
 
   it('maps 503 admin failures to an explicit storage message', async () => {
-    listTemplatesMock.mockRejectedValue(new Error('Failed to list templates (503): Template storage is unavailable'));
+    listTemplatesMock.mockRejectedValue(
+      new Error('Failed to list templates (503): Template storage is unavailable')
+    );
 
     render(<TemplateAdminPanel userEmail="admin@example.com" />);
 
     expect(await screen.findByTestId('admin-library-error')).toHaveTextContent(
-      'Template storage is unavailable right now. Check Firestore and template-storage configuration.',
+      'Template storage is unavailable right now. Check Firestore and template-storage configuration.'
     );
   });
 
@@ -305,14 +343,23 @@ describe('Template admin panel', () => {
     await screen.findByText(/no templates yet/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
     await screen.findByRole('button', { name: /back to library/i });
 
     act(() => {
-      useTemplateStore.getState().setPendingFile('logo_mark', new File(['png'], 'logo.png', { type: 'image/png' }));
+      useTemplateStore
+        .getState()
+        .setPendingFile(
+          'logo_mark',
+          new File(['png'], 'logo.png', { type: 'image/png' })
+        );
       useTemplateStore.getState().setAsset('logo_mark', {
         type: 'image',
         path: 'logo.png',
@@ -324,7 +371,7 @@ describe('Template admin panel', () => {
     });
 
     expect(await screen.findByTestId('admin-save-error')).toHaveTextContent(
-      'Logo upload is not configured in this environment.',
+      'Logo upload is not configured in this environment.'
     );
     expect(uploadAssetToAzureMock).not.toHaveBeenCalled();
   });
@@ -337,20 +384,26 @@ describe('Template admin panel', () => {
     await screen.findByText(/no templates yet/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
     await screen.findByRole('button', { name: /back to library/i });
 
     act(() => {
-      useTemplateStore.getState().setAssetPreviewError(
-        'Your session is missing or expired. Sign in again to load template assets.',
-      );
+      useTemplateStore
+        .getState()
+        .setAssetPreviewError(
+          'Your session is missing or expired. Sign in again to load template assets.'
+        );
     });
 
     expect(await screen.findByTestId('admin-asset-preview-error')).toHaveTextContent(
-      'Your session is missing or expired. Sign in again to load template assets.',
+      'Your session is missing or expired. Sign in again to load template assets.'
     );
   });
 });

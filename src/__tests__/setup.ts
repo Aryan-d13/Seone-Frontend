@@ -14,8 +14,14 @@ vi.mock('@/config/firebase', () => ({
 
 vi.mock('firebase/storage', () => ({
   ref: vi.fn((_storage, path: string) => ({ fullPath: path })),
-  getDownloadURL: vi.fn(async (storageRef: { fullPath: string }) => `https://firebase.mock/${encodeURIComponent(storageRef.fullPath)}`),
-  getBlob: vi.fn(async (storageRef: { fullPath: string }) => new Blob([storageRef.fullPath], { type: 'image/png' })),
+  getDownloadURL: vi.fn(
+    async (storageRef: { fullPath: string }) =>
+      `https://firebase.mock/${encodeURIComponent(storageRef.fullPath)}`
+  ),
+  getBlob: vi.fn(
+    async (storageRef: { fullPath: string }) =>
+      new Blob([storageRef.fullPath], { type: 'image/png' })
+  ),
 }));
 
 vi.mock('firebase/auth', () => ({

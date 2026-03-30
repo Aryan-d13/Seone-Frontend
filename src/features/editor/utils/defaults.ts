@@ -8,26 +8,26 @@
 import type { TextSpec, MediaSpec, ZoneSpec, TextFontSpec } from '../types/template';
 
 export const DEFAULT_FONT: TextFontSpec = {
-    family: 'NotoSansDevanagari',
-    weight: 700,
-    fallbacks: [],
-    size: 60,
+  family: 'NotoSansDevanagari',
+  weight: 700,
+  fallbacks: [],
+  size: 60,
 };
 
 export const DEFAULT_TEXT_SPEC: TextSpec = {
-    max_lines: 3,
-    overflow: 'shrink',           // production uses shrink, not wrap
-    font: { ...DEFAULT_FONT },
-    width_percent: 75,
-    min_font_size: 24,
-    horizontal_align: 'center',
-    vertical_align: 'middle',
-    line_spacing_px: 6,           // production uses 6, not 0
+  max_lines: 3,
+  overflow: 'shrink', // production uses shrink, not wrap
+  font: { ...DEFAULT_FONT },
+  width_percent: 75,
+  min_font_size: 24,
+  horizontal_align: 'center',
+  vertical_align: 'middle',
+  line_spacing_px: 6, // production uses 6, not 0
 };
 
 export const DEFAULT_MEDIA_SPEC: MediaSpec = {
-    fit: 'cover',
-    crop_anchor: 'center',        // production uses center, not top
+  fit: 'cover',
+  crop_anchor: 'center', // production uses center, not top
 };
 
 /**
@@ -37,16 +37,16 @@ export const DEFAULT_MEDIA_SPEC: MediaSpec = {
  * beneath it. Default height = 270px (25% of 1080).
  */
 export function createTextZone(canvasW: number, canvasH: number): ZoneSpec {
-    const bandH = Math.round(canvasH * 0.25);
-    return {
-        id: 'title_band',
-        type: 'text',
-        content_ref: 'pov_text',
-        bounds: { x: 0, y: 0, width: canvasW, height: bandH },
-        z: 10,
-        text: { ...DEFAULT_TEXT_SPEC, font: { ...DEFAULT_FONT } },
-        style_ref: 'title_style',
-    };
+  const bandH = Math.round(canvasH * 0.25);
+  return {
+    id: 'title_band',
+    type: 'text',
+    content_ref: 'pov_text',
+    bounds: { x: 0, y: 0, width: canvasW, height: bandH },
+    z: 10,
+    text: { ...DEFAULT_TEXT_SPEC, font: { ...DEFAULT_FONT } },
+    style_ref: 'title_style',
+  };
 }
 
 /**
@@ -56,14 +56,14 @@ export function createTextZone(canvasW: number, canvasH: number): ZoneSpec {
  * or a fixed height can be set in the inspector.
  */
 export function createImageZone(): ZoneSpec {
-    return {
-        id: 'logo_mark',
-        type: 'image',
-        role: 'logo',
-        asset_ref: 'logo_mark',
-        bounds: { x: 15, y: 15, width: 50 },
-        z: 20,
-    };
+  return {
+    id: 'logo_mark',
+    type: 'image',
+    role: 'logo',
+    asset_ref: 'logo_mark',
+    bounds: { x: 15, y: 15, width: 50 },
+    z: 20,
+  };
 }
 
 /**
@@ -73,12 +73,12 @@ export function createImageZone(): ZoneSpec {
  * y = title band height, height = canvas height − title band height.
  */
 export function createVideoZone(canvasW: number, canvasH: number): ZoneSpec {
-    const bandH = Math.round(canvasH * 0.25);
-    return {
-        id: 'video_main',
-        type: 'video',
-        bounds: { x: 0, y: bandH, width: canvasW, height: canvasH - bandH },
-        z: 0,
-        media: { ...DEFAULT_MEDIA_SPEC },
-    };
+  const bandH = Math.round(canvasH * 0.25);
+  return {
+    id: 'video_main',
+    type: 'video',
+    bounds: { x: 0, y: bandH, width: canvasW, height: canvasH - bandH },
+    z: 0,
+    media: { ...DEFAULT_MEDIA_SPEC },
+  };
 }

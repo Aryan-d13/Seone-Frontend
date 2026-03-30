@@ -4,8 +4,7 @@ import { authFetch } from '@/services/auth';
 
 export const PROTECTED_ASSET_AUTH_MESSAGE =
   'Your session is missing or expired. Sign in again to load template assets.';
-export const PROTECTED_ASSET_LOAD_MESSAGE =
-  'Failed to load a protected template asset.';
+export const PROTECTED_ASSET_LOAD_MESSAGE = 'Failed to load a protected template asset.';
 
 type ProtectedAssetErrorCode = 'unauthorized' | 'load_failed';
 
@@ -47,7 +46,7 @@ async function fetchProtectedAssetObjectUrl(url: string): Promise<string> {
     if (!response.ok) {
       throw new ProtectedAssetLoadError(
         'load_failed',
-        `Protected asset request failed (${response.status})`,
+        `Protected asset request failed (${response.status})`
       );
     }
     const blob = await response.blob();
@@ -74,7 +73,7 @@ export async function acquireProtectedAssetUrl(rawUrl: string): Promise<string> 
 
   const entry: CacheEntry = { refCount: 1 };
   entry.promise = fetchProtectedAssetObjectUrl(url)
-    .then((objectUrl) => {
+    .then(objectUrl => {
       const current = cache.get(url);
       if (!current) {
         URL.revokeObjectURL(objectUrl);
@@ -88,7 +87,7 @@ export async function acquireProtectedAssetUrl(rawUrl: string): Promise<string> 
       }
       return objectUrl;
     })
-    .catch((error) => {
+    .catch(error => {
       cache.delete(url);
       throw error;
     });

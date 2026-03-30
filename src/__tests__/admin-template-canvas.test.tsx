@@ -1,5 +1,14 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import TemplateAdminPanel from '@/features/editor/admin/TemplateAdminPanel';
 import CanvasWorkspace from '@/features/editor/components/Canvas/CanvasWorkspace';
@@ -25,7 +34,8 @@ vi.mock('@/features/editor/lib/firestoreService', () => ({
 vi.mock('@/features/editor/lib/storageService', () => ({
   uploadAssetToAzure: (...args: unknown[]) => uploadAssetToAzureMock(...args),
   isAzureAssetUploadConfigured: () => isAzureAssetUploadConfiguredMock(),
-  AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE: 'Logo upload is not configured in this environment.',
+  AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE:
+    'Logo upload is not configured in this environment.',
 }));
 
 const initialStoreState = useTemplateStore.getState();
@@ -108,7 +118,7 @@ function renderCanvasHarness() {
     <div style={{ width: 1600, height: 1200 }}>
       <CanvasWorkspace />
       <PropertyInspector variant="admin" />
-    </div>,
+    </div>
   );
 }
 
@@ -146,7 +156,7 @@ beforeAll(() => {
             } as DOMRectReadOnly,
           } as ResizeObserverEntry,
         ],
-        this as unknown as ResizeObserver,
+        this as unknown as ResizeObserver
       );
     }
 
@@ -225,7 +235,9 @@ describe('Template admin canvas interactions', () => {
     fireEvent.pointerUp(window, { pointerId: 1, clientX: 80, clientY: 70 });
 
     await waitFor(() => {
-      const logoZone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'logo_mark');
+      const logoZone = useTemplateStore
+        .getState()
+        .template.zones.find(entry => entry.id === 'logo_mark');
       expect(logoZone?.bounds.x).toBe(60);
       expect(logoZone?.bounds.y).toBe(50);
     });
@@ -249,7 +261,9 @@ describe('Template admin canvas interactions', () => {
     fireEvent.pointerUp(window, { pointerId: 2, clientX: 90, clientY: 80 });
 
     await waitFor(() => {
-      const logoZone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'logo_mark');
+      const logoZone = useTemplateStore
+        .getState()
+        .template.zones.find(entry => entry.id === 'logo_mark');
       expect(logoZone?.bounds.x).toBe(15);
       expect(logoZone?.bounds.y).toBe(15);
     });
@@ -260,7 +274,9 @@ describe('Template admin canvas interactions', () => {
 
     act(() => {
       useTemplateStore.getState().setUploadedImage('logo_mark', 'mock://logo.png');
-      useTemplateStore.getState().setAsset('logo_mark', { type: 'image', path: 'logo.png' });
+      useTemplateStore
+        .getState()
+        .setAsset('logo_mark', { type: 'image', path: 'logo.png' });
       useTemplateStore.getState().selectZone('logo_mark');
     });
 
@@ -275,31 +291,39 @@ describe('Template admin canvas interactions', () => {
 
     const handle = await screen.findByTestId('zone-handle-logo_mark-bottomRight');
     act(() => {
-      handle.dispatchEvent(new PointerEvent('pointerdown', {
-        bubbles: true,
-        button: 0,
-        pointerId: 3,
-        clientX: 65,
-        clientY: 40,
-      }));
-      window.dispatchEvent(new PointerEvent('pointermove', {
-        bubbles: true,
-        button: 0,
-        pointerId: 3,
-        clientX: 105,
-        clientY: 80,
-      }));
-      window.dispatchEvent(new PointerEvent('pointerup', {
-        bubbles: true,
-        button: 0,
-        pointerId: 3,
-        clientX: 105,
-        clientY: 80,
-      }));
+      handle.dispatchEvent(
+        new PointerEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          pointerId: 3,
+          clientX: 65,
+          clientY: 40,
+        })
+      );
+      window.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          button: 0,
+          pointerId: 3,
+          clientX: 105,
+          clientY: 80,
+        })
+      );
+      window.dispatchEvent(
+        new PointerEvent('pointerup', {
+          bubbles: true,
+          button: 0,
+          pointerId: 3,
+          clientX: 105,
+          clientY: 80,
+        })
+      );
     });
 
     await waitFor(() => {
-      const logoZone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'logo_mark');
+      const logoZone = useTemplateStore
+        .getState()
+        .template.zones.find(entry => entry.id === 'logo_mark');
       expect(logoZone?.bounds.width).toBeGreaterThan(50);
       const width = Number.parseFloat(zone.style.width);
       const height = Number.parseFloat(zone.style.height);
@@ -319,12 +343,19 @@ describe('Template admin canvas interactions', () => {
       return editor as HTMLTextAreaElement;
     });
 
-    fireEvent.pointerDown(textarea, { button: 0, pointerId: 4, clientX: 200, clientY: 100 });
+    fireEvent.pointerDown(textarea, {
+      button: 0,
+      pointerId: 4,
+      clientX: 200,
+      clientY: 100,
+    });
     fireEvent.pointerMove(window, { pointerId: 4, clientX: 320, clientY: 180 });
     fireEvent.pointerUp(window, { pointerId: 4, clientX: 320, clientY: 180 });
     fireEvent.change(textarea, { target: { value: 'Fresh copy' } });
 
-    const titleZone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'title_band');
+    const titleZone = useTemplateStore
+      .getState()
+      .template.zones.find(entry => entry.id === 'title_band');
     expect(titleZone?.bounds.x).toBe(0);
     expect(titleZone?.bounds.y).toBe(0);
     expect(useTemplateStore.getState().previewTexts.pov_text).toBe('Fresh copy');
@@ -333,20 +364,24 @@ describe('Template admin canvas interactions', () => {
   it('persists a dragged logo after save and reopen in the embedded admin panel', async () => {
     let savedTemplate: TemplateJSON | null = null;
 
-    listTemplatesMock.mockImplementation(async () => (
+    listTemplatesMock.mockImplementation(async () =>
       savedTemplate
-        ? [{
-            docId: 'kapil_kappu_v2',
-            templateId: savedTemplate.id,
-            name: 'Kapil Kappu',
-            canvasWidth: savedTemplate.canvas.width,
-            canvasHeight: savedTemplate.canvas.height,
-            zoneCount: savedTemplate.zones.length,
-            updatedAt: '2026-03-29T10:00:00.000Z',
-          }]
+        ? [
+            {
+              docId: 'kapil_kappu_v2',
+              templateId: savedTemplate.id,
+              name: 'Kapil Kappu',
+              canvasWidth: savedTemplate.canvas.width,
+              canvasHeight: savedTemplate.canvas.height,
+              zoneCount: savedTemplate.zones.length,
+              updatedAt: '2026-03-29T10:00:00.000Z',
+            },
+          ]
         : []
-    ));
-    getTemplateMock.mockImplementation(async () => (savedTemplate ? JSON.parse(JSON.stringify(savedTemplate)) : null));
+    );
+    getTemplateMock.mockImplementation(async () =>
+      savedTemplate ? JSON.parse(JSON.stringify(savedTemplate)) : null
+    );
     saveTemplateMock.mockImplementation(async (template: TemplateJSON) => {
       savedTemplate = JSON.parse(JSON.stringify(template));
       return 'kapil_kappu_v2';
@@ -357,12 +392,21 @@ describe('Template admin canvas interactions', () => {
     await screen.findByText(/no templates yet/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: /create/i })[0]);
-    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Kapil Kappu' } });
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: 'Kapil Kappu' },
+    });
     fireEvent.change(screen.getByLabelText(/^version$/i), { target: { value: 'v2' } });
-    fireEvent.submit(screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: /continue/i }).closest('form') as HTMLFormElement
+    );
 
     const logoZone = await screen.findByTestId('zone-logo_mark');
-    fireEvent.pointerDown(logoZone, { button: 0, pointerId: 5, clientX: 40, clientY: 40 });
+    fireEvent.pointerDown(logoZone, {
+      button: 0,
+      pointerId: 5,
+      clientX: 40,
+      clientY: 40,
+    });
     fireEvent.pointerMove(window, { pointerId: 5, clientX: 80, clientY: 70 });
     fireEvent.pointerUp(window, { pointerId: 5, clientX: 80, clientY: 70 });
 

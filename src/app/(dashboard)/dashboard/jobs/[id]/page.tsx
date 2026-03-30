@@ -11,7 +11,11 @@ import { PipelineTimeline } from '@/components/job/PipelineTimeline';
 import { ClipGallery } from '@/components/job/ClipGallery';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatJobDisplayName, formatLocalDateTime, formatQueueStatusLabel } from '@/lib/utils';
+import {
+  formatJobDisplayName,
+  formatLocalDateTime,
+  formatQueueStatusLabel,
+} from '@/lib/utils';
 import styles from './page.module.css';
 
 function formatDuration(seconds?: number | null) {

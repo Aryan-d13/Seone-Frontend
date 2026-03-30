@@ -7,59 +7,59 @@
 
 :root {
   /* ── Palette ──────────────────────── */
-  --bg-deep:       #070707;
-  --bg-surface:    #0e0e0e;
-  --bg-elevated:   #131313;
-  --bg-hover:      #1a1a1a;
-  --bg-active:     #20201f;
-  --bg-canvas:     #0b0b0b;
+  --bg-deep: #070707;
+  --bg-surface: #0e0e0e;
+  --bg-elevated: #131313;
+  --bg-hover: #1a1a1a;
+  --bg-active: #20201f;
+  --bg-canvas: #0b0b0b;
 
-  --panel-low:     #131313;
-  --panel-mid:     #1a1a1a;
-  --panel-high:    #20201f;
-  --panel-top:     #262626;
+  --panel-low: #131313;
+  --panel-mid: #1a1a1a;
+  --panel-high: #20201f;
+  --panel-top: #262626;
 
   --border-subtle: rgba(72, 72, 71, 0.18);
   --border-medium: rgba(72, 72, 71, 0.34);
   --border-accent: rgba(182, 160, 255, 0.32);
 
-  --text-primary:  #ffffff;
-  --text-secondary:#d0cdcd;
-  --text-muted:    #adaaaa;
-  --text-accent:   #b6a0ff;
+  --text-primary: #ffffff;
+  --text-secondary: #d0cdcd;
+  --text-muted: #adaaaa;
+  --text-accent: #b6a0ff;
 
-  --accent:        #b6a0ff;
-  --accent-hover:  #c4b4ff;
-  --accent-soft:   rgba(182, 160, 255, 0.12);
-  --accent-dim:    #7e51ff;
-  --accent-glow:   rgba(182, 160, 255, 0.24);
+  --accent: #b6a0ff;
+  --accent-hover: #c4b4ff;
+  --accent-soft: rgba(182, 160, 255, 0.12);
+  --accent-dim: #7e51ff;
+  --accent-glow: rgba(182, 160, 255, 0.24);
   --accent-secondary: #4af8e3;
   --accent-secondary-soft: rgba(74, 248, 227, 0.14);
 
-  --danger:        #ff6e84;
-  --danger-hover:  #f87171;
-  --success:       #4af8e3;
+  --danger: #ff6e84;
+  --danger-hover: #f87171;
+  --success: #4af8e3;
 
-  --zone-text:     #60a5fa;
-  --zone-image:    #c084fc;
-  --zone-video:    #4af8e3;
+  --zone-text: #60a5fa;
+  --zone-image: #c084fc;
+  --zone-video: #4af8e3;
 
   /* ── Sizing ──────────────────────── */
-  --sidebar-w:     260px;
-  --inspector-w:   320px;
-  --toolbar-h:     40px;
-  --radius-sm:     3px;
-  --radius-md:     6px;
-  --radius-lg:     12px;
-  --radius-xl:     18px;
+  --sidebar-w: 260px;
+  --inspector-w: 320px;
+  --toolbar-h: 40px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
 
   /* ── Typography ──────────────────── */
-  --font-display:  var(--font-editor-display), 'Manrope', sans-serif;
-  --font-sans:     var(--font-editor-body), 'Inter', system-ui, sans-serif;
-  --font-mono:     'Roboto Mono', 'SFMono-Regular', 'Consolas', monospace;
+  --font-display: var(--font-editor-display), 'Manrope', sans-serif;
+  --font-sans: var(--font-editor-body), 'Inter', system-ui, sans-serif;
+  --font-mono: 'Roboto Mono', 'SFMono-Regular', 'Consolas', monospace;
 
   /* ── Transitions ─────────────────── */
-  --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 *,
@@ -110,7 +110,10 @@ body {
   background: var(--text-muted);
 }
 
-input, select, button, textarea {
+input,
+select,
+button,
+textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;

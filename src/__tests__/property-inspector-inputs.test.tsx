@@ -41,7 +41,11 @@ function makeVideoZone() {
     type: 'video' as const,
     bounds: { x: 0, y: 270, width: 1080, height: 810 },
     z: 0,
-    media: { fit: 'cover' as const, crop_anchor: 'center' as const, crop_focus: { x: 0.5, y: 0.5 } },
+    media: {
+      fit: 'cover' as const,
+      crop_anchor: 'center' as const,
+      crop_focus: { x: 0.5, y: 0.5 },
+    },
   };
 }
 
@@ -106,20 +110,40 @@ describe('Property inspector numeric inputs', () => {
 
     render(<PropertyInspector />);
 
-    const boundsXInput = screen.getByRole('textbox', { name: /bounds x/i }) as HTMLInputElement;
+    const boundsXInput = screen.getByRole('textbox', {
+      name: /bounds x/i,
+    }) as HTMLInputElement;
 
     fireEvent.focus(boundsXInput);
     fireEvent.change(boundsXInput, { target: { value: '' } });
     expect(boundsXInput.value).toBe('');
-    expect((useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band') as any).bounds.x).toBe(100);
+    expect(
+      (
+        useTemplateStore
+          .getState()
+          .template.zones.find(zone => zone.id === 'title_band') as any
+      ).bounds.x
+    ).toBe(100);
 
     fireEvent.change(boundsXInput, { target: { value: '37' } });
     expect(boundsXInput.value).toBe('37');
-    expect((useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band') as any).bounds.x).toBe(100);
+    expect(
+      (
+        useTemplateStore
+          .getState()
+          .template.zones.find(zone => zone.id === 'title_band') as any
+      ).bounds.x
+    ).toBe(100);
 
     fireEvent.blur(boundsXInput);
 
-    expect((useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band') as any).bounds.x).toBe(37);
+    expect(
+      (
+        useTemplateStore
+          .getState()
+          .template.zones.find(zone => zone.id === 'title_band') as any
+      ).bounds.x
+    ).toBe(37);
   });
 
   it('reverts the current draft on Escape without committing', () => {
@@ -133,7 +157,9 @@ describe('Property inspector numeric inputs', () => {
 
     render(<PropertyInspector />);
 
-    const boundsXInput = screen.getByRole('textbox', { name: /bounds x/i }) as HTMLInputElement;
+    const boundsXInput = screen.getByRole('textbox', {
+      name: /bounds x/i,
+    }) as HTMLInputElement;
 
     fireEvent.focus(boundsXInput);
     fireEvent.change(boundsXInput, { target: { value: '44' } });
@@ -142,7 +168,13 @@ describe('Property inspector numeric inputs', () => {
     fireEvent.keyDown(boundsXInput, { key: 'Escape' });
 
     expect(boundsXInput.value).toBe('100');
-    expect((useTemplateStore.getState().template.zones.find((zone) => zone.id === 'title_band') as any).bounds.x).toBe(100);
+    expect(
+      (
+        useTemplateStore
+          .getState()
+          .template.zones.find(zone => zone.id === 'title_band') as any
+      ).bounds.x
+    ).toBe(100);
   });
 
   it('allows decimal trim typing in clip mode and commits on blur', () => {
@@ -156,16 +188,22 @@ describe('Property inspector numeric inputs', () => {
 
     render(<PropertyInspector />);
 
-    const sourceInInput = screen.getByRole('textbox', { name: /source in/i }) as HTMLInputElement;
+    const sourceInInput = screen.getByRole('textbox', {
+      name: /source in/i,
+    }) as HTMLInputElement;
 
     fireEvent.focus(sourceInInput);
     fireEvent.change(sourceInInput, { target: { value: '12.' } });
 
     expect(sourceInInput.value).toBe('12.');
-    expect(useTemplateStore.getState().activeManifest?.render_payload?.time_window?.start).toBe(1.5);
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload?.time_window?.start
+    ).toBe(1.5);
 
     fireEvent.blur(sourceInInput);
 
-    expect(useTemplateStore.getState().activeManifest?.render_payload?.time_window?.start).toBe(12);
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload?.time_window?.start
+    ).toBe(12);
   });
 });

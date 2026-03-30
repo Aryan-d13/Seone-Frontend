@@ -8,7 +8,9 @@ import styles from './EditDropZone.module.css';
 /**
  * Fixed-position drop target that routes a generated clip into the in-app studio.
  */
-function readStudioDragPayload(dataTransfer: DataTransfer | null): StudioDragPayload | null {
+function readStudioDragPayload(
+  dataTransfer: DataTransfer | null
+): StudioDragPayload | null {
   if (!dataTransfer) return null;
   const raw = dataTransfer.getData('text/x-seone-clip');
   if (!raw) return null;

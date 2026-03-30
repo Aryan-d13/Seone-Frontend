@@ -8,5 +8,7 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export function getAllowedDomains(): string[] {
-  return config.auth.allowedDomain.map((entry) => entry.trim().toLowerCase()).filter(Boolean);
+  return config.auth.allowedDomain
+    .map(entry => entry.trim().toLowerCase())
+    .filter(Boolean);
 }

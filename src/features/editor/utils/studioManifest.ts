@@ -24,7 +24,8 @@ function isPersistableAssetUrl(value: unknown): value is string {
   const normalized = value.trim();
   if (!normalized || normalized.startsWith('blob:')) return false;
   if (/^[A-Za-z]:[\\/]/.test(normalized)) return false;
-  if (/^\/(mnt|Users|home|tmp|var|private|opt|usr|etc|Volumes)\//.test(normalized)) return false;
+  if (/^\/(mnt|Users|home|tmp|var|private|opt|usr|etc|Volumes)\//.test(normalized))
+    return false;
   if (normalized.startsWith('/api/') || normalized.startsWith('/data/')) return true;
   if (normalized.startsWith('api/') || normalized.startsWith('data/')) return true;
   if (normalized.startsWith('//')) return true;
@@ -34,7 +35,7 @@ function isPersistableAssetUrl(value: unknown): value is string {
 
 function resolveCanonicalAssetUrl(
   asset: { source_uri?: string; gcs_path?: string; path?: string } | undefined,
-  existingUrl?: string,
+  existingUrl?: string
 ): string | undefined {
   if (asset) {
     for (const candidate of [asset.source_uri, asset.gcs_path, asset.path]) {

@@ -9,9 +9,10 @@ import {
 } from '../lib/protectedAssetLoader';
 import { isProtectedAssetUrl } from '../utils/assetPreview';
 
-export function useProtectedAssetUrl(
-  rawUrl: string | null | undefined,
-): { resolvedUrl: string | null; error: ProtectedAssetLoadError | null } {
+export function useProtectedAssetUrl(rawUrl: string | null | undefined): {
+  resolvedUrl: string | null;
+  error: ProtectedAssetLoadError | null;
+} {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [error, setError] = useState<ProtectedAssetLoadError | null>(null);
 
@@ -33,11 +34,11 @@ export function useProtectedAssetUrl(
     setError(null);
 
     acquireProtectedAssetUrl(normalized)
-      .then((nextUrl) => {
+      .then(nextUrl => {
         if (!active) return;
         setResolvedUrl(nextUrl);
       })
-      .catch((nextError) => {
+      .catch(nextError => {
         if (!active) return;
         setError(nextError instanceof ProtectedAssetLoadError ? nextError : null);
         setResolvedUrl(null);

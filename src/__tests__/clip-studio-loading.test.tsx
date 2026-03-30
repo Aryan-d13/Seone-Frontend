@@ -133,15 +133,19 @@ describe('ClipStudioWorkspace loading', () => {
     });
 
     await act(async () => {
-      render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+      render(
+        <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+      );
     });
 
     await waitFor(() =>
-      expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe('blob:logo-preview'),
+      expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe(
+        'blob:logo-preview'
+      )
     );
 
     expect(authFetchMock).toHaveBeenCalledWith(
-      'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark',
+      'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark'
     );
   });
 
@@ -150,11 +154,13 @@ describe('ClipStudioWorkspace loading', () => {
       () =>
         new Promise(() => {
           // Keep pending to preserve the loading state.
-        }),
+        })
     );
 
     await act(async () => {
-      render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+      render(
+        <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+      );
     });
 
     expect(await screen.findByTestId('clip-studio-video-loading')).toBeInTheDocument();
@@ -166,7 +172,8 @@ describe('ClipStudioWorkspace loading', () => {
       activeManifest: {
         ...makeManifest(),
         assets: {
-          logo_mark: 'http://localhost:8000/data/templates/kapil_kappu_v1/assets/logo.png',
+          logo_mark:
+            'http://localhost:8000/data/templates/kapil_kappu_v1/assets/logo.png',
         },
       } as any,
     });
@@ -181,13 +188,15 @@ describe('ClipStudioWorkspace loading', () => {
     });
 
     await waitFor(() =>
-      expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe('blob:logo-preview'),
+      expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe(
+        'blob:logo-preview'
+      )
     );
 
     expect(authFetchMock).not.toHaveBeenCalled();
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost:8000/data/templates/kapil_kappu_v1/assets/logo.png',
-      { cache: 'no-store' },
+      { cache: 'no-store' }
     );
   });
 
@@ -198,7 +207,9 @@ describe('ClipStudioWorkspace loading', () => {
     });
 
     await act(async () => {
-      render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+      render(
+        <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+      );
     });
 
     await waitFor(() => {
@@ -206,7 +217,7 @@ describe('ClipStudioWorkspace loading', () => {
     });
 
     expect(authFetchMock).toHaveBeenCalledWith(
-      'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark',
+      'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark'
     );
   });
 });

@@ -1,6 +1,10 @@
 import { getBlob, getDownloadURL } from 'firebase/storage';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCanonicalAssetGcsPath, resolveFirebaseAssetBlobUrl, resolveFirebaseAssetUrl } from '@/features/editor/utils/firebaseAsset';
+import {
+  getCanonicalAssetGcsPath,
+  resolveFirebaseAssetBlobUrl,
+  resolveFirebaseAssetUrl,
+} from '@/features/editor/utils/firebaseAsset';
 import { ensureFirebaseStudioAuth } from '@/features/editor/utils/firebaseStudioAuth';
 
 vi.mock('@/features/editor/utils/firebaseStudioAuth', () => ({
@@ -25,8 +29,8 @@ describe('firebaseAsset', () => {
           gcs_path: 'templates/chaturnath/assets/logo.png',
         },
         'logo_mark',
-        'chaturnath/v1',
-      ),
+        'chaturnath/v1'
+      )
     ).toBe('templates/chaturnath/assets/logo.png');
   });
 
@@ -38,8 +42,8 @@ describe('firebaseAsset', () => {
           path: 'E:\\Code\\Seone\\temp\\missing\\logo.png',
         },
         'logo_mark',
-        'chaturnath/v1',
-      ),
+        'chaturnath/v1'
+      )
     ).toBe('templates/chaturnath/assets/logo.png');
   });
 
@@ -51,7 +55,7 @@ describe('firebaseAsset', () => {
         gcs_path: 'templates/chaturnath/assets/logo.png',
       },
       'logo_mark',
-      'chaturnath/v1',
+      'chaturnath/v1'
     );
 
     expect(getDownloadURL).toHaveBeenCalled();
@@ -68,7 +72,7 @@ describe('firebaseAsset', () => {
         gcs_path: 'templates/chaturnath/assets/logo.png',
       },
       'logo_mark',
-      'chaturnath/v1',
+      'chaturnath/v1'
     );
 
     expect(url).toBeNull();
@@ -84,7 +88,7 @@ describe('firebaseAsset', () => {
         gcs_path: 'templates/chaturnath/assets/logo.png',
       },
       'logo_mark',
-      'chaturnath/v1',
+      'chaturnath/v1'
     );
 
     expect(ensureFirebaseStudioAuth).toHaveBeenCalled();
@@ -106,11 +110,15 @@ describe('firebaseAsset', () => {
         source_uri: 'templates/chaturnath/assets/logo.png',
       },
       'logo_mark',
-      'chaturnath/v1',
+      'chaturnath/v1'
     );
 
     expect(blobUrl).toBe('blob:firebase-source-uri');
-    expect(vi.mocked(getBlob).mock.calls[0]?.[0]).toEqual({ fullPath: 'templates/chaturnath/assets/logo.png' });
-    expect(vi.mocked(getBlob).mock.calls[1]?.[0]).toEqual({ fullPath: 'templates/chaturnath_v1/assets/logo.png' });
+    expect(vi.mocked(getBlob).mock.calls[0]?.[0]).toEqual({
+      fullPath: 'templates/chaturnath/assets/logo.png',
+    });
+    expect(vi.mocked(getBlob).mock.calls[1]?.[0]).toEqual({
+      fullPath: 'templates/chaturnath_v1/assets/logo.png',
+    });
   });
 });

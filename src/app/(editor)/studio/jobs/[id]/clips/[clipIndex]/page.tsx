@@ -169,26 +169,29 @@ const statusChipStyle: React.CSSProperties = {
 export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const { id, clipIndex } = use(params);
   const clipIndexNumber = Number.parseInt(clipIndex, 10);
-  const loadFromManifest = useTemplateStore((state) => state.loadFromManifest);
-  const setTemplate = useTemplateStore((state) => state.setTemplate);
-  const template = useTemplateStore((state) => state.template);
-  const previewTexts = useTemplateStore((state) => state.previewTexts);
-  const activeManifest = useTemplateStore((state) => state.activeManifest);
+  const loadFromManifest = useTemplateStore(state => state.loadFromManifest);
+  const setTemplate = useTemplateStore(state => state.setTemplate);
+  const template = useTemplateStore(state => state.template);
+  const previewTexts = useTemplateStore(state => state.previewTexts);
+  const activeManifest = useTemplateStore(state => state.activeManifest);
   const { templates, isLoading: templatesLoading } = useTemplates();
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [studioSource, setStudioSource] = useState<'draft' | 'original'>('original');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(
+    'idle'
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [switchingTemplate, setSwitchingTemplate] = useState(false);
   const lastSavedSignatureRef = useRef<string | null>(null);
   const hasLoadedStudioRef = useRef(false);
-  const currentCompatibilityKey = template.compatibility_key || activeManifest?.template_ir?.compatibility_key || null;
+  const currentCompatibilityKey =
+    template.compatibility_key || activeManifest?.template_ir?.compatibility_key || null;
   const compatibleTemplates = useMemo(() => {
     if (!currentCompatibilityKey) return [];
-    return templates.filter((entry) => entry.compatibility_key === currentCompatibilityKey);
+    return templates.filter(entry => entry.compatibility_key === currentCompatibilityKey);
   }, [currentCompatibilityKey, templates]);
 
   const studioManifest = useMemo(
@@ -198,12 +201,12 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         previewTexts,
         activeManifest,
       }),
-    [activeManifest, previewTexts, template],
+    [activeManifest, previewTexts, template]
   );
 
   const studioManifestSignature = useMemo(
     () => (studioManifest ? JSON.stringify(studioManifest) : null),
-    [studioManifest],
+    [studioManifest]
   );
 
   useEffect(() => {
@@ -229,7 +232,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         const response = await authFetch(endpoints.jobs.studio(id, clipIndexNumber));
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          throw new Error(payload?.detail || `Failed to load clip studio (${response.status})`);
+          throw new Error(
+            payload?.detail || `Failed to load clip studio (${response.status})`
+          );
         }
 
         const payload = (await response.json()) as StudioManifestResponse;
@@ -258,7 +263,12 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   }, [clipIndex, clipIndexNumber, id, loadFromManifest]);
 
   useEffect(() => {
-    if (status !== 'ready' || !studioManifest || !studioManifestSignature || !hasLoadedStudioRef.current) {
+    if (
+      status !== 'ready' ||
+      !studioManifest ||
+      !studioManifestSignature ||
+      !hasLoadedStudioRef.current
+    ) {
       return;
     }
     if (studioManifestSignature === lastSavedSignatureRef.current) {
@@ -279,7 +289,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
 
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          throw new Error(payload?.detail || `Failed to save Studio draft (${response.status})`);
+          throw new Error(
+            payload?.detail || `Failed to save Studio draft (${response.status})`
+          );
         }
 
         const payload = (await response.json()) as StudioSaveResponse;
@@ -327,7 +339,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
 
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
-      anchor.download = payload.filename || `${id.slice(0, 8)}_clip_${clipIndexNumber + 1}_studio.mp4`;
+      anchor.download =
+        payload.filename || `${id.slice(0, 8)}_clip_${clipIndexNumber + 1}_studio.mp4`;
       anchor.rel = 'noopener';
       document.body.appendChild(anchor);
       anchor.click();
@@ -352,7 +365,10 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       if (!nextTemplate) {
         throw new Error('Template not found');
       }
-      const mergedTemplate = mergeTemplateForStudioSwitch(template as TemplateJSON, nextTemplate as TemplateJSON);
+      const mergedTemplate = mergeTemplateForStudioSwitch(
+        template as TemplateJSON,
+        nextTemplate as TemplateJSON
+      );
       setTemplate(mergedTemplate);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to switch template');
@@ -384,8 +400,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
                 {switchingTemplate ? 'Switching template…' : `Template: ${template.id}`}
               </option>
               {compatibleTemplates
-                .filter((entry) => entry.template_ref !== template.id)
-                .map((entry) => (
+                .filter(entry => entry.template_ref !== template.id)
+                .map(entry => (
                   <option key={entry.template_ref} value={entry.template_ref}>
                     {entry.name}
                   </option>
@@ -420,7 +436,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
           <button
             type="button"
             style={previewOpen ? topbarButtonActiveStyle : topbarButtonStyle}
-            onClick={() => setPreviewOpen((value) => !value)}
+            onClick={() => setPreviewOpen(value => !value)}
           >
             <Eye size={14} />
             Preview
@@ -431,7 +447,11 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
             onClick={handleDownloadMp4}
             disabled={!studioManifest || exporting}
           >
-            {exporting ? <LoaderCircle size={14} className="animate-spin" /> : <Download size={14} />}
+            {exporting ? (
+              <LoaderCircle size={14} className="animate-spin" />
+            ) : (
+              <Download size={14} />
+            )}
             {exporting ? 'Rendering MP4...' : 'Download MP4'}
           </button>
         </div>
@@ -442,9 +462,19 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
           <div style={centerStateStyle}>
             <div style={cardStyle}>
               <div style={cardEyebrowStyle}>Loading</div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Hydrating clip manifest</div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
+                Hydrating clip manifest
+              </div>
               <div style={cardSubtitleStyle}>
-                Pulling the original render manifest so the editor opens on the actual clip state.
+                Pulling the original render manifest so the editor opens on the actual
+                clip state.
               </div>
             </div>
           </div>
@@ -454,7 +484,16 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
           <div style={centerStateStyle}>
             <div style={cardStyle}>
               <div style={cardEyebrowStyle}>Error</div>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Editor could not load</div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-display)',
+                }}
+              >
+                Editor could not load
+              </div>
               <div style={cardSubtitleStyle}>{error}</div>
             </div>
           </div>

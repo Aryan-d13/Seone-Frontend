@@ -54,7 +54,7 @@ export async function listTemplates(): Promise<TemplateListItem[]> {
   }
 
   const payload: AdminTemplateListWire = await response.json();
-  return payload.templates.map((item) => ({
+  return payload.templates.map(item => ({
     docId: item.doc_id,
     templateId: item.template_id,
     name: item.name,
@@ -81,7 +81,9 @@ export async function getTemplate(docId: string): Promise<TemplateJSON | null> {
   return payload.template;
 }
 
-export async function getPublicTemplateDocument(templateRef: string): Promise<TemplateJSON | null> {
+export async function getPublicTemplateDocument(
+  templateRef: string
+): Promise<TemplateJSON | null> {
   const response = await authFetch(endpoints.pages.document(templateRef));
   if (response.status === 404) {
     return null;
@@ -95,7 +97,10 @@ export async function getPublicTemplateDocument(templateRef: string): Promise<Te
   return payload.template;
 }
 
-export async function saveTemplate(template: TemplateJSON, userEmail: string): Promise<string> {
+export async function saveTemplate(
+  template: TemplateJSON,
+  userEmail: string
+): Promise<string> {
   void userEmail;
   const docId = toDocId(template.id);
   const response = await authFetch(endpoints.pages.adminTemplate(docId), {

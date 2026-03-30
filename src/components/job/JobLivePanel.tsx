@@ -251,7 +251,11 @@ export function JobLivePanel({ job, jobId, className }: JobLivePanelProps) {
             width: `${progress}%`,
             opacity: isActive || displayStatus === 'completed' ? 1 : 0.75,
           }}
-          transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 110, damping: 20 }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { type: 'spring', stiffness: 110, damping: 20 }
+          }
         />
       </div>
 

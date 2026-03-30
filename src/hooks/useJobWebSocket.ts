@@ -342,7 +342,8 @@ export function useJobWebSocket(jobId: string) {
                       99,
                       70 +
                         Math.round(
-                          (clipEvent.payload.clips_ready / clipEvent.payload.clip_count) * 29
+                          (clipEvent.payload.clips_ready / clipEvent.payload.clip_count) *
+                            29
                         )
                     )
                   : 70;

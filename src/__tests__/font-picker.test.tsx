@@ -31,7 +31,7 @@ describe('FontPicker', () => {
         weight={650}
         onChange={onChange}
         onWeightChange={onWeightChange}
-      />,
+      />
     );
 
     fireEvent.click(screen.getByRole('button', { name: /inter/i }));
@@ -53,7 +53,7 @@ describe('FontPicker', () => {
         onChange={() => {}}
         onUpload={onUpload}
         uploadLabel="Upload custom font"
-      />,
+      />
     );
 
     expect(screen.getByText(/missing from the runtime catalog/i)).toBeInTheDocument();

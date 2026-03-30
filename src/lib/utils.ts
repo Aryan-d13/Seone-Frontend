@@ -158,7 +158,9 @@ export function formatLocalDateTime(
   );
 }
 
-export function formatJobDisplayName(job: Pick<Job, 'id' | 'display_name' | 'source_title'>): string {
+export function formatJobDisplayName(
+  job: Pick<Job, 'id' | 'display_name' | 'source_title'>
+): string {
   if (typeof job.display_name === 'string' && job.display_name.trim()) {
     return job.display_name.trim();
   }
@@ -183,12 +185,17 @@ export function formatQueueStatusLabel(
   return job.status.charAt(0).toUpperCase() + job.status.slice(1);
 }
 
-export function formatClipEmptyMessage(job: Pick<Job, 'status' | 'error_message'> | null): string {
+export function formatClipEmptyMessage(
+  job: Pick<Job, 'status' | 'error_message'> | null
+): string {
   if (!job) {
     return 'No clips available yet.';
   }
   if (job.status === 'failed') {
-    return job.error_message?.trim() || 'This job stopped before any usable clips were produced.';
+    return (
+      job.error_message?.trim() ||
+      'This job stopped before any usable clips were produced.'
+    );
   }
   if (job.status === 'completed') {
     return 'No usable clips were produced for this run.';

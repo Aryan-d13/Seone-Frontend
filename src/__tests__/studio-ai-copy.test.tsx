@@ -93,9 +93,13 @@ describe('Studio AI Copy inspector', () => {
       });
     });
 
-    render(<PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
-    expect(screen.queryByRole('button', { name: /generate 3 povs/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /generate 3 povs/i })
+    ).not.toBeInTheDocument();
   });
 
   it('hides geometry behind Advanced until requested', async () => {
@@ -109,7 +113,9 @@ describe('Studio AI Copy inspector', () => {
       });
     });
 
-    render(<PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     expect(screen.queryByText('Position & Size')).not.toBeInTheDocument();
 
@@ -139,7 +145,9 @@ describe('Studio AI Copy inspector', () => {
       });
     });
 
-    render(<PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /generate 3 povs/i }));
@@ -149,7 +157,7 @@ describe('Studio AI Copy inspector', () => {
       '/api/v1/jobs/job-123/clips/1/copy-suggestions',
       expect.objectContaining({
         method: 'POST',
-      }),
+      })
     );
 
     await screen.findByText('POV one');
@@ -188,7 +196,9 @@ describe('Studio AI Copy inspector', () => {
       });
     });
 
-    render(<PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /generate 3 povs/i }));
@@ -202,7 +212,11 @@ describe('Studio AI Copy inspector', () => {
     await screen.findByText('Second one');
 
     const secondCallBody = JSON.parse(authFetchMock.mock.calls[1][1].body);
-    expect(secondCallBody.rejected_options).toEqual(['First one', 'First two', 'First three']);
+    expect(secondCallBody.rejected_options).toEqual([
+      'First one',
+      'First two',
+      'First three',
+    ]);
   });
 
   it('keeps manual editing usable when AI copy generation fails', async () => {
@@ -222,20 +236,26 @@ describe('Studio AI Copy inspector', () => {
       });
     });
 
-    render(<PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <PropertyInspector renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /generate 3 povs/i }));
     });
 
-    expect(await screen.findByText('Clip analysis context is unavailable.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Clip analysis context is unavailable.')
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByDisplayValue('Original POV'), {
       target: { value: 'Manual edit still works' },
     });
 
     await waitFor(() => {
-      expect(useTemplateStore.getState().previewTexts.pov_text).toBe('Manual edit still works');
+      expect(useTemplateStore.getState().previewTexts.pov_text).toBe(
+        'Manual edit still works'
+      );
     });
   });
 });

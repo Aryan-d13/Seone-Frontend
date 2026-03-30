@@ -97,14 +97,22 @@
   min-height: 40px;
   padding: 0 14px;
   border-radius: 12px;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, opacity 160ms ease;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
   font-size: 13px;
   font-weight: 700;
 }
 
 .primaryButton,
 .modalPrimary {
-  background: linear-gradient(135deg, rgba(182, 160, 255, 0.92), rgba(150, 115, 255, 0.92));
+  background: linear-gradient(
+    135deg,
+    rgba(182, 160, 255, 0.92),
+    rgba(150, 115, 255, 0.92)
+  );
   color: #130f1e;
   box-shadow: 0 14px 30px rgba(150, 115, 255, 0.22);
 }
@@ -384,7 +392,11 @@
 }
 
 .layerItemActive {
-  background: linear-gradient(90deg, rgba(182, 160, 255, 0.16), rgba(182, 160, 255, 0.05));
+  background: linear-gradient(
+    90deg,
+    rgba(182, 160, 255, 0.16),
+    rgba(182, 160, 255, 0.05)
+  );
   color: var(--text-primary);
   box-shadow: inset 2px 0 0 var(--accent);
 }

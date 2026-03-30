@@ -20,17 +20,24 @@ interface RegisteredFontHandle {
 }
 
 export default function TemplateFontRegistrar() {
-  const { template, activeManifest, getPendingFiles, setAssetPreviewError } = useTemplateStore();
+  const { template, activeManifest, getPendingFiles, setAssetPreviewError } =
+    useTemplateStore();
   const registeredRef = useRef<Map<string, RegisteredFontHandle>>(new Map());
   const pendingFiles = getPendingFiles();
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof FontFace === 'undefined' || !document.fonts) {
+    if (
+      typeof window === 'undefined' ||
+      typeof FontFace === 'undefined' ||
+      !document.fonts
+    ) {
       return;
     }
 
     const nextHandles = new Map<string, RegisteredFontHandle>();
-    const fontAssets = new Map(Object.entries(template.assets || {}).filter(([, asset]) => asset.type === 'font'));
+    const fontAssets = new Map(
+      Object.entries(template.assets || {}).filter(([, asset]) => asset.type === 'font')
+    );
     for (const [assetKey, file] of Object.entries(pendingFiles)) {
       if (fontAssets.has(assetKey)) continue;
       fontAssets.set(assetKey, {
@@ -48,9 +55,14 @@ export default function TemplateFontRegistrar() {
       const weight = String(asset.weight || 400);
       const style = String(asset.style || 'normal');
       const pendingFile = pendingFiles[assetKey];
-      const directPreviewUrl = getAssetPreviewUrl(asset, activeManifest?.assets?.[assetKey]);
+      const directPreviewUrl = getAssetPreviewUrl(
+        asset,
+        activeManifest?.assets?.[assetKey]
+      );
       const protectedPreviewUrl =
-        pendingFile || directPreviewUrl ? null : getTemplateAssetProxyUrl(template.id, assetKey);
+        pendingFile || directPreviewUrl
+          ? null
+          : getTemplateAssetProxyUrl(template.id, assetKey);
 
       if (pendingFile) {
         const objectUrl = URL.createObjectURL(pendingFile);
@@ -58,15 +70,24 @@ export default function TemplateFontRegistrar() {
         nextHandles.set(registrationKey, { key: registrationKey, objectUrl });
         if (registeredRef.current.has(registrationKey)) continue;
         const face = new FontFace(family, `url("${objectUrl}")`, { weight, style });
-        face.load().then((loadedFace) => {
-          document.fonts.add(loadedFace);
-          const handle = nextHandles.get(registrationKey) || registeredRef.current.get(registrationKey);
-          if (handle) {
-            handle.fontFace = loadedFace;
-            registeredRef.current.set(registrationKey, handle);
-          }
-        }).catch(() => URL.revokeObjectURL(objectUrl));
-        registeredRef.current.set(registrationKey, { key: registrationKey, objectUrl, fontFace: face });
+        face
+          .load()
+          .then(loadedFace => {
+            document.fonts.add(loadedFace);
+            const handle =
+              nextHandles.get(registrationKey) ||
+              registeredRef.current.get(registrationKey);
+            if (handle) {
+              handle.fontFace = loadedFace;
+              registeredRef.current.set(registrationKey, handle);
+            }
+          })
+          .catch(() => URL.revokeObjectURL(objectUrl));
+        registeredRef.current.set(registrationKey, {
+          key: registrationKey,
+          objectUrl,
+          fontFace: face,
+        });
         continue;
       }
 
@@ -74,31 +95,52 @@ export default function TemplateFontRegistrar() {
         const registrationKey = `${assetKey}:${family}:${weight}:${style}:${directPreviewUrl}`;
         nextHandles.set(registrationKey, { key: registrationKey });
         if (registeredRef.current.has(registrationKey)) continue;
-        const face = new FontFace(family, `url("${directPreviewUrl}")`, { weight, style });
-        face.load().then((loadedFace) => {
-          document.fonts.add(loadedFace);
-          const handle = nextHandles.get(registrationKey) || registeredRef.current.get(registrationKey);
-          if (handle) {
-            handle.fontFace = loadedFace;
-            registeredRef.current.set(registrationKey, handle);
-          }
-        }).catch(() => undefined);
-        registeredRef.current.set(registrationKey, { key: registrationKey, fontFace: face });
+        const face = new FontFace(family, `url("${directPreviewUrl}")`, {
+          weight,
+          style,
+        });
+        face
+          .load()
+          .then(loadedFace => {
+            document.fonts.add(loadedFace);
+            const handle =
+              nextHandles.get(registrationKey) ||
+              registeredRef.current.get(registrationKey);
+            if (handle) {
+              handle.fontFace = loadedFace;
+              registeredRef.current.set(registrationKey, handle);
+            }
+          })
+          .catch(() => undefined);
+        registeredRef.current.set(registrationKey, {
+          key: registrationKey,
+          fontFace: face,
+        });
         continue;
       }
 
       if (protectedPreviewUrl) {
         const registrationKey = `${assetKey}:${family}:${weight}:${style}:${protectedPreviewUrl}`;
-        nextHandles.set(registrationKey, { key: registrationKey, protectedUrl: protectedPreviewUrl });
+        nextHandles.set(registrationKey, {
+          key: registrationKey,
+          protectedUrl: protectedPreviewUrl,
+        });
         if (registeredRef.current.has(registrationKey)) continue;
         acquireProtectedAssetUrl(protectedPreviewUrl)
-          .then((protectedObjectUrl) => {
-            const face = new FontFace(family, `url("${protectedObjectUrl}")`, { weight, style });
-            return face.load().then((loadedFace) => ({ loadedFace, face, protectedObjectUrl }));
+          .then(protectedObjectUrl => {
+            const face = new FontFace(family, `url("${protectedObjectUrl}")`, {
+              weight,
+              style,
+            });
+            return face
+              .load()
+              .then(loadedFace => ({ loadedFace, face, protectedObjectUrl }));
           })
           .then(({ loadedFace, protectedObjectUrl }) => {
             document.fonts.add(loadedFace);
-            const handle = nextHandles.get(registrationKey) || registeredRef.current.get(registrationKey);
+            const handle =
+              nextHandles.get(registrationKey) ||
+              registeredRef.current.get(registrationKey);
             if (handle) {
               handle.fontFace = loadedFace;
               handle.objectUrl = protectedObjectUrl;
@@ -117,8 +159,11 @@ export default function TemplateFontRegistrar() {
               protectedUrl: protectedPreviewUrl,
             });
           })
-          .catch((error) => {
-            if (error instanceof ProtectedAssetLoadError && error.code === 'unauthorized') {
+          .catch(error => {
+            if (
+              error instanceof ProtectedAssetLoadError &&
+              error.code === 'unauthorized'
+            ) {
               setAssetPreviewError(PROTECTED_ASSET_AUTH_MESSAGE);
               return;
             }
@@ -155,7 +200,13 @@ export default function TemplateFontRegistrar() {
       }
       registeredRef.current.clear();
     };
-  }, [activeManifest?.assets, pendingFiles, setAssetPreviewError, template.assets, template.id]);
+  }, [
+    activeManifest?.assets,
+    pendingFiles,
+    setAssetPreviewError,
+    template.assets,
+    template.id,
+  ]);
 
   return null;
 }

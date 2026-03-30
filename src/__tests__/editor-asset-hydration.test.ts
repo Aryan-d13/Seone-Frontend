@@ -27,7 +27,7 @@ describe('editor asset hydration', () => {
             gcs_path: 'jobs/abc/assets/logo.png',
           },
         },
-      }),
+      })
     );
 
     expect(imported.assets.logo_mark).toEqual({
@@ -47,8 +47,8 @@ describe('editor asset hydration', () => {
           source_uri: 'https://cdn.example.com/logo.png',
           gcs_path: 'jobs/abc/assets/logo.png',
         },
-        '/jobs/abc/assets/logo.png',
-      ),
+        '/jobs/abc/assets/logo.png'
+      )
     ).toBe('http://localhost:8000/data/jobs/abc/assets/logo.png');
   });
 
@@ -59,8 +59,8 @@ describe('editor asset hydration', () => {
           type: 'image',
           path: '/mnt/e/Code/Seone/src/templates/chaturnath/assets/logo.png',
         },
-        '/api/v1/jobs/job-123/clips/1/assets/logo_mark',
-      ),
+        '/api/v1/jobs/job-123/clips/1/assets/logo_mark'
+      )
     ).toBeNull();
   });
 
@@ -70,7 +70,7 @@ describe('editor asset hydration', () => {
         type: 'image',
         path: 'logo.png',
         gcs_path: 'jobs/abc/assets/logo.png',
-      }),
+      })
     ).toBeNull();
   });
 
@@ -145,7 +145,9 @@ describe('editor asset hydration', () => {
       assets: {},
     } as any);
 
-    expect(useTemplateStore.getState().template.assets.logo_mark.gcs_path).toBeUndefined();
+    expect(
+      useTemplateStore.getState().template.assets.logo_mark.gcs_path
+    ).toBeUndefined();
   });
 
   it('leaves legacy logo metadata untouched when no canonical ref is present', () => {
@@ -182,7 +184,9 @@ describe('editor asset hydration', () => {
       assets: {},
     } as any);
 
-    expect(useTemplateStore.getState().template.assets.logo_mark.gcs_path).toBeUndefined();
+    expect(
+      useTemplateStore.getState().template.assets.logo_mark.gcs_path
+    ).toBeUndefined();
   });
 
   it('hydrates preview text from resolved text when render inputs are missing', () => {
@@ -203,7 +207,12 @@ describe('editor asset hydration', () => {
             text: {
               max_lines: 3,
               overflow: 'shrink',
-              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              font: {
+                family: 'NotoSansDevanagari',
+                weight: 700,
+                fallbacks: [],
+                size: 60,
+              },
               width_percent: 75,
               min_font_size: 24,
               horizontal_align: 'center',
@@ -265,7 +274,12 @@ describe('editor asset hydration', () => {
             text: {
               max_lines: 3,
               overflow: 'shrink',
-              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              font: {
+                family: 'NotoSansDevanagari',
+                weight: 700,
+                fallbacks: [],
+                size: 60,
+              },
               width_percent: 75,
               min_font_size: 24,
               horizontal_align: 'center',
@@ -313,8 +327,12 @@ describe('editor asset hydration', () => {
       assets: {},
     } as any);
 
-    const zone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'title_band');
-    const backgroundZone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'title_band__bg');
+    const zone = useTemplateStore
+      .getState()
+      .template.zones.find(entry => entry.id === 'title_band');
+    const backgroundZone = useTemplateStore
+      .getState()
+      .template.zones.find(entry => entry.id === 'title_band__bg');
     expect(zone?.bounds.width).toBeLessThan(1080);
     expect(zone?.bounds.height).toBeLessThan(170);
     expect(zone?.bounds.x).toBeGreaterThan(0);
@@ -359,7 +377,12 @@ describe('editor asset hydration', () => {
             text: {
               max_lines: 3,
               overflow: 'shrink',
-              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              font: {
+                family: 'NotoSansDevanagari',
+                weight: 700,
+                fallbacks: [],
+                size: 60,
+              },
               width_percent: 100,
               min_font_size: 24,
               horizontal_align: 'center',
@@ -409,12 +432,20 @@ describe('editor asset hydration', () => {
       assets: {},
     } as any);
 
-    const backgroundZone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'title_band__bg');
-    const textZone = useTemplateStore.getState().template.zones.find((entry) => entry.id === 'title_band');
+    const backgroundZone = useTemplateStore
+      .getState()
+      .template.zones.find(entry => entry.id === 'title_band__bg');
+    const textZone = useTemplateStore
+      .getState()
+      .template.zones.find(entry => entry.id === 'title_band');
 
     expect(backgroundZone?.bounds).toEqual({ x: 0, y: 0, width: 1080, height: 170 });
-    expect(Number(textZone?.bounds.x) + Number(textZone?.bounds.width)).toBeLessThanOrEqual(1080);
-    expect(Number(textZone?.bounds.y) + Number(textZone?.bounds.height)).toBeLessThanOrEqual(170);
+    expect(
+      Number(textZone?.bounds.x) + Number(textZone?.bounds.width)
+    ).toBeLessThanOrEqual(1080);
+    expect(
+      Number(textZone?.bounds.y) + Number(textZone?.bounds.height)
+    ).toBeLessThanOrEqual(170);
   });
 
   it('does not coerce nullable refs into string values on import', () => {
@@ -437,7 +468,7 @@ describe('editor asset hydration', () => {
         ],
         styles: {},
         assets: {},
-      }),
+      })
     );
 
     expect(imported.zones[0].content_ref).toBeUndefined();
@@ -465,7 +496,7 @@ describe('editor asset hydration', () => {
         ],
         styles: {},
         assets: {},
-      }),
+      })
     );
 
     expect(exported.zones[0]).not.toHaveProperty('asset_ref');

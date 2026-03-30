@@ -68,7 +68,7 @@ describe('RenderPreview', () => {
     });
 
     const view = render(
-      <RenderPreview renderRequest={{ jobId: 'job-123', clipIndex: 1 }} />,
+      <RenderPreview renderRequest={{ jobId: 'job-123', clipIndex: 1 }} />
     );
 
     await act(async () => {
@@ -77,14 +77,14 @@ describe('RenderPreview', () => {
 
     await waitFor(() =>
       expect(useTemplateStore.getState().reRenderState.resultUrl).toBe(
-        'http://localhost:8000/data/users/user-123/jobs/job-123/clips/preview.mp4',
-      ),
+        'http://localhost:8000/data/users/user-123/jobs/job-123/clips/preview.mp4'
+      )
     );
 
     const video = view.container.querySelector('video');
     expect(video).not.toBeNull();
     expect(video?.getAttribute('src')).toBe(
-      'http://localhost:8000/data/users/user-123/jobs/job-123/clips/preview.mp4',
+      'http://localhost:8000/data/users/user-123/jobs/job-123/clips/preview.mp4'
     );
   });
 
@@ -104,7 +104,7 @@ describe('RenderPreview', () => {
     });
 
     expect(
-      await screen.findByText('Preview render failed: ffmpeg crashed'),
+      await screen.findByText('Preview render failed: ffmpeg crashed')
     ).toBeInTheDocument();
   });
 
@@ -127,8 +127,8 @@ describe('RenderPreview', () => {
 
     expect(
       await screen.findByText(
-        'Preview video failed to load: http://localhost:8000/data/users/user-123/jobs/job-123/clips/preview.mp4',
-      ),
+        'Preview video failed to load: http://localhost:8000/data/users/user-123/jobs/job-123/clips/preview.mp4'
+      )
     ).toBeInTheDocument();
   });
 });

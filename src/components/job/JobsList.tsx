@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Job } from '@/types';
 import { useJobs } from '@/hooks/useJobs';
 import { Button } from '@/components/ui/Button';
-import { cn, formatJobDisplayName, formatLocalTime, formatQueueStatusLabel } from '@/lib/utils';
+import {
+  cn,
+  formatJobDisplayName,
+  formatLocalTime,
+  formatQueueStatusLabel,
+} from '@/lib/utils';
 import { staggerContainer, listItemVariants } from '@/lib/animations';
 import { Skeleton } from '@/components/ui/Skeleton';
 import styles from './JobsList.module.css';
@@ -35,12 +40,12 @@ export function JobsList() {
 
   if (isLoading && items.length === 0) {
     return (
-        <div className={styles.list} data-testid="jobs-list-loading">
-          <div className={styles.listHeader}>
-            <span>Source</span>
-            <span>Time</span>
-            <span>Duration</span>
-            <span>Output</span>
+      <div className={styles.list} data-testid="jobs-list-loading">
+        <div className={styles.listHeader}>
+          <span>Source</span>
+          <span>Time</span>
+          <span>Duration</span>
+          <span>Output</span>
           <span>Status</span>
         </div>
         {[1, 2, 3, 4, 5].map(i => (
@@ -132,7 +137,9 @@ export function JobsList() {
                 >
                   <div className={styles.jobId}>{formatJobDisplayName(job)}</div>
                   <div className={styles.jobTime}>
-                    <time dateTime={job.created_at}>{formatLocalTime(job.created_at)}</time>
+                    <time dateTime={job.created_at}>
+                      {formatLocalTime(job.created_at)}
+                    </time>
                   </div>
                   <div className={styles.jobDuration}>
                     {formatDuration(job.processing_duration_seconds)}
