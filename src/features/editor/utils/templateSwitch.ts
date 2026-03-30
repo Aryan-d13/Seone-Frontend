@@ -1,4 +1,4 @@
-import type { TemplateJSON } from '../types/template';
+import type { AssetDef, TemplateJSON } from '../types/template';
 
 function cloneTemplate(template: TemplateJSON): TemplateJSON {
   return JSON.parse(JSON.stringify(template));
@@ -14,11 +14,9 @@ function hasUsableAssetRef(value: unknown): boolean {
   return false;
 }
 
-function hasRemoteAssetRef(asset: Record<string, unknown> | undefined): boolean {
+function hasRemoteAssetRef(asset: AssetDef | undefined): boolean {
   if (!asset) return false;
-  return ['source_uri', 'gcs_path', 'path'].some(field =>
-    hasUsableAssetRef(asset[field])
-  );
+  return [asset.source_uri, asset.gcs_path, asset.path].some(hasUsableAssetRef);
 }
 
 export function mergeTemplateForStudioSwitch(

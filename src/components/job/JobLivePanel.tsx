@@ -4,17 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { endpoints } from '@/lib/config';
 import { authFetch } from '@/services/auth';
-import type { Job, UXFact } from '@/types';
+import type { Job, JobStatus, UXFact } from '@/types';
 import { cn } from '@/lib/utils';
 import styles from './JobLivePanel.module.css';
 
-const ACTIVE_STATUSES = new Set([
+type ActiveJobStatus =
+  | 'queued'
+  | 'downloading'
+  | 'transcribing'
+  | 'analyzing'
+  | 'rendering';
+
+const ACTIVE_STATUSES = new Set<ActiveJobStatus>([
   'queued',
   'downloading',
   'transcribing',
   'analyzing',
   'rendering',
-] as const);
+]);
 
 const FALLBACK_WHISPERS: UXFact[] = [
   {
@@ -89,12 +96,16 @@ function whisperText(fact: UXFact | undefined): string {
   return fact.body?.trim() || fact.headline?.trim() || '';
 }
 
+function isActiveJobStatus(status: JobStatus): status is ActiveJobStatus {
+  return ACTIVE_STATUSES.has(status as ActiveJobStatus);
+}
+
 export function JobLivePanel({ job, jobId, className }: JobLivePanelProps) {
   const reduceMotion = useReducedMotion();
   const uiState = job.ui_state;
   const displayStatus = uiState?.status ?? job.status;
   const progress = uiState?.progress ?? job.progress ?? 0;
-  const isActive = ACTIVE_STATUSES.has(displayStatus);
+  const isActive = isActiveJobStatus(displayStatus);
   const [facts, setFacts] = useState<UXFact[]>(FALLBACK_WHISPERS);
   const [factIndex, setFactIndex] = useState(0);
   const [isFetching, setIsFetching] = useState(false);
