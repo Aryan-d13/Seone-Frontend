@@ -2,60 +2,75 @@
 
 import { motion } from 'framer-motion';
 import { useJobStore } from '@/stores/job';
-import { cn } from '@/lib/utils';
+import { cn, humanizeJobError } from '@/lib/utils';
 import styles from './PipelineTimeline.module.css';
 
 const STEPS = [
   { id: 'queued', label: 'Queued' },
   { id: 'downloading', label: 'Downloading' },
-  { id: 'transcribing', label: 'Transcribing' },
-  { id: 'analyzing', label: 'Analyzing' },
-  { id: 'rendering', label: 'Rendering' },
+  { id: 'transcribing', label: 'Listening' },
+  { id: 'analyzing', label: 'Finding Moments' },
+  { id: 'rendering', label: 'Building Clips' },
 ] as const;
+
+function toTimelineStepId(value?: string): string {
+  switch (value) {
+    case 'queued':
+    case 'downloading':
+    case 'transcribing':
+    case 'analyzing':
+    case 'rendering':
+      return value;
+    case 'download':
+      return 'downloading';
+    case 'transcribe':
+      return 'transcribing';
+    case 'analyze':
+      return 'analyzing';
+    case 'smart_render':
+      return 'rendering';
+    default:
+      return 'queued';
+  }
+}
 
 export function PipelineTimeline() {
   const job = useJobStore(state => state.job);
 
   if (!job) return null;
+  const displayState = job.ui_state;
+  const displayStatus = displayState?.status ?? job.status;
+  const failedStep =
+    displayState?.active_step && displayState.active_step !== 'failed'
+      ? displayState.active_step
+      : job.current_step;
+  const currentStepId =
+    displayStatus === 'failed'
+      ? toTimelineStepId(failedStep)
+      : toTimelineStepId(displayStatus);
 
-  // Mapping layer: Backend Step/Phase -> UI Status
-  const STEP_MAPPING: Record<string, string> = {
-    download: 'downloading',
-    transcribe: 'transcribing',
-    analyze: 'analyzing',
-    smart_render: 'rendering',
-    // Phase mappings
-    forked: 'rendering',
-  };
+  const isCompleted = displayStatus === 'completed';
+  const isFailed = displayStatus === 'failed';
 
-  // Determine current step index
-  const rawPhase = job.phase;
-  const rawStep = job.current_step || 'queued';
-
-  let currentStepId = 'queued';
-
-  if (rawPhase && rawPhase !== 'queued') {
-    if (rawPhase === 'forked') {
-      // Fork/join: transcribe+analyze run in parallel, show "analyzing" as current
-      // (both steps are in-flight, show the later one as active so earlier ones appear done)
-      currentStepId = 'analyzing';
-    } else if (STEP_MAPPING[rawPhase]) {
-      currentStepId = STEP_MAPPING[rawPhase];
-    } else {
-      currentStepId = rawPhase;
-    }
-  } else {
-    currentStepId = STEP_MAPPING[rawStep] || rawStep;
-  }
-
-  const isCompleted = job.status === 'completed' || job.phase === 'completed';
-  const isFailed = job.status === 'failed' || job.phase === 'failed';
-
-  const currentStepIndex = STEPS.findIndex(s => s.id === currentStepId);
+  const currentStepIndex = Math.max(
+    0,
+    STEPS.findIndex(s => s.id === currentStepId)
+  );
   const effectiveIndex = isCompleted ? STEPS.length : currentStepIndex;
 
   return (
     <div className={styles.container}>
+      <div className={styles.summary}>
+        <div className={styles.summaryLabel}>
+          {displayState?.label ?? currentStepId.replace('_', ' ')}
+        </div>
+        {displayState?.sublabel && (
+          <div className={styles.summarySublabel}>{displayState.sublabel}</div>
+        )}
+        {displayState?.parallel_hint && !isCompleted && !isFailed && (
+          <div className={styles.parallelHint}>{displayState.parallel_hint}</div>
+        )}
+      </div>
       <div className={styles.timeline}>
         {STEPS.map((step, index) => {
           const isActive = !isCompleted && !isFailed && index === currentStepIndex;
@@ -116,7 +131,7 @@ export function PipelineTimeline() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          {job.error_message}
+          {humanizeJobError(job.error_message)}
         </motion.div>
       )}
     </div>

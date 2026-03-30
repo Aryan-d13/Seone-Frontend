@@ -1,100 +1,126 @@
 /**
- * Firestore CRUD for the `templates/` collection.
+ * Backend-backed template CRUD for the admin builder.
  *
- * Document ID convention: template.id with "/" → "_"
- *   e.g. "chaturnath/v1" → "chaturnath_v1"
- *
- * This matches the existing Python backend (seed_templates.py, firestore_resolver.py).
+ * The embedded admin panel should not depend on browser Firebase auth.
+ * These helpers talk to Seone's authenticated API, which handles
+ * template storage policy server-side. Production is expected to run
+ * fail-closed against Firestore; local development may enable a
+ * filesystem fallback explicitly.
  */
 
-import {
-    collection, doc, getDocs, getDoc, setDoc, deleteDoc,
-    serverTimestamp, query, orderBy,
-} from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { endpoints } from '@/lib/config';
+import { authFetch } from '@/services/auth';
 import type { TemplateJSON } from '../types/template';
 
-const COLLECTION = 'templates';
-
 export interface TemplateListItem {
-    docId: string;
-    templateId: string;
+  docId: string;
+  templateId: string;
+  name: string;
+  canvasWidth: number;
+  canvasHeight: number;
+  zoneCount: number;
+  compatibilityKey?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+interface AdminTemplateListWire {
+  templates: Array<{
+    doc_id: string;
+    template_id: string;
     name: string;
-    canvasWidth: number;
-    canvasHeight: number;
-    zoneCount: number;
-    updatedAt?: string;
-    updatedBy?: string;
+    canvas_width: number;
+    canvas_height: number;
+    zone_count: number;
+    compatibility_key?: string;
+    updated_at?: string;
+    updated_by?: string;
+  }>;
 }
 
-/**
- * Normalize a template ID to a Firestore document ID.
- */
+interface AdminTemplateDocumentWire {
+  template: TemplateJSON;
+}
+
 export function toDocId(templateId: string): string {
-    return templateId.replace(/\//g, '_');
+  return templateId.replace(/\//g, '_');
 }
 
-/**
- * List all templates from Firestore.
- */
 export async function listTemplates(): Promise<TemplateListItem[]> {
-    const q = query(collection(db, COLLECTION));
-    const snapshot = await getDocs(q);
+  const response = await authFetch(endpoints.pages.adminTemplates);
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to list templates (${response.status}): ${errorText}`);
+  }
 
-    return snapshot.docs.map((doc) => {
-        const data = doc.data();
-        const canvas = data.canvas || {};
-        return {
-            docId: doc.id,
-            templateId: data.id || doc.id,
-            name: (data.id || doc.id).replace(/_/g, ' ').replace(/\//g, ' / '),
-            canvasWidth: canvas.width || 0,
-            canvasHeight: canvas.height || 0,
-            zoneCount: Array.isArray(data.zones) ? data.zones.length : 0,
-            updatedAt: data._updated_at?.toDate?.()?.toISOString?.() || undefined,
-            updatedBy: data._updated_by || undefined,
-        };
-    });
+  const payload: AdminTemplateListWire = await response.json();
+  return payload.templates.map((item) => ({
+    docId: item.doc_id,
+    templateId: item.template_id,
+    name: item.name,
+    canvasWidth: item.canvas_width,
+    canvasHeight: item.canvas_height,
+    zoneCount: item.zone_count,
+    compatibilityKey: item.compatibility_key,
+    updatedAt: item.updated_at,
+    updatedBy: item.updated_by,
+  }));
 }
 
-/**
- * Fetch a single template from Firestore.
- */
 export async function getTemplate(docId: string): Promise<TemplateJSON | null> {
-    const ref = doc(db, COLLECTION, docId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
+  const response = await authFetch(endpoints.pages.adminTemplate(docId));
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to load template (${response.status}): ${errorText}`);
+  }
 
-    const data = snap.data();
-    // Strip internal metadata before returning
-    const { _updated_at, _updated_by, ...templateData } = data;
-    return templateData as unknown as TemplateJSON;
+  const payload: AdminTemplateDocumentWire = await response.json();
+  return payload.template;
 }
 
-/**
- * Save (create or overwrite) a template in Firestore.
- * Adds metadata: _updated_at, _updated_by.
- */
-export async function saveTemplate(
-    template: TemplateJSON,
-    userEmail: string,
-): Promise<string> {
-    const docId = toDocId(template.id);
-    const ref = doc(db, COLLECTION, docId);
+export async function getPublicTemplateDocument(templateRef: string): Promise<TemplateJSON | null> {
+  const response = await authFetch(endpoints.pages.document(templateRef));
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to load template (${response.status}): ${errorText}`);
+  }
 
-    await setDoc(ref, {
-        ...template,
-        _updated_at: serverTimestamp(),
-        _updated_by: userEmail,
-    });
-
-    return docId;
+  const payload: AdminTemplateDocumentWire = await response.json();
+  return payload.template;
 }
 
-/**
- * Delete a template from Firestore.
- */
+export async function saveTemplate(template: TemplateJSON, userEmail: string): Promise<string> {
+  void userEmail;
+  const docId = toDocId(template.id);
+  const response = await authFetch(endpoints.pages.adminTemplate(docId), {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ template }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to save template (${response.status}): ${errorText}`);
+  }
+
+  return docId;
+}
+
 export async function deleteTemplate(docId: string): Promise<void> {
-    const ref = doc(db, COLLECTION, docId);
-    await deleteDoc(ref);
+  const response = await authFetch(endpoints.pages.adminTemplate(docId), {
+    method: 'DELETE',
+  });
+
+  if (!response.ok && response.status !== 404) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`Failed to delete template (${response.status}): ${errorText}`);
+  }
 }

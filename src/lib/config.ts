@@ -62,7 +62,22 @@ export const endpoints = {
   },
   pages: {
     list: '/api/v1/pages',
-    get: (id: string) => `/api/v1/pages/${id}`,
+    fonts: '/api/v1/pages/fonts',
+    get: (id: string) => `/api/v1/pages/${encodeURIComponent(id)}`,
+    document: (id: string) => `/api/v1/pages/document/${encodeURIComponent(id)}`,
+    adminTemplates: '/api/v1/pages/admin/templates',
+    adminTemplate: (docId: string) => `/api/v1/pages/admin/templates/${docId}`,
+    adminTemplateAsset: (docId: string, assetKey: string) => `/api/v1/pages/admin/templates/${docId}/assets/${assetKey}`,
+  },
+  ux: {
+    facts: (params?: { slot?: string; count?: number; jobId?: string }) => {
+      const search = new URLSearchParams();
+      if (params?.slot) search.set('slot', params.slot);
+      if (typeof params?.count === 'number') search.set('count', String(params.count));
+      if (params?.jobId) search.set('job_id', params.jobId);
+      const query = search.toString();
+      return query ? `/api/v1/ux/facts?${query}` : '/api/v1/ux/facts';
+    },
   },
   ws: {
     job: (jobId: string) => `/ws/jobs/${jobId}`,

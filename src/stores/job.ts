@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Job, Clip, JobStatus, JobPhase } from '@/types';
+import { Job, JobLike, Clip, JobStatus, JobPhase } from '@/types';
+import { normalizeJob } from '@/lib/jobNormalizer';
 
 // ============================================
 // TERMINAL STATE GUARDS
@@ -82,8 +83,8 @@ interface JobState {
   error: string | null;
 
   // Actions
-  setJob: (job: Job) => void;
-  updateJob: (updates: Partial<Job>) => void;
+  setJob: (job: JobLike) => void;
+  updateJob: (updates: Partial<JobLike>) => void;
   addClip: (clip: Clip) => void;
   setWsConnected: (connected: boolean) => void;
   setLastEventAt: (timestamp: string) => void;
@@ -104,27 +105,29 @@ export const useJobStore = create<JobState>(set => ({
 
   setJob: job =>
     set(state => {
+      const normalizedJob = normalizeJob(job);
       // ── Terminal monotonicity guard ──
       if (isTerminal(state.job)) {
         // Exception: failed always overrides completed
-        if (state.job!.status === 'completed' && job.status === 'failed') {
-          return { job, liveClips: [], error: null };
+        if (state.job!.status === 'completed' && normalizedJob.status === 'failed') {
+          return { job: normalizedJob, liveClips: [], error: null };
         }
         // Reject all other updates to terminal jobs
         console.debug('[Store] setJob rejected — terminal guard', {
           current: state.job?.status,
-          incoming: job.status,
-          jobId: job.id,
+          incoming: normalizedJob.status,
+          jobId: normalizedJob.id,
         });
         return {};
       }
 
       // ── Clip validation: completed with empty clips → failed ──
-      if (job.status === 'completed' && !hasValidClips(job)) {
+      if (normalizedJob.status === 'completed' && !hasValidClips(normalizedJob)) {
         const failedJob: Job = {
-          ...job,
+          ...normalizedJob,
           status: 'failed' as JobStatus,
-          error_message: job.error_message || 'Job completed but produced no clips',
+          error_message:
+            normalizedJob.error_message || 'Job completed but produced no clips',
         };
         return {
           job: failedJob,
@@ -133,14 +136,14 @@ export const useJobStore = create<JobState>(set => ({
         };
       }
 
-      const isSameJob = state.job?.id === job.id;
+      const isSameJob = state.job?.id === normalizedJob.id;
       const mergedClips = mergeClips(
         isSameJob ? state.liveClips : [],
-        job.output?.clips ?? []
+        normalizedJob.output?.clips ?? []
       );
 
       return {
-        job,
+        job: normalizedJob,
         liveClips: mergedClips,
         // Preserve error if current state is failed (defensive, should not reach here due to guard)
         error: state.job?.status === 'failed' ? state.error : null,
@@ -150,9 +153,10 @@ export const useJobStore = create<JobState>(set => ({
   updateJob: updates =>
     set(state => {
       if (!state.job) return {};
+      const normalizedJob = normalizeJob({ ...state.job, ...updates });
 
       // ── Terminal monotonicity guard ──
-      if (isTerminal(state.job) && updates.status !== 'failed') {
+      if (isTerminal(state.job) && normalizedJob.status !== 'failed') {
         console.debug('[Store] updateJob rejected — terminal guard', {
           current: state.job?.status,
           incoming: updates,
@@ -161,23 +165,23 @@ export const useJobStore = create<JobState>(set => ({
       }
 
       // ── Clip validation: completed with empty clips → failed ──
-      if (updates.status === 'completed') {
-        const clips = updates.output?.clips;
+      if (normalizedJob.status === 'completed') {
+        const clips = normalizedJob.output?.clips;
         if (!Array.isArray(clips) || clips.length === 0) {
           return {
             job: {
               ...state.job,
-              ...updates,
+              ...normalizedJob,
               status: 'failed' as JobStatus,
               error_message:
-                updates.error_message || 'Job completed but produced no clips',
+                normalizedJob.error_message || 'Job completed but produced no clips',
             },
           };
         }
       }
 
       return {
-        job: { ...state.job, ...updates },
+        job: normalizedJob,
       };
     }),
 

@@ -6,11 +6,12 @@ import { useJobStore } from '@/stores/job';
 import { useJobWebSocket } from '@/hooks/useJobWebSocket';
 import { authFetch } from '@/services/auth';
 import { endpoints } from '@/lib/config';
+import { JobLivePanel } from '@/components/job/JobLivePanel';
 import { PipelineTimeline } from '@/components/job/PipelineTimeline';
 import { ClipGallery } from '@/components/job/ClipGallery';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatLocalDateTime } from '@/lib/utils';
+import { formatJobDisplayName, formatLocalDateTime, formatQueueStatusLabel } from '@/lib/utils';
 import styles from './page.module.css';
 
 function formatDuration(seconds?: number | null) {
@@ -138,6 +139,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   if (!job) return null;
 
   const formattedJobDate = formatLocalDateTime(job.created_at);
+  const displayStatus = job.ui_state?.status ?? job.status;
 
   return (
     <div className={styles.container}>
@@ -153,9 +155,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           </button>
           <div className={styles.headerContent}>
             <div className={styles.titleWrapper}>
-              <h1 className={styles.title}>Job #{job.id.slice(0, 8)}</h1>
-              <span className={`${styles.status} ${styles[job.status]}`}>
-                {job.status}
+              <h1 className={styles.title}>{formatJobDisplayName(job)}</h1>
+              <span className={`${styles.status} ${styles[displayStatus]}`}>
+                {formatQueueStatusLabel(job)}
               </span>
             </div>
             <div className={styles.metaContainer}>
@@ -170,6 +172,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       </div>
 
       <div className={styles.content}>
+        <JobLivePanel job={job} jobId={id} />
         <PipelineTimeline />
         <ClipGallery />
       </div>

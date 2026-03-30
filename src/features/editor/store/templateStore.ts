@@ -11,7 +11,6 @@ import type { RenderManifest, ResolvedTextLayout, ResolvedZone } from '../types/
 import { importTemplate } from '../utils/importTemplate';
 import { hasForcedAutoHeight } from '../utils/zoneRules';
 import { getAssetPreviewUrl } from '../utils/assetPreview';
-import { getCanonicalAssetGcsPath } from '../utils/firebaseAsset';
 import { clampVideoBoundsPosition, normalizeVideoBounds, readBoundsAspectRatio } from '../utils/videoBounds';
 
 /* ── UI-only state ─────────────────────────────── */
@@ -26,6 +25,7 @@ interface UIState {
     lockedZoneIds: Set<string>;
     /** Maps zone id → objectURL for preview on canvas (UI-only, not serialized). */
     uploadedImages: Record<string, string>;
+    assetPreviewError: string | null;
     /** Maps asset key → raw File blob for deferred GCS upload on save. */
     pendingFiles: Record<string, File>;
     /** Preview text content keyed by content_ref (e.g. pov_text → "actual words"). */
@@ -75,6 +75,7 @@ interface TemplateStore extends UIState {
     addZone: (zone: ZoneSpec) => void;
     updateZone: (id: string, patch: Partial<ZoneSpec>) => void;
     updateZoneBounds: (id: string, bounds: Partial<BoundsSpec>) => void;
+    updateZoneBoundsExact: (id: string, bounds: Partial<BoundsSpec>) => void;
     removeZone: (id: string) => void;
     duplicateZone: (id: string) => void;
     reorderZone: (id: string, newZ: number) => void;
@@ -100,9 +101,11 @@ interface TemplateStore extends UIState {
     // Uploaded images (UI-only blob URLs for canvas preview)
     setUploadedImage: (zoneId: string, blobUrl: string) => void;
     removeUploadedImage: (zoneId: string) => void;
+    setAssetPreviewError: (message: string | null) => void;
 
     // Pending files for deferred GCS upload
     setPendingFile: (assetKey: string, file: File) => void;
+    removePendingFile: (assetKey: string) => void;
     getPendingFiles: () => Record<string, File>;
     clearPendingFiles: () => void;
 
@@ -211,6 +214,98 @@ function coerceFiniteNumber(value: unknown, fallback: number): number {
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
+}
+
+function buildTemplateWithBoundsUpdate(
+    template: TemplateJSON,
+    zoneId: string,
+    boundsUpdate: Partial<BoundsSpec>,
+    options: {
+        gridSnap: boolean;
+        gridSize: number;
+        sourceVideoAspectRatio: number | null;
+        snapEnabled: boolean;
+    },
+): TemplateJSON {
+    const maybeSnap = (value: number) =>
+        options.snapEnabled ? snap(value, options.gridSize, options.gridSnap) : value;
+
+    const nextTemplate = {
+        ...template,
+        zones: template.zones.map((zone) => {
+            if (zone.id !== zoneId) return zone;
+
+            const old = zone.bounds;
+            const newBounds: BoundsSpec = {
+                x: boundsUpdate.x !== undefined ? maybeSnap(boundsUpdate.x as number) : old.x,
+                y: boundsUpdate.y !== undefined ? maybeSnap(boundsUpdate.y as number) : old.y,
+                width:
+                    boundsUpdate.width !== undefined
+                        ? Math.max(10, maybeSnap(boundsUpdate.width as number))
+                        : old.width,
+            };
+
+            if (!hasForcedAutoHeight(zone) && boundsUpdate.height !== undefined) {
+                newBounds.height = Math.max(10, maybeSnap(boundsUpdate.height as number));
+            } else if (!hasForcedAutoHeight(zone) && old.height !== undefined) {
+                newBounds.height = old.height;
+            }
+
+            if (zone.type === 'video') {
+                const widthChanged = boundsUpdate.width !== undefined;
+                const heightChanged = boundsUpdate.height !== undefined;
+                const currentWidth = Number(old.width) || template.canvas.width;
+                const currentHeight = Number(old.height ?? template.canvas.height) || template.canvas.height;
+                const currentAspectRatio = readBoundsAspectRatio(old) ?? options.sourceVideoAspectRatio;
+                const rawBounds: BoundsSpec = {
+                    x: Number(newBounds.x) || 0,
+                    y: Number(newBounds.y) || 0,
+                    width: Number(newBounds.width) || currentWidth,
+                    height: Number(newBounds.height ?? currentHeight) || currentHeight,
+                };
+
+                let adjustedBounds = rawBounds;
+                if (currentAspectRatio && currentAspectRatio > 0 && (widthChanged || heightChanged)) {
+                    if (widthChanged && !heightChanged) {
+                        adjustedBounds = {
+                            ...rawBounds,
+                            height: Math.max(10, Math.round(Number(rawBounds.width) / currentAspectRatio)),
+                        };
+                    } else if (heightChanged && !widthChanged) {
+                        adjustedBounds = {
+                            ...rawBounds,
+                            width: Math.max(10, Math.round(Number(rawBounds.height) * currentAspectRatio)),
+                        };
+                    } else if (widthChanged && heightChanged) {
+                        const widthDelta = Math.abs(Number(rawBounds.width) - currentWidth);
+                        const heightDelta = Math.abs(Number(rawBounds.height) - currentHeight);
+                        adjustedBounds =
+                            widthDelta >= heightDelta
+                                ? {
+                                    ...rawBounds,
+                                    height: Math.max(10, Math.round(Number(rawBounds.width) / currentAspectRatio)),
+                                }
+                                : {
+                                    ...rawBounds,
+                                    width: Math.max(10, Math.round(Number(rawBounds.height) * currentAspectRatio)),
+                                };
+                    }
+                }
+
+                const normalizedBounds =
+                    widthChanged || heightChanged
+                        ? normalizeVideoBounds(adjustedBounds, template.canvas)
+                        : clampVideoBoundsPosition(adjustedBounds, template.canvas);
+                return normalizeZone({ ...zone, bounds: normalizedBounds });
+            }
+
+            return normalizeZone({ ...zone, bounds: newBounds });
+        }),
+    };
+
+    return nextTemplate.compositing_mode === 'stack'
+        ? enforceClipStackConstraints(nextTemplate)
+        : nextTemplate;
 }
 
 function isResolvedTextLayout(value: unknown): value is ResolvedTextLayout {
@@ -428,6 +523,108 @@ function splitTextBackgroundLayers(
     };
 }
 
+function findPrimaryVideoZoneIndex(zones: ZoneSpec[]): number {
+    const explicitIndex = zones.findIndex((zone) => zone.id === 'video_main' && zone.type === 'video');
+    if (explicitIndex >= 0) return explicitIndex;
+    return zones.findIndex((zone) => zone.type === 'video');
+}
+
+function findPrimaryTitleZoneIndex(zones: ZoneSpec[]): number {
+    const explicitIndex = zones.findIndex((zone) => zone.id === 'title_band' && zone.type === 'text');
+    if (explicitIndex >= 0) return explicitIndex;
+    return zones.findIndex((zone) => zone.type === 'text' && zone.content_ref === 'pov_text');
+}
+
+function enforceClipStackConstraints(template: TemplateJSON): TemplateJSON {
+    const nextTemplate =
+        template.compositing_mode === 'stack'
+            ? template
+            : { ...template, compositing_mode: 'stack' as const };
+    const nextZones = [...nextTemplate.zones];
+    const videoIndex = findPrimaryVideoZoneIndex(nextZones);
+    const textIndex = findPrimaryTitleZoneIndex(nextZones);
+
+    if (videoIndex < 0 || textIndex < 0) {
+        return nextTemplate;
+    }
+
+    const videoZone = nextZones[videoIndex];
+    const textZone = nextZones[textIndex];
+    const backgroundZoneId = `${textZone.id}__bg`;
+    const backgroundIndex = nextZones.findIndex(
+        (zone) => zone.id === backgroundZoneId && zone.type === 'shape' && zone.role === 'text_background',
+    );
+
+    if (backgroundIndex < 0) {
+        return nextTemplate;
+    }
+
+    const backgroundZone = nextZones[backgroundIndex];
+    const canvasWidth = Math.max(10, Number(nextTemplate.canvas.width) || 10);
+    const canvasHeight = Math.max(10, Number(nextTemplate.canvas.height) || 10);
+    const stackWidth = clamp(
+        Math.round(Number(videoZone.bounds.width) || Number(backgroundZone.bounds.width) || canvasWidth),
+        10,
+        canvasWidth,
+    );
+    const stackX = clamp(
+        Math.round(Number(videoZone.bounds.x) || Number(backgroundZone.bounds.x) || 0),
+        0,
+        Math.max(canvasWidth - stackWidth, 0),
+    );
+    const backgroundHeight = Math.max(10, Math.round(Number(backgroundZone.bounds.height) || 10));
+    const backgroundY = clamp(
+        Math.round(Number(backgroundZone.bounds.y) || 0),
+        0,
+        Math.max(canvasHeight - backgroundHeight, 0),
+    );
+    const videoY = clamp(
+        Math.round(Number(videoZone.bounds.y) || backgroundY + backgroundHeight),
+        backgroundY + backgroundHeight,
+        Math.max(canvasHeight - 10, backgroundY + backgroundHeight),
+    );
+    const maxVideoHeight = Math.max(canvasHeight - videoY, 10);
+    const videoHeight = clamp(
+        Math.round(Number(videoZone.bounds.height) || maxVideoHeight),
+        10,
+        maxVideoHeight,
+    );
+
+    const syncedBackground: ZoneSpec = normalizeZone({
+        ...backgroundZone,
+        bounds: {
+            x: stackX,
+            y: backgroundY,
+            width: stackWidth,
+            height: backgroundHeight,
+        },
+    });
+
+    const syncedVideo: ZoneSpec = normalizeZone({
+        ...videoZone,
+        bounds: {
+            x: stackX,
+            y: videoY,
+            width: stackWidth,
+            height: videoHeight,
+        },
+    });
+
+    const syncedText: ZoneSpec = normalizeZone({
+        ...textZone,
+        bounds: clampBoundsWithinContainer(textZone.bounds, syncedBackground.bounds),
+    });
+
+    nextZones[backgroundIndex] = syncedBackground;
+    nextZones[videoIndex] = syncedVideo;
+    nextZones[textIndex] = syncedText;
+
+    return {
+        ...nextTemplate,
+        zones: nextZones.sort((left, right) => left.z - right.z),
+    };
+}
+
 /* ── Store ─────────────────────────────────────── */
 
 export const useTemplateStore = create<TemplateStore>((set, get) => {
@@ -454,6 +651,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         gridSize: 10,
         lockedZoneIds: new Set(),
         uploadedImages: {},
+        assetPreviewError: null,
         pendingFiles: {},
         previewTexts: {},
         activeManifest: null,
@@ -476,6 +674,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
                 editingTextZoneId: null,
                 pendingFiles: {},
                 uploadedImages: {},
+                assetPreviewError: null,
                 lockedZoneIds: new Set(),
                 sourceVideoAspectRatio: null,
                 aiCopySessions: {},
@@ -495,7 +694,12 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         },
         setCompositingMode: (mode) => {
             pushHistory();
-            set((s) => ({ template: { ...s.template, compositing_mode: mode } }));
+            set((s) => ({
+                template:
+                    mode === 'stack'
+                        ? enforceClipStackConstraints({ ...s.template, compositing_mode: mode })
+                        : { ...s.template, compositing_mode: mode },
+            }));
         },
 
         // ── Zone CRUD ─────────────────────────────────
@@ -524,71 +728,24 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
             const { gridSnap, gridSize } = get();
             pushHistory();
             set((s) => ({
-                template: {
-                    ...s.template,
-                    zones: s.template.zones.map((z) => {
-                        if (z.id !== id) return z;
-                        const old = z.bounds;
-                        const newBounds: BoundsSpec = {
-                            x: boundsUpdate.x !== undefined ? snap(boundsUpdate.x as number, gridSize, gridSnap) : old.x,
-                            y: boundsUpdate.y !== undefined ? snap(boundsUpdate.y as number, gridSize, gridSnap) : old.y,
-                            width: boundsUpdate.width !== undefined ? Math.max(10, snap(boundsUpdate.width as number, gridSize, gridSnap)) : old.width,
-                        };
-                        if (!hasForcedAutoHeight(z) && boundsUpdate.height !== undefined) {
-                            newBounds.height = Math.max(10, snap(boundsUpdate.height as number, gridSize, gridSnap));
-                        } else if (!hasForcedAutoHeight(z) && old.height !== undefined) {
-                            newBounds.height = old.height;
-                        }
-                        if (z.type === 'video') {
-                            const widthChanged = boundsUpdate.width !== undefined;
-                            const heightChanged = boundsUpdate.height !== undefined;
-                            const currentWidth = Number(old.width) || s.template.canvas.width;
-                            const currentHeight = Number(old.height ?? s.template.canvas.height) || s.template.canvas.height;
-                            const currentAspectRatio = readBoundsAspectRatio(old) ?? s.sourceVideoAspectRatio;
-                            const rawBounds: BoundsSpec = {
-                                x: Number(newBounds.x) || 0,
-                                y: Number(newBounds.y) || 0,
-                                width: Number(newBounds.width) || currentWidth,
-                                height: Number(newBounds.height ?? currentHeight) || currentHeight,
-                            };
-
-                            let adjustedBounds = rawBounds;
-                            if (currentAspectRatio && currentAspectRatio > 0 && (widthChanged || heightChanged)) {
-                                if (widthChanged && !heightChanged) {
-                                    adjustedBounds = {
-                                        ...rawBounds,
-                                        height: Math.max(10, Math.round(Number(rawBounds.width) / currentAspectRatio)),
-                                    };
-                                } else if (heightChanged && !widthChanged) {
-                                    adjustedBounds = {
-                                        ...rawBounds,
-                                        width: Math.max(10, Math.round(Number(rawBounds.height) * currentAspectRatio)),
-                                    };
-                                } else if (widthChanged && heightChanged) {
-                                    const widthDelta = Math.abs(Number(rawBounds.width) - currentWidth);
-                                    const heightDelta = Math.abs(Number(rawBounds.height) - currentHeight);
-                                    adjustedBounds =
-                                        widthDelta >= heightDelta
-                                            ? {
-                                                ...rawBounds,
-                                                height: Math.max(10, Math.round(Number(rawBounds.width) / currentAspectRatio)),
-                                            }
-                                            : {
-                                                ...rawBounds,
-                                                width: Math.max(10, Math.round(Number(rawBounds.height) * currentAspectRatio)),
-                                            };
-                                }
-                            }
-
-                            const normalizedBounds =
-                                widthChanged || heightChanged
-                                    ? normalizeVideoBounds(adjustedBounds, s.template.canvas)
-                                    : clampVideoBoundsPosition(adjustedBounds, s.template.canvas);
-                            return normalizeZone({ ...z, bounds: normalizedBounds });
-                        }
-                        return normalizeZone({ ...z, bounds: newBounds });
-                    }),
-                },
+                template: buildTemplateWithBoundsUpdate(s.template, id, boundsUpdate, {
+                    gridSnap,
+                    gridSize,
+                    sourceVideoAspectRatio: s.sourceVideoAspectRatio,
+                    snapEnabled: true,
+                }),
+            }));
+        },
+        updateZoneBoundsExact: (id, boundsUpdate) => {
+            const { gridSnap, gridSize } = get();
+            pushHistory();
+            set((s) => ({
+                template: buildTemplateWithBoundsUpdate(s.template, id, boundsUpdate, {
+                    gridSnap,
+                    gridSize,
+                    sourceVideoAspectRatio: s.sourceVideoAspectRatio,
+                    snapEnabled: false,
+                }),
             }));
         },
         removeZone: (id) => {
@@ -732,12 +889,21 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
                 return { uploadedImages: next };
             });
         },
+        setAssetPreviewError: (message) => set({ assetPreviewError: message }),
 
         // ── Pending files (deferred GCS upload) ──────
         setPendingFile: (assetKey, file) => {
             set((s) => ({
                 pendingFiles: { ...s.pendingFiles, [assetKey]: file },
             }));
+        },
+        removePendingFile: (assetKey) => {
+            set((s) => {
+                if (!(assetKey in s.pendingFiles)) return { pendingFiles: s.pendingFiles };
+                const nextPending = { ...s.pendingFiles };
+                delete nextPending[assetKey];
+                return { pendingFiles: nextPending };
+            });
         },
         getPendingFiles: () => get().pendingFiles,
         clearPendingFiles: () => set({ pendingFiles: {} }),
@@ -780,29 +946,14 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
             // Run it through importTemplate to validate & apply defaults.
             const templateJson = importTemplate(JSON.stringify(manifest.template_ir));
             const normalized = normalizeTemplate(cloneTemplate(templateJson));
-            const templateId =
-                typeof manifest.render_payload?.template_ref === 'string'
-                    ? manifest.render_payload.template_ref
-                    : normalized.id;
-
-            const nextAssets = { ...normalized.assets };
-            for (const [assetKey, asset] of Object.entries(nextAssets)) {
-                const inferredGcsPath = getCanonicalAssetGcsPath(asset, assetKey, templateId);
-                if (!asset.gcs_path && !asset.source_uri && inferredGcsPath) {
-                    nextAssets[assetKey] = {
-                        ...asset,
-                        gcs_path: inferredGcsPath,
-                    };
-                }
-            }
             const splitTemplate = splitTextBackgroundLayers(
                 {
                     ...normalized,
-                    assets: nextAssets,
+                    assets: { ...normalized.assets },
                 },
                 manifest,
             );
-            const normalizedTemplate = splitTemplate.template;
+            const normalizedTemplate = enforceClipStackConstraints(splitTemplate.template);
 
             // Extract preview texts from the render payload inputs
             const previewTexts: Record<string, string> = {};

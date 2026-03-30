@@ -3,6 +3,9 @@
     cursor: grab;
     transition: box-shadow 120ms var(--ease-out);
     touch-action: none;
+    will-change: left, top, width, height;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 .zone-renderer--selected {
@@ -39,6 +42,7 @@
     overflow: hidden;
     border-radius: 1px;
     user-select: none;
+    transform: translateZ(0);
 }
 
 .zone-renderer__drag-surface {

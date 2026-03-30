@@ -22,7 +22,7 @@ export interface TemplateCanvas {
 // ---------- Zone Types ----------
 
 export interface TextFontConfig {
-  family: 'NotoSansDevanagari' | 'NotoSans';
+  family: string;
   fallbacks?: string[];
   weight: number;
   size: number;

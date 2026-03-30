@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useJobStore } from '@/stores/job';
 import { getWsUrl, endpoints } from '@/lib/config';
 import { WebSocketEvent, Clip, JobSyncMessage, ResumeStateMessage } from '@/types';
+import { buildOptimisticUiState } from '@/lib/jobNormalizer';
 import {
   authFetch,
   getValidAuthToken,
@@ -151,6 +152,7 @@ export function useJobWebSocket(jobId: string) {
         return;
       }
       console.log('[WS] Connected', lastCursorRef.current ? '(resuming)' : '(fresh)');
+      connectedAtRef.current = Date.now();
       setWsConnected(true);
       // Delay counter reset — only if connection survives 5s minimum.
       // Prevents infinite loops where connect→die→reconnect resets counter.
@@ -295,6 +297,16 @@ export function useJobWebSocket(jobId: string) {
                 updateJob({
                   current_step: step,
                   status: status,
+                  ui_state: buildOptimisticUiState(status, {
+                    active_step:
+                      step === 'download'
+                        ? 'download'
+                        : step === 'transcribe'
+                          ? 'transcribe'
+                          : step === 'analyze'
+                            ? 'analyze'
+                            : 'smart_render',
+                  }),
                 });
               } else {
                 updateJob({ current_step: step });
@@ -324,9 +336,23 @@ export function useJobWebSocket(jobId: string) {
                   `clip_${clipEvent.payload.clip_index}.mp4`,
               };
               addClip(clip);
+              const clipProgress =
+                clipEvent.payload.clip_count > 0
+                  ? Math.min(
+                      99,
+                      70 +
+                        Math.round(
+                          (clipEvent.payload.clips_ready / clipEvent.payload.clip_count) * 29
+                        )
+                    )
+                  : 70;
               updateJob({
-                progress:
-                  (clipEvent.payload.clips_ready / clipEvent.payload.clip_count) * 100,
+                status: 'rendering',
+                progress: clipProgress,
+                ui_state: buildOptimisticUiState('rendering', {
+                  progress: clipProgress,
+                  active_step: 'smart_render',
+                }),
               });
             }
             break;
@@ -352,6 +378,10 @@ export function useJobWebSocket(jobId: string) {
                 progress: 100,
                 completed_at: new Date().toISOString(),
                 output: doneEvent.payload.output,
+                ui_state: buildOptimisticUiState('completed', {
+                  progress: 100,
+                  active_step: 'completed',
+                }),
               });
               // No fetchJob() here — terminal state set directly from WS
             }
@@ -364,6 +394,10 @@ export function useJobWebSocket(jobId: string) {
             updateJob({
               status: 'failed',
               error_message: failEvent.payload?.error || 'Job failed',
+              ui_state: buildOptimisticUiState('failed', {
+                progress: useJobStore.getState().job?.progress ?? 0,
+                active_step: 'failed',
+              }),
             });
             ws.close();
             break;

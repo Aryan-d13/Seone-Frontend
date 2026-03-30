@@ -25,6 +25,10 @@ vi.mock('@/components/job/PipelineTimeline', () => ({
   PipelineTimeline: () => <div>__timeline__</div>,
 }));
 
+vi.mock('@/components/job/JobLivePanel', () => ({
+  JobLivePanel: () => <div>__live_panel__</div>,
+}));
+
 vi.mock('@/components/job/ClipGallery', () => ({
   ClipGallery: () => <div>__gallery__</div>,
 }));

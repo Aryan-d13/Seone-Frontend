@@ -1,5 +1,8 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import Sidebar, { type SidebarSessionUser } from '../components/Sidebar/Sidebar';
+import TemplateFontRegistrar from '../components/Fonts/TemplateFontRegistrar';
 import type { RenderPreviewRequest } from '../components/RenderPreview/RenderPreview';
 import CanvasWorkspace from '../components/Canvas/CanvasWorkspace';
 import PropertyInspector from '../components/Inspector/PropertyInspector';
@@ -123,7 +126,8 @@ export default function TemplateBuilderFeature({
     const showInspector = mode !== 'clip' || selectedZoneId !== null;
 
     return (
-        <div className={`app ${mode === 'clip' ? 'app--clip' : ''}`}>
+        <div className={`app ${mode === 'clip' ? 'app--clip' : 'app--template'}`}>
+            <TemplateFontRegistrar />
             <div className="app__body">
                 {mode !== 'clip' && (
                     <Sidebar

@@ -4,14 +4,18 @@ import Link from 'next/link';
 import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Eye, LoaderCircle, Download } from 'lucide-react';
 import { TemplateBuilderFeature } from '@/features/editor';
+import { getPublicTemplateDocument } from '@/features/editor/lib/firestoreService';
 import type {
   RenderManifest,
   StudioExportResponse,
   StudioManifestResponse,
   StudioSaveResponse,
 } from '@/features/editor/types/manifest';
+import type { TemplateJSON } from '@/features/editor/types/template';
 import { useTemplateStore } from '@/features/editor/store/templateStore';
 import { buildStudioManifest } from '@/features/editor/utils/studioManifest';
+import { mergeTemplateForStudioSwitch } from '@/features/editor/utils/templateSwitch';
+import { useTemplates } from '@/hooks/useTemplates';
 import { endpoints, getMediaUrl } from '@/lib/config';
 import { authFetch } from '@/services/auth';
 
@@ -132,6 +136,18 @@ const topbarButtonStyle: React.CSSProperties = {
   fontWeight: 700,
 };
 
+const templateSelectStyle: React.CSSProperties = {
+  height: '32px',
+  minWidth: '220px',
+  padding: '0 12px',
+  borderRadius: '999px',
+  border: '1px solid rgba(72, 72, 71, 0.18)',
+  background: 'rgba(255, 255, 255, 0.04)',
+  color: 'var(--text-primary)',
+  fontSize: '12px',
+  fontWeight: 600,
+};
+
 const topbarButtonActiveStyle: React.CSSProperties = {
   ...topbarButtonStyle,
   background: 'rgba(182, 160, 255, 0.14)',
@@ -154,9 +170,11 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const { id, clipIndex } = use(params);
   const clipIndexNumber = Number.parseInt(clipIndex, 10);
   const loadFromManifest = useTemplateStore((state) => state.loadFromManifest);
+  const setTemplate = useTemplateStore((state) => state.setTemplate);
   const template = useTemplateStore((state) => state.template);
   const previewTexts = useTemplateStore((state) => state.previewTexts);
   const activeManifest = useTemplateStore((state) => state.activeManifest);
+  const { templates, isLoading: templatesLoading } = useTemplates();
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [studioSource, setStudioSource] = useState<'draft' | 'original'>('original');
@@ -164,8 +182,14 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [switchingTemplate, setSwitchingTemplate] = useState(false);
   const lastSavedSignatureRef = useRef<string | null>(null);
   const hasLoadedStudioRef = useRef(false);
+  const currentCompatibilityKey = template.compatibility_key || activeManifest?.template_ir?.compatibility_key || null;
+  const compatibleTemplates = useMemo(() => {
+    if (!currentCompatibilityKey) return [];
+    return templates.filter((entry) => entry.compatibility_key === currentCompatibilityKey);
+  }, [currentCompatibilityKey, templates]);
 
   const studioManifest = useMemo(
     () =>
@@ -316,6 +340,27 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     }
   };
 
+  const handleTemplateSwitch = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextTemplateRef = event.target.value;
+    if (!nextTemplateRef || nextTemplateRef === template.id) return;
+
+    setSwitchingTemplate(true);
+    setSaveError(null);
+
+    try {
+      const nextTemplate = await getPublicTemplateDocument(nextTemplateRef);
+      if (!nextTemplate) {
+        throw new Error('Template not found');
+      }
+      const mergedTemplate = mergeTemplateForStudioSwitch(template as TemplateJSON, nextTemplate as TemplateJSON);
+      setTemplate(mergedTemplate);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to switch template');
+    } finally {
+      setSwitchingTemplate(false);
+    }
+  };
+
   return (
     <div style={shellStyle}>
       <header style={topbarStyle}>
@@ -328,6 +373,25 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         </div>
 
         <div style={actionsStyle}>
+          {compatibleTemplates.length > 1 && (
+            <select
+              style={templateSelectStyle}
+              value={template.id}
+              onChange={handleTemplateSwitch}
+              disabled={switchingTemplate || templatesLoading}
+            >
+              <option value={template.id}>
+                {switchingTemplate ? 'Switching template…' : `Template: ${template.id}`}
+              </option>
+              {compatibleTemplates
+                .filter((entry) => entry.template_ref !== template.id)
+                .map((entry) => (
+                  <option key={entry.template_ref} value={entry.template_ref}>
+                    {entry.name}
+                  </option>
+                ))}
+            </select>
+          )}
           {saveStatus === 'saving' && (
             <div
               style={{

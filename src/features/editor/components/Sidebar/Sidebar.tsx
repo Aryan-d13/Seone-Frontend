@@ -199,12 +199,15 @@ export default function Sidebar({
             if (Object.keys(pendingFiles).length > 0) {
                 const { uploadAssetToAzure } = await import('../../lib/storageService');
                 for (const [assetKey, file] of Object.entries(pendingFiles)) {
-                    const { azureBlobPath } = await uploadAssetToAzure(docId, file.name, file);
-                    // Update asset with gcs_path (reusing gcs_path property for backend compat)
                     const existing = template.assets[assetKey] || { type: 'image', path: file.name };
+                    const { sourceUri } = await uploadAssetToAzure(docId, file.name, file, {
+                        assetType: existing.type === 'font' ? 'font' : 'image',
+                        assetKey,
+                    });
+                    const { gcs_path: _legacyGcsPath, ...restAsset } = existing;
                     useTemplateStore.getState().setAsset(assetKey, {
-                        ...existing,
-                        gcs_path: azureBlobPath,
+                        ...restAsset,
+                        source_uri: sourceUri,
                     });
                 }
                 useTemplateStore.getState().clearPendingFiles();
@@ -228,7 +231,7 @@ export default function Sidebar({
             if (data) {
                 // Ensure compositing_mode defaults
                 if (!data.compositing_mode) {
-                    data.compositing_mode = 'overlay';
+                    data.compositing_mode = 'stack';
                 }
                 setTemplate(data);
             }
@@ -610,12 +613,18 @@ export default function Sidebar({
             {/* User bar */}
             {sessionUser && (
                 <div className="sidebar__user-bar">
-                    <img
-                        src={sessionUser.photoURL || ''}
-                        alt=""
-                        className="sidebar__user-avatar"
-                        referrerPolicy="no-referrer"
-                    />
+                    {sessionUser.photoURL ? (
+                        <img
+                            src={sessionUser.photoURL}
+                            alt={`${sessionUser.email || 'User'} avatar`}
+                            className="sidebar__user-avatar"
+                            referrerPolicy="no-referrer"
+                        />
+                    ) : (
+                        <div className="sidebar__user-avatar sidebar__user-avatar--fallback" aria-hidden="true">
+                            {(sessionUser.email || 'S').charAt(0).toUpperCase()}
+                        </div>
+                    )}
                     <span className="sidebar__user-email">{sessionUser.email}</span>
                     <button className="sidebar__signout-btn" onClick={() => { void onSignOut?.(); }} title="Sign out">
                         <LogOut size={14} />

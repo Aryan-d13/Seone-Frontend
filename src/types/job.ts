@@ -25,6 +25,7 @@ export interface Template {
   description?: string;
   thumbnailUrl?: string;
   category?: string;
+  compatibility_key?: string;
 }
 
 /**

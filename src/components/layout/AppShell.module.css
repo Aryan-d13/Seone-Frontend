@@ -21,25 +21,6 @@
   background: var(--bg-primary);
 }
 
-.inspector {
-  flex-shrink: 0;
-  overflow: hidden;
-  background: var(--bg-secondary);
-  border-left: 1px solid var(--border-subtle);
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .inspector {
-    position: fixed;
-    right: 0;
-    top: var(--topbar-height);
-    bottom: 0;
-    z-index: var(--z-modal);
-    box-shadow: var(--shadow-lg);
-  }
-}
-
 @media (max-width: 768px) {
   .content {
     margin-left: 0;

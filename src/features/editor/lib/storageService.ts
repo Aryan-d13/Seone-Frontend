@@ -12,8 +12,56 @@
 export interface UploadResult {
     /** Azure Blob path (relative to container root). */
     azureBlobPath: string;
+    /** Canonical storage URI persisted in template metadata. */
+    sourceUri: string;
     /** Public download URL for preview. */
     downloadUrl: string;
+}
+
+export const AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE =
+    'Logo upload is not configured in this environment.';
+
+export type AzureTemplateAssetType = 'image' | 'font';
+
+interface UploadAssetOptions {
+    assetType?: AzureTemplateAssetType;
+    assetKey?: string;
+}
+
+export function isAzureAssetUploadConfigured(): boolean {
+    const sasUrl = process.env.NEXT_PUBLIC_AZURE_SAS_URL;
+    return typeof sasUrl === 'string' && sasUrl.trim().length > 0;
+}
+
+function sanitizeSegment(value: string, fallback: string): string {
+    const cleaned = value
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    return cleaned || fallback;
+}
+
+function inferFontContentType(fileName: string): string {
+    const normalized = fileName.toLowerCase();
+    if (normalized.endsWith('.otf')) return 'font/otf';
+    return 'font/ttf';
+}
+
+function buildTemplateBlobPath(
+    templateDocId: string,
+    filename: string,
+    options: UploadAssetOptions,
+): string {
+    const assetType = options.assetType || 'image';
+    const safeDocId = sanitizeSegment(templateDocId, 'template');
+
+    if (assetType === 'font') {
+        const safeFileName = sanitizeSegment(filename, 'custom-font.ttf');
+        return `templates/${safeDocId}/fonts/${safeFileName}`;
+    }
+
+    const safeAssetKey = sanitizeSegment(options.assetKey || filename.replace(/\.[^.]+$/, ''), 'asset');
+    return `templates/${safeDocId}/assets/${safeAssetKey}.png`;
 }
 
 /**
@@ -59,34 +107,32 @@ export function resizeImage(file: File | Blob, targetWidth = 200): Promise<Blob>
  */
 export async function uploadAssetToAzure(
     templateDocId: string,
-    _filename: string,
+    filename: string,
     file: File | Blob,
+    options: UploadAssetOptions = {},
 ): Promise<UploadResult> {
-    // Resize logo to 200px width, auto height
-    const resized = await resizeImage(file, 200);
+    const assetType = options.assetType || 'image';
+    const payload = assetType === 'image' ? await resizeImage(file, 200) : file;
+    const contentType = assetType === 'image'
+        ? 'image/png'
+        : inferFontContentType(filename);
+    const blobPath = buildTemplateBlobPath(templateDocId, filename, options);
 
-    // Always use standardized filename "logo.png"
-    const blobPath = `templates/${templateDocId}/assets/logo.png`;
-
-    // Build the full upload URL from the SAS base URL
     const sasUrl = process.env.NEXT_PUBLIC_AZURE_SAS_URL;
-    if (!sasUrl) {
-        throw new Error('NEXT_PUBLIC_AZURE_SAS_URL is not configured. Cannot upload to Azure Blob Storage.');
+    if (!isAzureAssetUploadConfigured() || !sasUrl) {
+        throw new Error(AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE);
     }
 
-    // SAS URL format: https://<account>.blob.core.windows.net/<container>?<sas_token>
-    // We need to insert the blob path before the query string
     const [baseUrl, sasToken] = sasUrl.split('?');
     const uploadUrl = `${baseUrl}/${blobPath}?${sasToken}`;
 
-    // Upload via PUT with x-ms-blob-type header (Azure Blob REST API)
     const response = await fetch(uploadUrl, {
         method: 'PUT',
         headers: {
             'x-ms-blob-type': 'BlockBlob',
-            'Content-Type': 'image/png',
+            'Content-Type': contentType,
         },
-        body: resized,
+        body: payload,
     });
 
     if (!response.ok) {
@@ -94,8 +140,11 @@ export async function uploadAssetToAzure(
         throw new Error(`Azure upload failed (${response.status}): ${errorText}`);
     }
 
-    // Construct the public download URL (without SAS token for storage in Firestore)
     const downloadUrl = `${baseUrl}/${blobPath}`;
 
-    return { azureBlobPath: blobPath, downloadUrl };
+    return {
+        azureBlobPath: blobPath,
+        sourceUri: `azure://seone-data/${blobPath}`,
+        downloadUrl,
+    };
 }

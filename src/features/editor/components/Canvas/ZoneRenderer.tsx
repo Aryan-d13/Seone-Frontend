@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Rnd } from 'react-rnd';
 import { Film, ImageIcon, Lock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PROTECTED_ASSET_AUTH_MESSAGE, PROTECTED_ASSET_LOAD_MESSAGE } from '../../lib/protectedAssetLoader';
+import { useProtectedAssetUrl } from '../../hooks/useProtectedAssetUrl';
 import { useTemplateStore } from '../../store/templateStore';
 import type { ResolvedTextLayout, ResolvedZone } from '../../types/manifest';
 import type { ZoneSpec } from '../../types/template';
-import { getAssetPreviewUrl } from '../../utils/assetPreview';
+import { getAssetPreviewUrl, getTemplateAssetProxyUrl } from '../../utils/assetPreview';
 import { clampVideoRectPosition, normalizeVideoRect, readBoundsAspectRatio } from '../../utils/videoBounds';
 import './ZoneRenderer.css';
 
@@ -102,7 +103,7 @@ function resizeRect(
     deltaY: number,
     aspectRatio?: number | null,
 ): RectState {
-    let next: RectState = { ...origin };
+    const next: RectState = { ...origin };
 
     if (direction.includes('right')) {
         next.width = clampRectDimension(origin.width + deltaX);
@@ -186,6 +187,7 @@ export default function ZoneRenderer({
         isLocked,
         previewTexts,
         setPreviewText,
+        setAssetPreviewError,
         uploadedImages,
         activeManifest,
         sourceVideoAspectRatio,
@@ -194,6 +196,8 @@ export default function ZoneRenderer({
     const videoRef = useRef<HTMLVideoElement>(null);
     const textEditorRef = useRef<HTMLTextAreaElement>(null);
     const liveRectRef = useRef<RectState>({ x: 0, y: 0, width: 0, height: 0 });
+    const liveRectFrameRef = useRef<number | null>(null);
+    const pendingLiveRectRef = useRef<RectState | null>(null);
     const pointerSessionRef = useRef<{
         pointerId: number;
         mode: 'move' | 'resize';
@@ -201,6 +205,7 @@ export default function ZoneRenderer({
         startX: number;
         startY: number;
         origin: RectState;
+        moved: boolean;
     } | null>(null);
     const suppressNextClickRef = useRef(false);
     const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
@@ -236,8 +241,19 @@ export default function ZoneRenderer({
     const assetKey = zone.asset_ref || zone.id;
     const templateAsset = zone.type === 'image' ? template.assets[assetKey] : undefined;
     const manifestAssetUrl = zone.type === 'image' ? activeManifest?.assets?.[assetKey] : undefined;
+    const templateAssetProxyUrl =
+        zone.type === 'image' && !activeManifest && templateAsset
+            ? getTemplateAssetProxyUrl(template.id, assetKey)
+            : null;
+    const {
+        resolvedUrl: hydratedTemplateAssetUrl,
+        error: protectedAssetError,
+    } = useProtectedAssetUrl(templateAssetProxyUrl);
     const imageSrc =
-        uploadedImages[zone.id] || getAssetPreviewUrl(templateAsset, manifestAssetUrl) || null;
+        uploadedImages[zone.id] ||
+        hydratedTemplateAssetUrl ||
+        getAssetPreviewUrl(templateAsset, manifestAssetUrl) ||
+        null;
 
     const contentRef = zone.content_ref || '';
     const previewText = contentRef ? previewTexts[contentRef] : undefined;
@@ -285,6 +301,29 @@ export default function ZoneRenderer({
         }
         return coerceNumber(resolvedRect?.h, w);
     }, [bounds.height, imageAspectRatio, isAutoHeight, resolvedRect?.h, w, zone.type]);
+
+    useEffect(() => {
+        if (renderMode === 'clip' || activeManifest) return;
+        if (!templateAssetProxyUrl) return;
+        if (protectedAssetError?.code === 'unauthorized') {
+            setAssetPreviewError(PROTECTED_ASSET_AUTH_MESSAGE);
+            return;
+        }
+        if (protectedAssetError) {
+            setAssetPreviewError(PROTECTED_ASSET_LOAD_MESSAGE);
+            return;
+        }
+        if (hydratedTemplateAssetUrl) {
+            setAssetPreviewError(null);
+        }
+    }, [
+        activeManifest,
+        hydratedTemplateAssetUrl,
+        protectedAssetError,
+        renderMode,
+        setAssetPreviewError,
+        templateAssetProxyUrl,
+    ]);
 
     const textMetrics = useMemo(() => {
         const liveText = zone.text;
@@ -386,6 +425,29 @@ export default function ZoneRenderer({
     useEffect(() => {
         liveRectRef.current = liveRect;
     }, [liveRect]);
+
+    useEffect(() => {
+        return () => {
+            if (liveRectFrameRef.current !== null) {
+                window.cancelAnimationFrame(liveRectFrameRef.current);
+            }
+        };
+    }, []);
+
+    const scheduleLiveRect = (nextRect: RectState) => {
+        liveRectRef.current = nextRect;
+        pendingLiveRectRef.current = nextRect;
+
+        if (liveRectFrameRef.current !== null) return;
+
+        liveRectFrameRef.current = window.requestAnimationFrame(() => {
+            liveRectFrameRef.current = null;
+            const pendingRect = pendingLiveRectRef.current;
+            if (!pendingRect) return;
+            pendingLiveRectRef.current = null;
+            setLiveRect(pendingRect);
+        });
+    };
 
     useEffect(() => {
         if (zone.type !== 'image' || !imageSrc) {
@@ -543,11 +605,7 @@ export default function ZoneRenderer({
     };
 
     const resizeHandles =
-        !locked && (
-            isClipMode
-                ? selected && !isEditingText
-                : (!isRenderedMode || (selected && !isEditingText))
-        )
+        !locked && !isEditingText && !isRenderedMode
             ? {
                 top: true,
                 right: true,
@@ -588,12 +646,12 @@ export default function ZoneRenderer({
         'left',
     ];
 
-    const startClipPointerSession = (
+    const startPointerSession = (
         event: React.PointerEvent<HTMLElement>,
         mode: 'move' | 'resize',
         direction?: ResizeDirection,
     ) => {
-        if (!isClipMode || locked || isEditingText || nonInteractiveBackground) return;
+        if (isRenderedMode || locked || isEditingText || nonInteractiveBackground) return;
         if (event.button !== 0) return;
 
         event.preventDefault();
@@ -607,12 +665,13 @@ export default function ZoneRenderer({
             startX: event.clientX,
             startY: event.clientY,
             origin: liveRectRef.current,
+            moved: false,
         };
         setInteractionState(mode === 'move' ? 'drag' : 'resize');
     };
 
     useEffect(() => {
-        if (!isClipMode) return undefined;
+        if (isRenderedMode) return undefined;
 
         const handlePointerMove = (event: PointerEvent) => {
             const session = pointerSessionRef.current;
@@ -620,32 +679,28 @@ export default function ZoneRenderer({
 
             const deltaX = event.clientX - session.startX;
             const deltaY = event.clientY - session.startY;
-            suppressNextClickRef.current = Math.abs(deltaX) + Math.abs(deltaY) > 2;
+            const moved = Math.abs(deltaX) + Math.abs(deltaY) > 2;
+            session.moved = session.moved || moved;
+            suppressNextClickRef.current = session.moved;
 
             if (session.mode === 'move') {
-                if (zone.type === 'video') {
-                    setLiveRect(
-                        clampVideoRectPosition(
-                            {
-                                x: session.origin.x + deltaX,
-                                y: session.origin.y + deltaY,
-                                width: session.origin.width,
-                                height: session.origin.height,
-                            },
+                const nextRect = {
+                    x: session.origin.x + deltaX,
+                    y: session.origin.y + deltaY,
+                    width: session.origin.width,
+                    height: session.origin.height,
+                };
+                scheduleLiveRect(
+                    zone.type === 'video'
+                        ? clampVideoRectPosition(
+                            nextRect,
                             {
                                 width: template.canvas.width * scale,
                                 height: template.canvas.height * scale,
                             },
-                        ),
-                    );
-                } else {
-                    setLiveRect({
-                        x: session.origin.x + deltaX,
-                        y: session.origin.y + deltaY,
-                        width: session.origin.width,
-                        height: session.origin.height,
-                    });
-                }
+                        )
+                        : nextRect,
+                );
                 return;
             }
 
@@ -656,7 +711,7 @@ export default function ZoneRenderer({
                 deltaY,
                 zone.type === 'image' ? imageAspectRatio : zone.type === 'video' ? videoAspectRatio : null,
             );
-            setLiveRect(
+            scheduleLiveRect(
                 zone.type === 'video'
                     ? normalizeVideoRect(
                         nextRect,
@@ -676,7 +731,9 @@ export default function ZoneRenderer({
 
             pointerSessionRef.current = null;
             setInteractionState(null);
-            commitRect(liveRectRef.current, session.mode);
+            if (session.moved) {
+                commitRect(liveRectRef.current, session.mode);
+            }
             window.setTimeout(() => {
                 suppressNextClickRef.current = false;
             }, 0);
@@ -691,7 +748,7 @@ export default function ZoneRenderer({
             window.removeEventListener('pointerup', handlePointerUp);
             window.removeEventListener('pointercancel', handlePointerUp);
         };
-    }, [commitRect, imageAspectRatio, isClipMode, scale, template.canvas.height, template.canvas.width, videoAspectRatio, zone.type]);
+    }, [commitRect, imageAspectRatio, isRenderedMode, scale, template.canvas.height, template.canvas.width, videoAspectRatio, zone.type]);
 
     const layerContent = (
         <div
@@ -874,124 +931,38 @@ export default function ZoneRenderer({
         </div>
     );
 
-    if (isClipMode) {
-        return (
-            <div
-                className={`zone-renderer ${selected ? 'zone-renderer--selected' : ''} ${locked ? 'zone-renderer--locked' : ''} zone-renderer--clip`}
-                style={{
-                    left: liveRect.x,
-                    top: liveRect.y,
-                    width: liveRect.width,
-                    height: liveRect.height,
-                    zIndex: zone.z,
-                    pointerEvents: nonInteractiveBackground ? 'none' : 'auto',
-                }}
-                onPointerDown={(event) => {
-                    if (nonInteractiveBackground) return;
-                    const target = event.target as HTMLElement | null;
-                    if (target?.closest('.zone-renderer__handle')) return;
-                    if (target?.closest('.zone-renderer__text-editor')) return;
-                    startClipPointerSession(event, 'move');
-                }}
-                onClick={(event) => {
-                    if (nonInteractiveBackground) return;
-                    if (suppressNextClickRef.current) {
-                        suppressNextClickRef.current = false;
-                        return;
-                    }
-                    event.stopPropagation();
-                    if (!isEditingText) {
-                        selectZone(zone.id);
-                    }
-                }}
-                onDoubleClick={handleTextDoubleClick}
-            >
-                {layerContent}
-                {selected && !locked && !isEditingText && clipResizeHandles.map((direction) => (
-                    <button
-                        key={direction}
-                        type="button"
-                        className={`zone-renderer__handle zone-renderer__handle--${direction}`}
-                        onPointerDown={(event) => startClipPointerSession(event, 'resize', direction)}
-                        onClick={(event) => event.stopPropagation()}
-                        aria-label={`Resize ${direction}`}
-                    />
-                ))}
-            </div>
-        );
-    }
-
     return (
-        <Rnd
-            position={{ x: liveRect.x, y: liveRect.y }}
-            size={{ width: liveRect.width, height: liveRect.height }}
-            dragHandleClassName="zone-renderer__drag-surface"
-            cancel=".react-resizable-handle, .zone-renderer__text-editor, .zone-renderer__crop-handle, .zone-renderer__crop-reset"
-            onResizeStart={(event) => {
-                event.stopPropagation();
-                if (isEditingText) return;
-                selectZone(zone.id);
-                setInteractionState('resize');
-            }}
-            onDragStart={(event) => {
-                event.stopPropagation();
-                if (isEditingText) return;
-                selectZone(zone.id);
-                setInteractionState('drag');
-            }}
-            onDrag={(_event, data) => {
-                if (locked || isEditingText) return;
-                setLiveRect((current) => ({
-                    ...current,
-                    x: data.x,
-                    y: data.y,
-                }));
-            }}
-            onDragStop={(_event, data) => {
-                setInteractionState(null);
-                if (locked || isEditingText) return;
-                const nextRect = {
-                    ...liveRect,
-                    x: data.x,
-                    y: data.y,
-                };
-                setLiveRect(nextRect);
-                commitRect(nextRect);
-            }}
-            onResize={(_event, _direction, ref, _delta, position) => {
-                if (locked || isEditingText) return;
-                setLiveRect({
-                    x: position.x,
-                    y: position.y,
-                    width: parseInt(ref.style.width, 10),
-                    height: parseInt(ref.style.height, 10),
-                });
-            }}
-            onResizeStop={(_event, _direction, ref, _delta, position) => {
-                setInteractionState(null);
-                if (locked || isEditingText) return;
-                const nextRect = {
-                    x: position.x,
-                    y: position.y,
-                    width: parseInt(ref.style.width, 10),
-                    height: parseInt(ref.style.height, 10),
-                };
-                setLiveRect(nextRect);
-                commitRect(nextRect);
-            }}
-            disableDragging={locked || isEditingText || nonInteractiveBackground}
-            enableResizing={resizeHandles}
-            lockAspectRatio={zone.type === 'image' ? imageAspectRatio || true : zone.type === 'video' ? videoAspectRatio || false : false}
+        <div
+            data-testid={`zone-${zone.id}`}
+            data-zone-id={zone.id}
             className={`zone-renderer ${selected ? 'zone-renderer--selected' : ''} ${locked ? 'zone-renderer--locked' : ''} ${isRenderedMode ? 'zone-renderer--rendered' : isClipMode ? 'zone-renderer--clip' : 'zone-renderer--editor'}`}
-            style={{ zIndex: zone.z, pointerEvents: nonInteractiveBackground ? 'none' : 'auto' }}
-            onMouseDownCapture={(event: React.MouseEvent) => {
-                if (nonInteractiveBackground) return;
-                event.stopPropagation();
-                if (isEditingText) return;
-                selectZone(zone.id);
+            style={{
+                left: liveRect.x,
+                top: liveRect.y,
+                width: liveRect.width,
+                height: liveRect.height,
+                zIndex: zone.z,
+                pointerEvents: nonInteractiveBackground ? 'none' : 'auto',
+            }}
+            onPointerDown={(event) => {
+                if (nonInteractiveBackground || isRenderedMode) return;
+                const target = event.target as HTMLElement | null;
+                if (
+                    target?.closest('.zone-renderer__handle') ||
+                    target?.closest('.zone-renderer__text-editor') ||
+                    target?.closest('.zone-renderer__crop-handle') ||
+                    target?.closest('.zone-renderer__crop-reset')
+                ) {
+                    return;
+                }
+                startPointerSession(event, 'move');
             }}
             onClick={(event: React.MouseEvent) => {
                 if (nonInteractiveBackground) return;
+                if (suppressNextClickRef.current) {
+                    suppressNextClickRef.current = false;
+                    return;
+                }
                 event.stopPropagation();
                 if (isEditingText) return;
                 selectZone(zone.id);
@@ -999,6 +970,17 @@ export default function ZoneRenderer({
             onDoubleClick={handleTextDoubleClick}
         >
             {layerContent}
-        </Rnd>
+            {selected && resizeHandles && clipResizeHandles.map((direction) => (
+                <button
+                    key={direction}
+                    type="button"
+                    data-testid={`zone-handle-${zone.id}-${direction}`}
+                    className={`zone-renderer__handle zone-renderer__handle--${direction}`}
+                    onPointerDown={(event) => startPointerSession(event, 'resize', direction)}
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label={`Resize ${direction}`}
+                />
+            ))}
+        </div>
     );
 }

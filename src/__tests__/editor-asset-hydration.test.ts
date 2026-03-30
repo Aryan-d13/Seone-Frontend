@@ -111,7 +111,7 @@ describe('editor asset hydration', () => {
     expect(useTemplateStore.getState().uploadedImages.logo_mark).toBeUndefined();
   });
 
-  it('infers canonical gcs_path for legacy logo assets during manifest load', () => {
+  it('does not invent gcs_path for legacy logo assets during manifest load', () => {
     useTemplateStore.getState().loadFromManifest({
       manifest_version: '1.0',
       template_ir: {
@@ -145,12 +145,10 @@ describe('editor asset hydration', () => {
       assets: {},
     } as any);
 
-    expect(useTemplateStore.getState().template.assets.logo_mark.gcs_path).toBe(
-      'templates/chaturnath/assets/logo.png',
-    );
+    expect(useTemplateStore.getState().template.assets.logo_mark.gcs_path).toBeUndefined();
   });
 
-  it('prefers render template_ref over generic template ids when inferring logo gcs_path', () => {
+  it('leaves legacy logo metadata untouched when no canonical ref is present', () => {
     useTemplateStore.getState().loadFromManifest({
       manifest_version: '1.0',
       template_ir: {
@@ -184,9 +182,7 @@ describe('editor asset hydration', () => {
       assets: {},
     } as any);
 
-    expect(useTemplateStore.getState().template.assets.logo_mark.gcs_path).toBe(
-      'templates/chaturnath/assets/logo.png',
-    );
+    expect(useTemplateStore.getState().template.assets.logo_mark.gcs_path).toBeUndefined();
   });
 
   it('hydrates preview text from resolved text when render inputs are missing', () => {

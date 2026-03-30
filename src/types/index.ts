@@ -72,6 +72,25 @@ export type JobStatus =
   | 'completed'
   | 'failed';
 
+export type RawJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export type JobActiveStep =
+  | 'download'
+  | 'transcribe'
+  | 'analyze'
+  | 'smart_render'
+  | 'completed'
+  | 'failed';
+
+export interface JobUIState {
+  status: JobStatus;
+  label: string;
+  sublabel?: string | null;
+  progress: number;
+  active_step: JobActiveStep;
+  parallel_hint?: string | null;
+}
+
 export type JobPhase =
   | 'queued'
   | 'downloading'
@@ -83,6 +102,10 @@ export type JobPhase =
 export interface Job {
   id: string;
   status: JobStatus;
+  ui_state?: JobUIState;
+  display_name?: string;
+  source_title?: string;
+  queue_state?: string;
   phase?: JobPhase;
   fork_join?: {
     fork_entered_at: string | null;
@@ -106,6 +129,11 @@ export interface Job {
   };
   ws_url?: string;
   processing_duration_seconds?: number;
+}
+
+export interface JobLike extends Omit<Job, 'status' | 'ui_state'> {
+  status: JobStatus | RawJobStatus;
+  ui_state?: JobUIState | null;
 }
 
 /**
@@ -196,7 +224,7 @@ export interface PingMessage {
 /** Full job snapshot sent on connect/reconnect */
 export interface JobSyncMessage {
   type: 'job_sync';
-  job: Job;
+  job: JobLike;
 }
 
 /** Cursor watermark after replay — metadata only, no job payload */
@@ -268,6 +296,21 @@ export interface JobFailedEvent extends WebSocketEvent {
   payload: {
     error: string;
   };
+}
+
+export interface UXFact {
+  id: string;
+  headline: string;
+  body: string;
+  tag: string;
+  audience_scope: 'global' | 'india_light' | 'wildcard' | string;
+  ttl_seconds: number;
+}
+
+export interface UXFactsResponse {
+  slot: string;
+  language: string;
+  facts: UXFact[];
 }
 
 // ---------- Discriminated Union ----------

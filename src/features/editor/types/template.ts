@@ -70,9 +70,14 @@ export interface ShapeSpec {
 export interface AssetDef {
     type: string;
     path: string;
+    /** Canonical exact asset location for new writes. */
     source_uri?: string;
-    /** GCS blob path for cloud templates (e.g. "templates/chaturnath/assets/logo.png"). */
+    /** Legacy compatibility field for older Firebase/GCS-backed templates. */
     gcs_path?: string;
+    family?: string;
+    weight?: number;
+    style?: 'normal' | 'italic' | string;
+    format?: 'ttf' | 'otf' | string;
 }
 
 /**
@@ -111,4 +116,11 @@ export interface TemplateJSON {
     assets: Record<string, AssetDef>;
     /** Controls text compositing: "stack" = vstack, "overlay" = alpha overlay. */
     compositing_mode: 'stack' | 'overlay';
+    slot_contract?: {
+        version: string;
+        text_slots: string[];
+        image_slots: string[];
+        video_slots: string[];
+    };
+    compatibility_key?: string;
 }

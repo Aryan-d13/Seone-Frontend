@@ -378,6 +378,7 @@
         radial-gradient(circle at center, rgba(182, 160, 255, 0.05), transparent 48%),
         linear-gradient(180deg, rgba(12, 12, 12, 0.98), rgba(7, 7, 7, 1));
     scrollbar-gutter: stable both-edges;
+    -webkit-overflow-scrolling: touch;
 }
 
 .clip-studio-workspace__viewport--space-pan,
@@ -420,6 +421,7 @@
         linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 48px 48px;
+    transform: translateZ(0);
 }
 
 .clip-studio-workspace__stage-shell {
@@ -471,6 +473,8 @@
     border-radius: 4px;
     overflow: hidden;
     cursor: inherit;
+    transform: translateZ(0);
+    will-change: transform;
     box-shadow:
         0 28px 80px rgba(0, 0, 0, 0.55),
         0 0 0 1px rgba(255, 255, 255, 0.05),

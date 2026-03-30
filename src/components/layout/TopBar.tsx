@@ -9,7 +9,7 @@ import styles from './TopBar.module.css';
 export function TopBar() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  const { toggleSidebar, toggleInspector, isInspectorOpen } = useAppStore();
+  const { toggleSidebar } = useAppStore();
 
   const handleLogout = async () => {
     await logout();
@@ -41,19 +41,6 @@ export function TopBar() {
 
       {/* Actions */}
       <div className={styles.actions}>
-        {/* Inspector Toggle */}
-        <button
-          className={styles.iconButton}
-          onClick={toggleInspector}
-          aria-label="Toggle inspector"
-          title={isInspectorOpen ? 'Hide Inspector' : 'Show Inspector'}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="15" y1="3" x2="15" y2="21" />
-          </svg>
-        </button>
-
         {/* User Menu */}
         {user && (
           <div className={styles.userMenu}>

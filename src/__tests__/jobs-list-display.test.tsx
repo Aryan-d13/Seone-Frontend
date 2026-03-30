@@ -95,4 +95,29 @@ describe('JobsList Component Display (INV-4)', () => {
     // Should show "2 / 3 clips"
     expect(screen.getByText('2 / 3 clips')).toBeInTheDocument();
   });
+
+  it('renders the canonical ui_state label instead of raw processing language', () => {
+    const job: Job = {
+      ...BASE_JOB,
+      status: 'downloading',
+      progress: 12,
+      ui_state: {
+        status: 'transcribing',
+        label: 'Listening to speech and timing',
+        progress: 36,
+        active_step: 'transcribe',
+      },
+    };
+    (useJobs as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [job],
+      isLoading: false,
+      hasMore: false,
+      loadMore: vi.fn(),
+      error: null,
+    });
+
+    render(<JobsList />);
+
+    expect(screen.getByText('Listening to speech and timing')).toBeInTheDocument();
+  });
 });

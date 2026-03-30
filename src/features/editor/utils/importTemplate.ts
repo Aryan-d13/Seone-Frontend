@@ -152,6 +152,10 @@ export function importTemplate(jsonString: string): TemplateJSON {
             path: value.path || '',
             ...(readOptionalString(value.source_uri) ? { source_uri: readOptionalString(value.source_uri) } : {}),
             ...(readOptionalString(value.gcs_path) ? { gcs_path: readOptionalString(value.gcs_path) } : {}),
+            ...(readOptionalString(value.family) ? { family: readOptionalString(value.family) } : {}),
+            ...(value.weight != null && Number.isFinite(Number(value.weight)) ? { weight: Number(value.weight) } : {}),
+            ...(readOptionalString(value.style) ? { style: readOptionalString(value.style) } : {}),
+            ...(readOptionalString(value.format) ? { format: readOptionalString(value.format) } : {}),
         };
     }
 
@@ -172,5 +176,7 @@ export function importTemplate(jsonString: string): TemplateJSON {
         zones,
         styles,
         assets,
+        ...(data.slot_contract && typeof data.slot_contract === 'object' ? { slot_contract: data.slot_contract as TemplateJSON['slot_contract'] } : {}),
+        ...(typeof data.compatibility_key === 'string' && data.compatibility_key.trim() ? { compatibility_key: data.compatibility_key.trim() } : {}),
     };
 }

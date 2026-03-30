@@ -1,4 +1,4 @@
-import { getMediaUrl } from '@/lib/config';
+import { endpoints, getApiUrl, getMediaUrl } from '@/lib/config';
 import type { AssetDef } from '../types/template';
 
 function isLikelyLocalFilesystemPath(value: string): boolean {
@@ -43,4 +43,14 @@ export function getAssetPreviewUrl(
     }
 
     return null;
+}
+
+export function getTemplateAssetProxyUrl(
+    templateId: string | null | undefined,
+    assetKey: string | null | undefined,
+): string | null {
+    if (typeof templateId !== 'string' || !templateId.trim()) return null;
+    if (typeof assetKey !== 'string' || !assetKey.trim()) return null;
+    const docId = templateId.trim().replace(/\//g, '_');
+    return getApiUrl(endpoints.pages.adminTemplateAsset(docId, assetKey.trim()));
 }

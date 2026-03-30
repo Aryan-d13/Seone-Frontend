@@ -52,6 +52,8 @@ export function exportTemplate(template: TemplateJSON): string {
         zones: template.zones.map(cleanZone),
         styles: JSON.parse(JSON.stringify(template.styles)),
         assets: JSON.parse(JSON.stringify(template.assets)),
+        ...(template.slot_contract ? { slot_contract: JSON.parse(JSON.stringify(template.slot_contract)) } : {}),
+        ...(template.compatibility_key ? { compatibility_key: template.compatibility_key } : {}),
     };
 
     return JSON.stringify(output, null, 2);

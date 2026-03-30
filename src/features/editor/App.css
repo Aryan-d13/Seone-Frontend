@@ -6,6 +6,10 @@
     overflow: hidden;
 }
 
+.app--template {
+    min-height: 100%;
+}
+
 .app__toolbar-row {
     display: flex;
     border-bottom: 1px solid var(--border-subtle);
@@ -19,6 +23,11 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+}
+
+.app--template .app__body {
+    min-height: 100%;
+    overflow: auto;
 }
 
 .app--clip {

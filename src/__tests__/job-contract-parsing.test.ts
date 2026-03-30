@@ -151,4 +151,50 @@ describe('Job Contract Parsing', () => {
     expect(state.job).not.toBeNull();
     expect(state.job?.current_step).toBe('future_ml_step');
   });
+
+  it('prefers backend ui_state over coarse processing status', () => {
+    const { setJob } = useJobStore.getState();
+
+    setJob({
+      ...BASE_JOB,
+      status: 'processing',
+      progress: 12,
+      ui_state: {
+        status: 'transcribing',
+        label: 'Listening to speech and timing',
+        progress: 36,
+        active_step: 'transcribe',
+      },
+    });
+
+    const state = useJobStore.getState();
+    expect(state.job?.status).toBe('transcribing');
+    expect(state.job?.ui_state?.label).toBe('Listening to speech and timing');
+    expect(state.job?.progress).toBe(36);
+  });
+
+  it('lets explicit UI status updates override stale ui_state during websocket merges', () => {
+    const { setJob, updateJob } = useJobStore.getState();
+
+    setJob({
+      ...BASE_JOB,
+      status: 'processing',
+      ui_state: {
+        status: 'downloading',
+        label: 'Pulling source video',
+        progress: 12,
+        active_step: 'download',
+      },
+    });
+
+    updateJob({
+      status: 'transcribing',
+      current_step: 'transcribe',
+    });
+
+    const state = useJobStore.getState();
+    expect(state.job?.status).toBe('transcribing');
+    expect(state.job?.ui_state?.status).toBe('transcribing');
+    expect(state.job?.ui_state?.active_step).toBe('transcribe');
+  });
 });

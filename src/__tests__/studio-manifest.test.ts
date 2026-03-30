@@ -37,6 +37,7 @@ describe('buildStudioManifest', () => {
     });
 
     expect(manifest?.render_payload.inputs.pov_text).toBe('edited headline');
+    expect(manifest?.render_payload.template_ref).toBe('clip/test');
   });
 
   it('promotes template asset source_uri into manifest asset URLs', () => {

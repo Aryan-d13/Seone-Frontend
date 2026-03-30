@@ -12,8 +12,7 @@ import { useTemplateStore } from '../../store/templateStore';
 import ZoneRenderer from '../Canvas/ZoneRenderer';
 import ClipStudioTimeline from './ClipStudioTimeline';
 import { getClipLayerDefinitions } from '../../utils/clipLayers';
-import { getAssetPreviewUrl, isProtectedAssetUrl } from '../../utils/assetPreview';
-import { resolveFirebaseAssetBlobUrl } from '../../utils/firebaseAsset';
+import { getAssetPreviewUrl } from '../../utils/assetPreview';
 import RenderPreview, { type RenderPreviewRequest } from '../RenderPreview/RenderPreview';
 import './ClipStudioWorkspace.css';
 
@@ -210,10 +209,6 @@ export default function ClipStudioWorkspace({
         let cancelled = false;
         const manifest = activeManifest;
         const imageZones = zones.filter((zone) => zone.type === 'image');
-        const templateId =
-            typeof activeManifest.render_payload?.template_ref === 'string'
-                ? activeManifest.render_payload.template_ref
-                : template.id;
 
         async function fetchBlobPreview(url: string, authenticated: boolean): Promise<string | null> {
             try {
@@ -242,7 +237,6 @@ export default function ClipStudioWorkspace({
                     const assetKey = zone.asset_ref || zone.id;
                     const templateAsset = template.assets[assetKey];
                     const manifestAssetUrl = manifest.assets?.[assetKey];
-                    const directPreviewUrl = getAssetPreviewUrl(templateAsset, manifestAssetUrl);
                     const clipAssetUrl =
                         renderPreviewRequest
                             ? getMediaUrl(endpoints.jobs.clipAsset(
@@ -253,27 +247,15 @@ export default function ClipStudioWorkspace({
                             : null;
                     try {
                         const candidates: Array<() => Promise<string | null>> = [];
-                        const seenUrls = new Set<string>();
 
                         if (clipAssetUrl) {
-                            seenUrls.add(clipAssetUrl);
                             candidates.push(() => fetchBlobPreview(clipAssetUrl, true));
-                        }
-
-                        if (typeof manifestAssetUrl === 'string' && manifestAssetUrl.trim()) {
-                            const normalizedAssetUrl = getMediaUrl(manifestAssetUrl);
-                            if (isProtectedAssetUrl(normalizedAssetUrl) && !seenUrls.has(normalizedAssetUrl)) {
-                                seenUrls.add(normalizedAssetUrl);
-                                candidates.push(() => fetchBlobPreview(normalizedAssetUrl, true));
+                        } else {
+                            const directPreviewUrl = getAssetPreviewUrl(templateAsset, manifestAssetUrl);
+                            if (directPreviewUrl) {
+                                candidates.push(() => fetchBlobPreview(directPreviewUrl, false));
                             }
                         }
-
-                        if (directPreviewUrl && !seenUrls.has(directPreviewUrl)) {
-                            seenUrls.add(directPreviewUrl);
-                            candidates.push(() => fetchBlobPreview(directPreviewUrl, false));
-                        }
-
-                        candidates.push(() => resolveFirebaseAssetBlobUrl(templateAsset, assetKey, templateId));
 
                         for (const candidate of candidates) {
                             const resolvedUrl = await candidate();
@@ -448,29 +430,36 @@ export default function ClipStudioWorkspace({
         setIsPlaying((value) => !value);
     };
 
-    const handleViewportWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-        if (!(event.ctrlKey || event.metaKey)) return;
-
+    useEffect(() => {
         const viewport = viewportRef.current;
-        if (!viewport) return;
+        if (!viewport) return undefined;
 
-        event.preventDefault();
+        const handleViewportWheel = (event: WheelEvent) => {
+            if (!(event.ctrlKey || event.metaKey)) return;
 
-        const rect = viewport.getBoundingClientRect();
-        const viewportX = event.clientX - rect.left;
-        const viewportY = event.clientY - rect.top;
-        zoomAnchorRef.current = {
-            canvasX: (viewport.scrollLeft + viewportX - workspacePadding) / Math.max(scale, 0.001),
-            canvasY: (viewport.scrollTop + viewportY - workspacePadding) / Math.max(scale, 0.001),
-            viewportX,
-            viewportY,
+            event.preventDefault();
+
+            const rect = viewport.getBoundingClientRect();
+            const viewportX = event.clientX - rect.left;
+            const viewportY = event.clientY - rect.top;
+            zoomAnchorRef.current = {
+                canvasX: (viewport.scrollLeft + viewportX - workspacePadding) / Math.max(scale, 0.001),
+                canvasY: (viewport.scrollTop + viewportY - workspacePadding) / Math.max(scale, 0.001),
+                viewportX,
+                viewportY,
+            };
+
+            const direction = event.deltaY < 0 ? 1 : -1;
+            const nextZoom = clamp(Number((zoom + direction * 0.1).toFixed(2)), 0.25, 3);
+            if (nextZoom === zoom) return;
+            setZoom(nextZoom);
         };
 
-        const direction = event.deltaY < 0 ? 1 : -1;
-        const nextZoom = clamp(Number((zoom + direction * 0.1).toFixed(2)), 0.25, 3);
-        if (nextZoom === zoom) return;
-        setZoom(nextZoom);
-    };
+        viewport.addEventListener('wheel', handleViewportWheel, { passive: false });
+        return () => {
+            viewport.removeEventListener('wheel', handleViewportWheel);
+        };
+    }, [scale, setZoom, workspacePadding, zoom]);
 
     const beginPanSession = (
         event: React.PointerEvent<HTMLDivElement>,
@@ -622,7 +611,6 @@ export default function ClipStudioWorkspace({
                             ? 'clip-studio-workspace__viewport--space-pan'
                             : ''
                 }`}
-                onWheel={handleViewportWheel}
                 onPointerDownCapture={handleViewportPointerDownCapture}
                 onPointerMove={handleViewportPointerMove}
                 onPointerUp={finishPanSession}

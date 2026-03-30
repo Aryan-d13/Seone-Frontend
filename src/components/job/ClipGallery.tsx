@@ -5,8 +5,9 @@ import { motion } from 'framer-motion';
 import { useJobStore } from '@/stores/job';
 import { openClipStudioTab } from '@/features/editor/lib/routes';
 import { getMediaUrl } from '@/lib/config';
+import { authFetch } from '@/services/auth';
 import { staggerContainer, listItemVariants } from '@/lib/animations';
-import { cn, formatDuration } from '@/lib/utils';
+import { cn, formatClipEmptyMessage } from '@/lib/utils';
 import styles from './ClipGallery.module.css';
 
 interface ClipPlayerProps {
@@ -20,6 +21,7 @@ function ClipPlayer({ jobId, url, filename, index }: ClipPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -54,6 +56,31 @@ function ClipPlayer({ jobId, url, filename, index }: ClipPlayerProps) {
       });
     } else {
       document.exitFullscreen();
+    }
+  };
+
+  const downloadClip = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setIsDownloading(true);
+      const response = /\/api\//.test(url) ? await authFetch(url) : await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status}`);
+      }
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Failed to download clip', error);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -131,8 +158,8 @@ function ClipPlayer({ jobId, url, filename, index }: ClipPlayerProps) {
             </button>
             <button
               className={styles.actionButton}
-              onClick={() => window.open(url, '_blank')}
-              title="Download Video"
+              onClick={downloadClip}
+              title={isDownloading ? 'Preparing download' : 'Download Video'}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -164,7 +191,7 @@ export function ClipGallery() {
     if (job?.status === 'failed' || job?.status === 'completed') {
       return (
         <div className={styles.emptyError}>
-          <p>Sequence yielded zero clips.</p>
+          <p>{formatClipEmptyMessage(job)}</p>
         </div>
       );
     }
@@ -174,7 +201,7 @@ export function ClipGallery() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h3 className={styles.title}>Generated Clips</h3>
+        <h3 className={styles.title}>Ready clips</h3>
         <span className={styles.count}>{clips.length} clips ready</span>
       </div>
 

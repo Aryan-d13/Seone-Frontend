@@ -87,6 +87,7 @@ export function buildStudioManifest({
     template_ir: templateJson,
     render_payload: {
       ...activeManifest.render_payload,
+      template_ref: templateJson.id,
       inputs: {
         ...(activeManifest.render_payload?.inputs || {}),
         ...previewTexts,

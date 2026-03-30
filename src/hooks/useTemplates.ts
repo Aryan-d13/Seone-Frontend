@@ -139,6 +139,7 @@ export function usePages() {
     description: t.description,
     thumbnailUrl: t.thumbnailUrl,
     category: t.category,
+    compatibility_key: t.compatibility_key,
   }));
 
   return { pages, isLoading, error };

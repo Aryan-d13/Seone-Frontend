@@ -4,22 +4,10 @@ import ClipStudioWorkspace from '@/features/editor/components/Studio/ClipStudioW
 import { useTemplateStore } from '@/features/editor/store/templateStore';
 
 const authFetchMock = vi.fn();
-const resolveFirebaseAssetBlobUrlMock = vi.fn();
 
 vi.mock('@/services/auth', () => ({
   authFetch: (...args: unknown[]) => authFetchMock(...args),
 }));
-
-vi.mock('@/features/editor/utils/firebaseAsset', async () => {
-  const actual = await vi.importActual<typeof import('@/features/editor/utils/firebaseAsset')>(
-    '@/features/editor/utils/firebaseAsset',
-  );
-
-  return {
-    ...actual,
-    resolveFirebaseAssetBlobUrl: (...args: unknown[]) => resolveFirebaseAssetBlobUrlMock(...args),
-  };
-});
 
 vi.mock('@/features/editor/components/Canvas/ZoneRenderer', () => ({
   default: ({
@@ -114,7 +102,6 @@ describe('ClipStudioWorkspace loading', () => {
   beforeEach(() => {
     useTemplateStore.setState(initialStoreState, true);
     authFetchMock.mockReset();
-    resolveFirebaseAssetBlobUrlMock.mockReset();
     vi.stubGlobal('fetch', vi.fn());
     globalThis.URL.createObjectURL = vi.fn(() => 'blob:logo-preview');
     globalThis.URL.revokeObjectURL = vi.fn();
@@ -144,7 +131,6 @@ describe('ClipStudioWorkspace loading', () => {
       ok: true,
       blob: async () => new Blob(['logo'], { type: 'image/png' }),
     });
-    resolveFirebaseAssetBlobUrlMock.mockResolvedValue('blob:firebase-logo');
 
     await act(async () => {
       render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
@@ -157,7 +143,6 @@ describe('ClipStudioWorkspace loading', () => {
     expect(authFetchMock).toHaveBeenCalledWith(
       'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark',
     );
-    expect(resolveFirebaseAssetBlobUrlMock).not.toHaveBeenCalled();
   });
 
   it('shows stage and logo skeletons while media is still loading', async () => {
@@ -167,7 +152,6 @@ describe('ClipStudioWorkspace loading', () => {
           // Keep pending to preserve the loading state.
         }),
     );
-    resolveFirebaseAssetBlobUrlMock.mockResolvedValue(null);
 
     await act(async () => {
       render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
@@ -177,7 +161,7 @@ describe('ClipStudioWorkspace loading', () => {
     expect(await screen.findByTestId('zone-loading-logo_mark')).toBeInTheDocument();
   });
 
-  it('falls through from a dead direct manifest URL to Firebase blob resolution', async () => {
+  it('uses the manifest preview URL only when no clip asset proxy context exists', async () => {
     useTemplateStore.setState({
       activeManifest: {
         ...makeManifest(),
@@ -188,22 +172,41 @@ describe('ClipStudioWorkspace loading', () => {
     });
 
     vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      blob: async () => new Blob(['logo'], { type: 'image/png' }),
+    } as unknown as Response);
+
+    await act(async () => {
+      render(<ClipStudioWorkspace />);
+    });
+
+    await waitFor(() =>
+      expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe('blob:logo-preview'),
+    );
+
+    expect(authFetchMock).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:8000/data/templates/kapil_kappu_v1/assets/logo.png',
+      { cache: 'no-store' },
+    );
+  });
+
+  it('marks the asset as failed when the proxy fetch cannot resolve it', async () => {
+    authFetchMock.mockResolvedValue({
       ok: false,
       blob: async () => new Blob(),
-    } as unknown as Response);
-    resolveFirebaseAssetBlobUrlMock.mockResolvedValueOnce('blob:firebase-fallback');
+    });
 
     await act(async () => {
       render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
     });
 
-    await waitFor(() =>
-      expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe('blob:firebase-fallback'),
-    );
+    await waitFor(() => {
+      expect(useTemplateStore.getState().uploadedImages.logo_mark).toBeUndefined();
+    });
 
     expect(authFetchMock).toHaveBeenCalledWith(
       'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark',
     );
-    expect(resolveFirebaseAssetBlobUrlMock).toHaveBeenCalled();
   });
 });
