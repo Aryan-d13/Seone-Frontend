@@ -193,7 +193,7 @@ describe('video bounds normalization', () => {
     });
   });
 
-  it('keeps the title background width aligned to the video region in stack mode', () => {
+  it('does not synthesize or move untouched title helpers when resizing another zone in clip mode', () => {
     useTemplateStore.getState().loadFromManifest({
       manifest_version: '1.0',
       template_ir: {
@@ -284,17 +284,16 @@ describe('video bounds normalization', () => {
       .getState()
       .template.zones.find(zone => zone.id === 'title_band');
 
-    expect(backgroundZone?.bounds).toMatchObject({
-      x: 80,
-      width: 920,
-    });
+    expect(backgroundZone).toBeUndefined();
     expect(videoZone?.bounds).toMatchObject({
       x: 80,
       width: 920,
     });
-    expect(Number(textZone?.bounds.x)).toBeGreaterThanOrEqual(80);
-    expect(
-      Number(textZone?.bounds.x) + Number(textZone?.bounds.width)
-    ).toBeLessThanOrEqual(1000);
+    expect(textZone?.bounds).toEqual({
+      x: 140,
+      y: 30,
+      width: 640,
+      height: 120,
+    });
   });
 });

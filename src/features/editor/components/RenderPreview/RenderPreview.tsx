@@ -26,6 +26,7 @@ export default function RenderPreview({ renderRequest = null }: RenderPreviewPro
     template,
     previewTexts,
     activeManifest,
+    draftGeometryZoneIds,
     reRenderState,
     setReRenderLoading,
     setReRenderResult,
@@ -41,6 +42,7 @@ export default function RenderPreview({ renderRequest = null }: RenderPreviewPro
         template,
         previewTexts,
         activeManifest,
+        draftGeometryZoneIds,
       });
       if (!modifiedManifest) {
         throw new Error('Studio manifest is not ready for preview');

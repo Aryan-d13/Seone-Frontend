@@ -256,7 +256,7 @@ describe('editor asset hydration', () => {
     expect(useTemplateStore.getState().previewTexts.pov_text).toBe('Recovered headline');
   });
 
-  it('hydrates text zones as content boxes instead of the full template band', () => {
+  it('keeps original text geometry on hydration and leaves draft geometry empty', () => {
     useTemplateStore.getState().loadFromManifest({
       manifest_version: '1.0',
       template_ir: {
@@ -333,17 +333,13 @@ describe('editor asset hydration', () => {
     const backgroundZone = useTemplateStore
       .getState()
       .template.zones.find(entry => entry.id === 'title_band__bg');
-    expect(zone?.bounds.width).toBeLessThan(1080);
-    expect(zone?.bounds.height).toBeLessThan(170);
-    expect(zone?.bounds.x).toBeGreaterThan(0);
-    expect(zone?.text?.width_percent).toBe(100);
-    expect(backgroundZone?.type).toBe('shape');
-    expect(backgroundZone?.role).toBe('text_background');
-    expect(backgroundZone?.bounds).toEqual({ x: 0, y: 0, width: 1080, height: 170 });
-    expect(useTemplateStore.getState().isLocked('title_band__bg')).toBe(true);
+    expect(zone?.bounds).toEqual({ x: 0, y: 0, width: 1080, height: 170 });
+    expect(zone?.text?.width_percent).toBe(75);
+    expect(backgroundZone).toBeUndefined();
+    expect(useTemplateStore.getState().draftGeometryZoneIds.size).toBe(0);
   });
 
-  it('repairs broken saved title background bounds back to the full title band', () => {
+  it('does not rewrite legacy background helper bounds on hydration', () => {
     useTemplateStore.getState().loadFromManifest({
       manifest_version: '1.0',
       template_ir: {
@@ -439,13 +435,9 @@ describe('editor asset hydration', () => {
       .getState()
       .template.zones.find(entry => entry.id === 'title_band');
 
-    expect(backgroundZone?.bounds).toEqual({ x: 0, y: 0, width: 1080, height: 170 });
-    expect(
-      Number(textZone?.bounds.x) + Number(textZone?.bounds.width)
-    ).toBeLessThanOrEqual(1080);
-    expect(
-      Number(textZone?.bounds.y) + Number(textZone?.bounds.height)
-    ).toBeLessThanOrEqual(170);
+    expect(backgroundZone?.bounds).toEqual({ x: 172, y: 41, width: 736, height: 88 });
+    expect(textZone?.bounds).toEqual({ x: 390, y: 40, width: 850, height: 80 });
+    expect(useTemplateStore.getState().isLocked('title_band__bg')).toBe(true);
   });
 
   it('does not coerce nullable refs into string values on import', () => {

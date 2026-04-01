@@ -1,5 +1,5 @@
 import type { RenderManifest, ResolvedZone } from '../types/manifest';
-import type { ZoneSpec } from '../types/template';
+import type { StyleDef, ZoneSpec } from '../types/template';
 
 export interface ClipLayerDefinition {
   zone: ZoneSpec;
@@ -8,6 +8,24 @@ export interface ClipLayerDefinition {
     start: number;
     end: number;
   };
+}
+
+function resolveTextBackgroundFill(
+  zone: ZoneSpec,
+  resolvedZone: ResolvedZone | undefined,
+  styles: Record<string, StyleDef>
+): string | null {
+  const resolvedFills = resolvedZone?.resolved?.fills as Record<string, unknown> | undefined;
+  if (typeof resolvedFills?.bg === 'string' && resolvedFills.bg.trim()) {
+    return resolvedFills.bg;
+  }
+
+  const style = zone.style_ref ? styles[zone.style_ref] : undefined;
+  if (typeof style?.bg_fill === 'string' && style.bg_fill.trim()) {
+    return style.bg_fill;
+  }
+
+  return null;
 }
 
 function coerceNonNegativeNumber(value: unknown, fallback: number): number {
@@ -37,7 +55,13 @@ export function getClipLayerDefinitions(
   );
 
   return zones.map(zone => {
-    const resolvedZone = resolvedZonesById.get(zone.id);
+    const companionTextZoneId =
+      zone.role === 'text_background' && zone.id.endsWith('__bg')
+        ? zone.id.slice(0, -4)
+        : null;
+    const resolvedZone =
+      resolvedZonesById.get(zone.id) ||
+      (companionTextZoneId ? resolvedZonesById.get(companionTextZoneId) : undefined);
     const start = coerceNonNegativeNumber(resolvedZone?.time?.start, 0);
     const end = coerceNonNegativeNumber(resolvedZone?.time?.end, defaultEnd);
 
@@ -49,5 +73,56 @@ export function getClipLayerDefinitions(
         end: end > start ? end : Math.max(start + 0.1, defaultEnd),
       },
     };
+  });
+}
+
+export function getClipStageLayerDefinitions(
+  layers: ClipLayerDefinition[],
+  styles: Record<string, StyleDef>
+): ClipLayerDefinition[] {
+  const explicitBackgroundIds = new Set(
+    layers
+      .filter(
+        layer =>
+          layer.zone.type === 'shape' &&
+          layer.zone.role === 'text_background' &&
+          layer.zone.id.endsWith('__bg')
+      )
+      .map(layer => layer.zone.id)
+  );
+
+  return layers.flatMap(layer => {
+    const { zone, resolvedZone } = layer;
+    if (zone.type !== 'text') {
+      return [layer];
+    }
+
+    const backgroundZoneId = `${zone.id}__bg`;
+    if (explicitBackgroundIds.has(backgroundZoneId)) {
+      return [layer];
+    }
+
+    const backgroundFill = resolveTextBackgroundFill(zone, resolvedZone, styles);
+    if (!backgroundFill) {
+      return [layer];
+    }
+
+    const derivedBackgroundZone: ZoneSpec = {
+      id: backgroundZoneId,
+      type: 'shape',
+      bounds: { ...zone.bounds },
+      z: zone.z - 1,
+      role: 'text_background',
+      shape: { kind: 'rect' },
+      style_ref: zone.style_ref,
+    };
+
+    return [
+      {
+        ...layer,
+        zone: derivedBackgroundZone,
+      },
+      layer,
+    ];
   });
 }

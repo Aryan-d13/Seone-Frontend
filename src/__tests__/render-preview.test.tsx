@@ -12,6 +12,21 @@ vi.mock('@/services/auth', () => ({
 
 const initialStoreState = useTemplateStore.getState();
 
+async function flushUi() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+async function clickRenderButton() {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /render with changes/i }));
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 function makeTemplate() {
   return {
     template_version: '1.0',
@@ -70,10 +85,9 @@ describe('RenderPreview', () => {
     const view = render(
       <RenderPreview renderRequest={{ jobId: 'job-123', clipIndex: 1 }} />
     );
+    await flushUi();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /render with changes/i }));
-    });
+    await clickRenderButton();
 
     await waitFor(() =>
       expect(useTemplateStore.getState().reRenderState.resultUrl).toBe(
@@ -98,10 +112,9 @@ describe('RenderPreview', () => {
     });
 
     render(<RenderPreview renderRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    await flushUi();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /render with changes/i }));
-    });
+    await clickRenderButton();
 
     expect(
       await screen.findByText('Preview render failed: ffmpeg crashed')
@@ -117,13 +130,15 @@ describe('RenderPreview', () => {
     });
 
     render(<RenderPreview renderRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    await flushUi();
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /render with changes/i }));
-    });
+    await clickRenderButton();
 
     const video = await screen.findByTestId('render-preview-video');
-    fireEvent.error(video);
+    await act(async () => {
+      fireEvent.error(video);
+      await Promise.resolve();
+    });
 
     expect(
       await screen.findByText(

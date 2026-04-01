@@ -7,6 +7,16 @@
 
 import type { TemplateJSON } from './template';
 
+export interface ResolvedSizePx {
+  width?: number;
+  height?: number;
+}
+
+export interface ResolvedBoxPx extends ResolvedSizePx {
+  x?: number;
+  y?: number;
+}
+
 export interface ResolvedTextLayout {
   backend?: string;
   source_text?: string;
@@ -15,12 +25,17 @@ export interface ResolvedTextLayout {
   font_family_used?: string;
   font_size_used?: number;
   line_height_px?: number;
+  line_advance_px?: number;
   line_spacing_px?: number;
   baseline?: string;
   horizontal_align?: 'left' | 'center' | 'right';
   vertical_align?: 'top' | 'middle' | 'bottom' | 'center';
   block_width_px?: number;
   block_height_px?: number;
+  font_ascent_px?: number;
+  font_descent_px?: number;
+  content_box_px?: ResolvedBoxPx;
+  ink_box_px?: ResolvedSizePx;
   max_text_width_px?: number;
   fits_width?: boolean;
   fits_height?: boolean;

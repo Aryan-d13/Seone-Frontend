@@ -33,6 +33,7 @@ interface UIState {
   gridSnap: boolean;
   gridSize: number;
   lockedZoneIds: Set<string>;
+  draftGeometryZoneIds: Set<string>;
   /** Maps zone id → objectURL for preview on canvas (UI-only, not serialized). */
   uploadedImages: Record<string, string>;
   assetPreviewError: string | null;
@@ -66,6 +67,7 @@ interface AICopySessionState {
 
 interface HistoryEntry {
   template: TemplateJSON;
+  draftGeometryZoneIds: string[];
 }
 
 /* ── Store shape ───────────────────────────────── */
@@ -218,12 +220,41 @@ function normalizeTemplate(template: TemplateJSON): TemplateJSON {
   };
 }
 
+function collectLockedZoneIds(template: TemplateJSON): Set<string> {
+  return new Set(
+    template.zones
+      .filter(zone => zone.type === 'shape' && zone.role === 'text_background')
+      .map(zone => zone.id)
+  );
+}
+
 function coerceFiniteNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function readResolvedBox(
+  value: unknown
+): { x: number; y: number; width: number; height: number } | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const width = Number(candidate.width);
+  const height = Number(candidate.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  const x = Number(candidate.x);
+  const y = Number(candidate.y);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0,
+    width,
+    height,
+  };
 }
 
 function buildTemplateWithBoundsUpdate(
@@ -235,6 +266,7 @@ function buildTemplateWithBoundsUpdate(
     gridSize: number;
     sourceVideoAspectRatio: number | null;
     snapEnabled: boolean;
+    enforceClipStack: boolean;
   }
 ): TemplateJSON {
   const maybeSnap = (value: number) =>
@@ -331,7 +363,7 @@ function buildTemplateWithBoundsUpdate(
     }),
   };
 
-  return nextTemplate.compositing_mode === 'stack'
+  return nextTemplate.compositing_mode === 'stack' && options.enforceClipStack
     ? enforceClipStackConstraints(nextTemplate)
     : nextTemplate;
 }
@@ -352,6 +384,19 @@ function deriveEditableTextBounds(
   const rect = resolvedZone.rect;
   if (!layout || !rect) return null;
 
+  const contentBox = readResolvedBox(layout.content_box_px);
+  if (contentBox) {
+    const totalWidth = clamp(Math.round(contentBox.width), 120, rect.w);
+    const totalHeight = clamp(Math.round(contentBox.height), 1, rect.h);
+
+    return {
+      x: Math.round(clamp(rect.x + contentBox.x, rect.x, rect.x + rect.w - totalWidth)),
+      y: Math.round(clamp(rect.y + contentBox.y, rect.y, rect.y + rect.h - totalHeight)),
+      width: totalWidth,
+      height: totalHeight,
+    };
+  }
+
   const fontSize = coerceFiniteNumber(layout.font_size_used, zone.text.font.size ?? 40);
   const paddingX = Math.max(18, Math.round(fontSize * 0.3));
   const paddingY = Math.max(10, Math.round(fontSize * 0.18));
@@ -366,8 +411,8 @@ function deriveEditableTextBounds(
     coerceFiniteNumber(layout.line_spacing_px, zone.text.line_spacing_px ?? 0)
   );
   const estimatedLineHeight = Math.max(
-    coerceFiniteNumber(layout.line_height_px, fontSize * 0.92),
-    fontSize * 0.92
+    coerceFiniteNumber(layout.line_advance_px, coerceFiniteNumber(layout.line_height_px, fontSize)),
+    fontSize
   );
   const estimatedBlockHeight = Math.max(
     blockHeight,
@@ -375,13 +420,12 @@ function deriveEditableTextBounds(
   );
   const totalWidth = clamp(Math.round(measuredTextWidth + paddingX * 2), 120, rect.w);
   const totalHeight = clamp(
-    Math.round(estimatedBlockHeight + paddingY * 2 + Math.max(4, fontSize * 0.08)),
+    Math.round(estimatedBlockHeight + paddingY * 2),
     Math.round(fontSize + paddingY * 2),
     rect.h
   );
 
-  const horizontalAlign =
-    zone.text.horizontal_align ?? layout.horizontal_align ?? 'center';
+  const horizontalAlign = zone.text.horizontal_align ?? layout.horizontal_align ?? 'center';
   const verticalAlign = zone.text.vertical_align ?? layout.vertical_align ?? 'middle';
 
   let nextX = rect.x + (rect.w - totalWidth) / 2;
@@ -704,9 +748,15 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
    * Called by every action that changes the template.
    */
   function pushHistory() {
-    const { template, history, historyIndex } = get();
+    const { template, draftGeometryZoneIds, history, historyIndex } = get();
     const truncated = history.slice(0, historyIndex + 1);
-    const next = [...truncated, { template: cloneTemplate(template) }];
+    const next = [
+      ...truncated,
+      {
+        template: cloneTemplate(template),
+        draftGeometryZoneIds: [...draftGeometryZoneIds],
+      },
+    ];
     if (next.length > MAX_HISTORY) next.shift();
     set({ history: next, historyIndex: next.length - 1 });
   }
@@ -721,6 +771,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
     gridSnap: true,
     gridSize: 10,
     lockedZoneIds: new Set(),
+    draftGeometryZoneIds: new Set(),
     uploadedImages: {},
     assetPreviewError: null,
     pendingFiles: {},
@@ -729,7 +780,12 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
     sourceVideoAspectRatio: null,
     reRenderState: { loading: false, resultUrl: null, error: null },
     aiCopySessions: {},
-    history: [{ template: normalizeTemplate(cloneTemplate(INITIAL_TEMPLATE)) }],
+    history: [
+      {
+        template: normalizeTemplate(cloneTemplate(INITIAL_TEMPLATE)),
+        draftGeometryZoneIds: [],
+      },
+    ],
     historyIndex: 0,
 
     // ── Template-level ────────────────────────────
@@ -747,9 +803,10 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         uploadedImages: {},
         assetPreviewError: null,
         lockedZoneIds: new Set(),
+        draftGeometryZoneIds: new Set(),
         sourceVideoAspectRatio: null,
         aiCopySessions: {},
-        history: [{ template: normalized }],
+        history: [{ template: normalized, draftGeometryZoneIds: [] }],
         historyIndex: 0,
       });
     },
@@ -785,6 +842,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         selectedZoneId: normalizedZone.id,
         interactionMode: 'selected',
         editingTextZoneId: null,
+        draftGeometryZoneIds: new Set(s.draftGeometryZoneIds).add(normalizedZone.id),
       }));
     },
     updateZone: (id, patch) => {
@@ -807,7 +865,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
           gridSize,
           sourceVideoAspectRatio: s.sourceVideoAspectRatio,
           snapEnabled: true,
+          enforceClipStack: !Boolean(s.activeManifest),
         }),
+        draftGeometryZoneIds: new Set(s.draftGeometryZoneIds).add(id),
       }));
     },
     updateZoneBoundsExact: (id, boundsUpdate) => {
@@ -819,7 +879,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
           gridSize,
           sourceVideoAspectRatio: s.sourceVideoAspectRatio,
           snapEnabled: false,
+          enforceClipStack: !Boolean(s.activeManifest),
         }),
+        draftGeometryZoneIds: new Set(s.draftGeometryZoneIds).add(id),
       }));
     },
     removeZone: id => {
@@ -829,6 +891,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
           ...s.template,
           zones: s.template.zones.filter(z => z.id !== id),
         },
+        draftGeometryZoneIds: new Set(
+          [...s.draftGeometryZoneIds].filter(zoneId => zoneId !== id)
+        ),
         selectedZoneId: s.selectedZoneId === id ? null : s.selectedZoneId,
         interactionMode: s.selectedZoneId === id ? 'idle' : s.interactionMode,
         editingTextZoneId: s.editingTextZoneId === id ? null : s.editingTextZoneId,
@@ -855,6 +920,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         selectedZoneId: dup.id,
         interactionMode: 'selected',
         editingTextZoneId: null,
+        draftGeometryZoneIds: new Set(s.draftGeometryZoneIds).add(dup.id),
       }));
     },
     reorderZone: (id, newZ) => {
@@ -989,6 +1055,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
       const prevIndex = historyIndex - 1;
       set({
         template: cloneTemplate(history[prevIndex].template),
+        draftGeometryZoneIds: new Set(history[prevIndex].draftGeometryZoneIds || []),
         historyIndex: prevIndex,
         selectedZoneId: null,
         interactionMode: 'idle',
@@ -1001,6 +1068,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
       const nextIndex = historyIndex + 1;
       set({
         template: cloneTemplate(history[nextIndex].template),
+        draftGeometryZoneIds: new Set(history[nextIndex].draftGeometryZoneIds || []),
         historyIndex: nextIndex,
         selectedZoneId: null,
         interactionMode: 'idle',
@@ -1020,14 +1088,11 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
       // Run it through importTemplate to validate & apply defaults.
       const templateJson = importTemplate(JSON.stringify(manifest.template_ir));
       const normalized = normalizeTemplate(cloneTemplate(templateJson));
-      const splitTemplate = splitTextBackgroundLayers(
-        {
-          ...normalized,
-          assets: { ...normalized.assets },
-        },
-        manifest
-      );
-      const normalizedTemplate = enforceClipStackConstraints(splitTemplate.template);
+      const normalizedTemplate = normalizeTemplate({
+        ...normalized,
+        compositing_mode: 'stack',
+        assets: { ...normalized.assets },
+      });
 
       // Extract preview texts from the render payload inputs
       const previewTexts: Record<string, string> = {};
@@ -1073,8 +1138,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         sourceVideoAspectRatio: null,
         reRenderState: { loading: false, resultUrl: null, error: null },
         aiCopySessions: {},
-        lockedZoneIds: splitTemplate.lockedZoneIds,
-        history: [{ template: cloneTemplate(normalizedTemplate) }],
+        lockedZoneIds: collectLockedZoneIds(normalizedTemplate),
+        draftGeometryZoneIds: new Set(),
+        history: [{ template: cloneTemplate(normalizedTemplate), draftGeometryZoneIds: [] }],
         historyIndex: 0,
       });
     },
@@ -1205,6 +1271,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
                 : entry
             ),
           },
+          draftGeometryZoneIds: new Set(s.draftGeometryZoneIds).add(zoneId),
         };
       });
     },

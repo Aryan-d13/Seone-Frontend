@@ -27,6 +27,7 @@ interface Props {
   renderMode?: 'editor' | 'rendered' | 'clip';
   assetResolving?: boolean;
   assetFailed?: boolean;
+  suppressMediaContent?: boolean;
 }
 
 type ResizeDirection =
@@ -97,6 +98,26 @@ function horizontalAlignToText(value: unknown): 'left' | 'center' | 'right' {
 
 function isResolvedTextLayout(value: unknown): value is ResolvedTextLayout {
   return Boolean(value) && typeof value === 'object';
+}
+
+function readResolvedBox(
+  value: unknown
+): { x: number; y: number; width: number; height: number } | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const width = Number(candidate.width);
+  const height = Number(candidate.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+  const x = Number(candidate.x);
+  const y = Number(candidate.y);
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0,
+    width,
+    height,
+  };
 }
 
 function clampRectDimension(value: number): number {
@@ -180,12 +201,14 @@ export default function ZoneRenderer({
   renderMode = 'editor',
   assetResolving = false,
   assetFailed = false,
+  suppressMediaContent = false,
 }: Props) {
   const {
     template,
     selectedZoneId,
     interactionMode,
     editingTextZoneId,
+    draftGeometryZoneIds,
     selectZone,
     beginTextEditing,
     endTextEditing,
@@ -242,10 +265,46 @@ export default function ZoneRenderer({
 
   const bounds = zone.bounds;
   const resolvedRect = resolvedZone?.rect;
-  const x = readLengthSpec(bounds.x, coerceNumber(resolvedRect?.x, 0));
-  const y = readLengthSpec(bounds.y, coerceNumber(resolvedRect?.y, 0));
-  const w = readLengthSpec(bounds.width, coerceNumber(resolvedRect?.w, 0));
-  const isAutoHeight = bounds.height === undefined;
+  const textLayout = isResolvedTextLayout(resolvedZone?.resolved?.text_layout)
+    ? resolvedZone.resolved.text_layout
+    : undefined;
+  const resolvedSourceText =
+    typeof textLayout?.source_text === 'string' ? textLayout.source_text : '';
+  const resolvedContentBox = readResolvedBox(textLayout?.content_box_px);
+  const usesDraftGeometry = draftGeometryZoneIds.has(zone.id);
+  const useResolvedTextGeometry =
+    isClipMode &&
+    zone.type === 'text' &&
+    Boolean(resolvedRect) &&
+    Boolean(resolvedContentBox) &&
+    !usesDraftGeometry;
+  const useResolvedGeometry =
+    isClipMode && Boolean(resolvedRect) && !usesDraftGeometry && !useResolvedTextGeometry;
+  const x = readLengthSpec(
+    useResolvedTextGeometry
+      ? coerceNumber(resolvedRect?.x, 0) + coerceNumber(resolvedContentBox?.x, 0)
+      : useResolvedGeometry
+        ? resolvedRect?.x
+        : bounds.x,
+    coerceNumber(resolvedRect?.x, 0)
+  );
+  const y = readLengthSpec(
+    useResolvedTextGeometry
+      ? coerceNumber(resolvedRect?.y, 0) + coerceNumber(resolvedContentBox?.y, 0)
+      : useResolvedGeometry
+        ? resolvedRect?.y
+        : bounds.y,
+    coerceNumber(resolvedRect?.y, 0)
+  );
+  const w = readLengthSpec(
+    useResolvedTextGeometry
+      ? coerceNumber(resolvedContentBox?.width, coerceNumber(resolvedRect?.w, 0))
+      : useResolvedGeometry
+        ? resolvedRect?.w
+        : bounds.width,
+    coerceNumber(resolvedRect?.w, 0)
+  );
+  const isAutoHeight = !useResolvedGeometry && !useResolvedTextGeometry && bounds.height === undefined;
 
   const assetKey = zone.asset_ref || zone.id;
   const templateAsset = zone.type === 'image' ? template.assets[assetKey] : undefined;
@@ -265,48 +324,83 @@ export default function ZoneRenderer({
 
   const contentRef = zone.content_ref || '';
   const previewText = contentRef ? previewTexts[contentRef] : undefined;
-  const hasVideoPreview = zone.type === 'video' && Boolean(videoSrc);
+  const hasVideoPreview =
+    zone.type === 'video' && Boolean(videoSrc) && !suppressMediaContent;
   const isLogoZone = zone.type === 'image' && zone.role === 'logo';
+  const derivedTextBackgroundFill =
+    isClipMode &&
+    zone.type === 'text' &&
+    (typeof (resolvedZone?.resolved?.fills as Record<string, unknown> | undefined)?.bg === 'string'
+      ? ((resolvedZone?.resolved?.fills as Record<string, unknown>).bg as string)
+      : undefined);
+  const hasTextBackgroundLayer =
+    zone.type === 'text' &&
+    (template.zones.some(entry => entry.id === `${zone.id}__bg` && entry.type === 'shape') ||
+      Boolean(derivedTextBackgroundFill) ||
+      Boolean(zone.style_ref && template.styles[zone.style_ref]?.bg_fill));
 
   const style = zone.style_ref ? template.styles[zone.style_ref] : undefined;
+  const resolvedFills =
+    zone.type === 'text'
+      ? (resolvedZone?.resolved?.fills as Record<string, unknown> | undefined)
+      : undefined;
   let bgColor: string | undefined;
   let textColor: string | undefined;
   let shapeColor: string | undefined;
   if (zone.type === 'text' && style) {
-    bgColor = style.bg_fill;
-    textColor = style.fill;
+    bgColor =
+      style.bg_fill || (typeof resolvedFills?.bg === 'string' ? resolvedFills.bg : undefined);
+    textColor =
+      style.fill || (typeof resolvedFills?.text === 'string' ? resolvedFills.text : undefined);
   }
   if (zone.type === 'shape' && style) {
-    shapeColor = style.fill || style.bg_fill;
+    if (zone.role === 'text_background') {
+      const pairedFills = resolvedZone?.resolved?.fills as Record<string, unknown> | undefined;
+      shapeColor =
+        (typeof pairedFills?.bg === 'string' ? pairedFills.bg : undefined) ||
+        style.bg_fill ||
+        style.fill;
+    } else {
+      shapeColor = style.fill || style.bg_fill;
+    }
   }
-
-  const textLayout = isResolvedTextLayout(resolvedZone?.resolved?.text_layout)
-    ? resolvedZone.resolved.text_layout
-    : undefined;
-  const resolvedSourceText =
-    typeof textLayout?.source_text === 'string' ? textLayout.source_text : '';
   const editableText = typeof previewText === 'string' ? previewText : resolvedSourceText;
 
   const mediaFit =
+    (useResolvedGeometry ? resolvedZone?.resolved?.fit : undefined) ??
     zone.media?.fit ??
     (isRenderedMode ? resolvedZone?.resolved?.fit : undefined) ??
     'cover';
   const cropFocus = normalizeCropFocus(
-    zone.media?.crop_focus ??
+    (useResolvedGeometry ? resolvedZone?.resolved?.crop_focus : undefined) ??
+      zone.media?.crop_focus ??
       (isRenderedMode ? resolvedZone?.resolved?.crop_focus : undefined)
   );
   const mediaObjectPosition = cropFocus
     ? `${Math.round(cropFocus.x * 100)}% ${Math.round(cropFocus.y * 100)}%`
     : cropAnchorToObjectPosition(
-        zone.media?.crop_anchor ??
+        (useResolvedGeometry ? resolvedZone?.resolved?.crop_anchor : undefined) ??
+          zone.media?.crop_anchor ??
           (isRenderedMode ? resolvedZone?.resolved?.crop_anchor : undefined)
       );
   const videoAspectRatio =
     zone.type === 'video'
-      ? (readBoundsAspectRatio(zone.bounds) ?? sourceVideoAspectRatio)
+      ? (
+          (useResolvedGeometry && resolvedRect?.h
+            ? resolvedRect.w / resolvedRect.h
+            : undefined) ??
+          readBoundsAspectRatio(zone.bounds) ??
+          sourceVideoAspectRatio
+        )
       : null;
 
   const h = useMemo(() => {
+    if (useResolvedTextGeometry) {
+      return coerceNumber(resolvedContentBox?.height, coerceNumber(resolvedRect?.h, w));
+    }
+    if (useResolvedGeometry) {
+      return coerceNumber(resolvedRect?.h, w);
+    }
     if (!isAutoHeight) {
       return readLengthSpec(bounds.height, coerceNumber(resolvedRect?.h, w));
     }
@@ -314,7 +408,17 @@ export default function ZoneRenderer({
       return Math.max(1, Math.round(w / imageAspectRatio));
     }
     return coerceNumber(resolvedRect?.h, w);
-  }, [bounds.height, imageAspectRatio, isAutoHeight, resolvedRect?.h, w, zone.type]);
+  }, [
+    bounds.height,
+    imageAspectRatio,
+    isAutoHeight,
+    resolvedContentBox?.height,
+    resolvedRect?.h,
+    useResolvedGeometry,
+    useResolvedTextGeometry,
+    w,
+    zone.type,
+  ]);
 
   useEffect(() => {
     if (renderMode === 'clip' || activeManifest) return;
@@ -343,6 +447,17 @@ export default function ZoneRenderer({
     const liveText = zone.text;
     const fontSizeBase =
       liveText?.font?.size ?? coerceNumber(textLayout?.font_size_used, 40) ?? 40;
+    const horizontalAlign = liveText?.horizontal_align ?? textLayout?.horizontal_align;
+    const textAlign = horizontalAlignToText(horizontalAlign);
+    const resolvedLines = Array.isArray(textLayout?.lines)
+      ? textLayout.lines.filter((line): line is string => typeof line === 'string')
+      : [];
+    const useExactResolvedLines =
+      !isEditingText &&
+      resolvedLines.length > 0 &&
+      editableText === resolvedSourceText;
+    const useZoneBoundsAsContentBox =
+      isClipMode && zone.type === 'text' && (useResolvedTextGeometry || usesDraftGeometry);
     const paddingXBase = Math.max(12, Math.round(fontSizeBase * 0.24));
     const paddingYBase = Math.max(8, Math.round(fontSizeBase * 0.16));
     const paddingXPx = paddingXBase * scale;
@@ -360,60 +475,97 @@ export default function ZoneRenderer({
       coerceNumber(textLayout?.line_spacing_px, 0)
     );
     const lineSpacingPx = lineSpacingBase * scale;
-    const resolvedLineHeightPx =
-      coerceNumber(textLayout?.line_height_px, fontSizeBase * 0.92) * scale;
-    const lineHeightPx = Math.max(
-      fontSizePx * 0.95,
-      resolvedLineHeightPx + lineSpacingPx * 0.15
-    );
-    const blockWidthPx = Math.min(Math.max(textWidthPx, 1), usableWidth);
+    const resolvedLineAdvancePx =
+      coerceNumber(textLayout?.line_advance_px, coerceNumber(textLayout?.line_height_px, fontSizeBase)) *
+      scale;
+    const lineHeightPx = Math.max(fontSizePx, resolvedLineAdvancePx);
     const resolvedLineCount = Math.max(
       1,
       Math.round(coerceNumber(textLayout?.line_count, 1))
     );
     const resolvedBlockHeightPx = Math.max(
       coerceNumber(textLayout?.block_height_px, 0) * scale,
-      resolvedLineCount * lineHeightPx
+      resolvedLineCount * lineHeightPx + Math.max(0, resolvedLineCount - 1) * lineSpacingPx
     );
-    const blockHeightPx = Math.max(
-      h * scale - paddingYPx * 2,
-      resolvedBlockHeightPx + fontSizePx * 0.18
-    );
+    const contentWidthPx = useZoneBoundsAsContentBox
+      ? Math.max(w * scale, 1)
+      : resolvedContentBox
+      ? Math.min(Math.max(resolvedContentBox.width * scale, 1), w * scale)
+      : Math.min(Math.max(textWidthPx, 1), usableWidth);
+    const contentHeightPx = useZoneBoundsAsContentBox
+      ? Math.max(h * scale, lineHeightPx)
+      : resolvedContentBox
+      ? Math.min(Math.max(resolvedContentBox.height * scale, lineHeightPx), h * scale)
+      : Math.max(
+          h * scale - paddingYPx * 2,
+          resolvedBlockHeightPx
+        );
+    const contentXPx = useZoneBoundsAsContentBox
+      ? 0
+      : resolvedContentBox
+      ? Math.min(Math.max(resolvedContentBox.x * scale, 0), Math.max(0, w * scale - contentWidthPx))
+      : paddingXPx;
+    const contentYPx = useZoneBoundsAsContentBox
+      ? 0
+      : resolvedContentBox
+      ? Math.min(Math.max(resolvedContentBox.y * scale, 0), Math.max(0, h * scale - contentHeightPx))
+      : paddingYPx;
     const maxLines =
       typeof liveText?.max_lines === 'number' && Number.isFinite(liveText.max_lines)
         ? Math.max(1, liveText.max_lines)
         : Math.max(1, coerceNumber(textLayout?.line_count, 3));
+    const allowRenderOverflow =
+      useExactResolvedLines &&
+      useResolvedTextGeometry &&
+      coerceNumber(textLayout?.max_text_width_px, contentWidthPx / scale) * scale >
+        contentWidthPx + 0.5;
 
     return {
       color: textColor || '#000000',
-      backgroundColor: isClipMode ? 'transparent' : bgColor || '#FFFFFF',
+      backgroundColor:
+        isClipMode && hasTextBackgroundLayer ? 'transparent' : bgColor || '#FFFFFF',
       fontFamily: liveText?.font?.family || textLayout?.font_family_used || 'sans-serif',
       fontWeight: liveText?.font?.weight ?? coerceNumber(textLayout?.font_weight, 400),
       fontSizePx,
-      lineHeightPx: Math.max(lineHeightPx, fontSizePx),
+      lineHeightPx,
+      lineAdvancePx: lineHeightPx,
       lineSpacingPx,
-      blockWidthPx,
-      blockHeightPx,
+      editContentXPx: contentXPx,
+      editContentYPx: contentYPx,
+      editContentWidthPx: contentWidthPx,
+      editContentHeightPx: contentHeightPx,
+      displayContentXPx: contentXPx,
+      displayContentYPx: contentYPx,
+      displayContentWidthPx: contentWidthPx,
+      displayContentHeightPx: contentHeightPx,
       maxLines,
       paddingXPx,
       paddingYPx,
+      usesResolvedContentBox: Boolean(resolvedContentBox) || useZoneBoundsAsContentBox,
+      resolvedLines,
+      useExactResolvedLines,
+      allowRenderOverflow,
       justifyContent: verticalAlignToJustifyContent(
         liveText?.vertical_align ?? textLayout?.vertical_align
       ),
       alignItems: horizontalAlignToItems(
-        liveText?.horizontal_align ?? textLayout?.horizontal_align
+        horizontalAlign
       ),
-      textAlign: horizontalAlignToText(
-        liveText?.horizontal_align ?? textLayout?.horizontal_align
-      ),
+      textAlign,
     };
   }, [
     bgColor,
-    scale,
-    textColor,
-    textLayout,
-    h,
-    w,
+      scale,
+      textColor,
+      textLayout,
+      editableText,
+      resolvedSourceText,
+      h,
+      isClipMode,
+      isEditingText,
+      usesDraftGeometry,
+      useResolvedTextGeometry,
+      w,
     zone.text?.font?.family,
     zone.text?.font?.size,
     zone.text?.font?.weight,
@@ -568,9 +720,13 @@ export default function ZoneRenderer({
 
     const input = textEditorRef.current;
     input.style.height = '0px';
+    const maxEditableHeight = Math.max(
+      textMetrics.editContentHeightPx,
+      h * scale - textMetrics.editContentYPx
+    );
     const nextHeight = Math.min(
-      Math.max(input.scrollHeight, textMetrics.blockHeightPx),
-      h * scale
+      Math.max(input.scrollHeight, textMetrics.editContentHeightPx),
+      maxEditableHeight
     );
     input.style.height = `${Math.max(nextHeight, textMetrics.fontSizePx)}px`;
   }, [
@@ -578,7 +734,8 @@ export default function ZoneRenderer({
     h,
     isEditingText,
     scale,
-    textMetrics.blockHeightPx,
+    textMetrics.editContentHeightPx,
+    textMetrics.editContentYPx,
     textMetrics.fontSizePx,
   ]);
 
@@ -659,7 +816,8 @@ export default function ZoneRenderer({
         }
       : false;
 
-  const nonInteractiveBackground = isClipMode && zone.type === 'shape' && locked;
+  const nonInteractiveBackground =
+    isClipMode && zone.type === 'shape' && zone.role === 'text_background';
 
   const commitRect = (nextRect: RectState, mode: 'move' | 'resize' | null = null) => {
     const update: Record<string, number> = {
@@ -804,13 +962,16 @@ export default function ZoneRenderer({
   const layerContent = (
     <div
       className={`zone-renderer__fill zone-renderer__fill--${zone.type}${isLogoZone ? ' zone-renderer__fill--logo' : ''} zone-renderer__drag-surface`}
-      style={
-        !isRenderedMode && !isClipMode && bgColor
+      style={{
+        ...(!isRenderedMode && !isClipMode && bgColor
           ? { background: `${bgColor}22`, borderColor: `${bgColor}55` }
-          : undefined
-      }
+          : undefined),
+        ...(zone.type === 'text' && textMetrics.allowRenderOverflow
+          ? { overflow: 'visible' as const }
+          : undefined),
+      }}
     >
-      {hasVideoPreview ? (
+      {!suppressMediaContent && hasVideoPreview ? (
         <>
           {showVideoSkeleton && (
             <div className="zone-renderer__loading" data-testid={loadingTestId}>
@@ -839,7 +1000,7 @@ export default function ZoneRenderer({
             }}
           />
         </>
-      ) : zone.type === 'image' && imageSrc && !imageLoadFailed ? (
+      ) : !suppressMediaContent && zone.type === 'image' && imageSrc && !imageLoadFailed ? (
         <>
           {showImageSkeleton && (
             <div className="zone-renderer__loading" data-testid={loadingTestId}>
@@ -862,11 +1023,11 @@ export default function ZoneRenderer({
             draggable={false}
           />
         </>
-      ) : zone.type === 'image' && showImageSkeleton ? (
+      ) : !suppressMediaContent && zone.type === 'image' && showImageSkeleton ? (
         <div className="zone-renderer__loading" data-testid={loadingTestId}>
           <Skeleton className="zone-renderer__loading-skeleton" />
         </div>
-      ) : showImageUnavailable ? (
+      ) : !suppressMediaContent && showImageUnavailable ? (
         <div
           className="zone-renderer__unavailable"
           data-testid={`zone-unavailable-${zone.id}`}
@@ -888,9 +1049,15 @@ export default function ZoneRenderer({
           className={`zone-renderer__text-render ${isEditingText ? 'zone-renderer__text-render--editing' : ''}`}
           style={{
             backgroundColor: textMetrics.backgroundColor,
-            justifyContent: textMetrics.justifyContent,
-            alignItems: textMetrics.alignItems,
-            padding: `${textMetrics.paddingYPx}px ${textMetrics.paddingXPx}px`,
+            justifyContent: textMetrics.usesResolvedContentBox
+              ? undefined
+              : textMetrics.justifyContent,
+            alignItems: textMetrics.usesResolvedContentBox
+              ? undefined
+              : textMetrics.alignItems,
+            padding: textMetrics.usesResolvedContentBox
+              ? '0px'
+              : `${textMetrics.paddingYPx}px ${textMetrics.paddingXPx}px`,
             pointerEvents: isEditingText ? 'auto' : 'none',
           }}
         >
@@ -906,8 +1073,11 @@ export default function ZoneRenderer({
               onClick={event => event.stopPropagation()}
               spellCheck={false}
               style={{
-                width: `${textMetrics.blockWidthPx}px`,
-                minHeight: `${textMetrics.blockHeightPx}px`,
+                position: textMetrics.usesResolvedContentBox ? 'absolute' : 'relative',
+                left: textMetrics.usesResolvedContentBox ? `${textMetrics.editContentXPx}px` : undefined,
+                top: textMetrics.usesResolvedContentBox ? `${textMetrics.editContentYPx}px` : undefined,
+                width: `${textMetrics.editContentWidthPx}px`,
+                minHeight: `${textMetrics.editContentHeightPx}px`,
                 color: textMetrics.color,
                 fontFamily: textMetrics.fontFamily,
                 fontWeight: textMetrics.fontWeight,
@@ -920,8 +1090,11 @@ export default function ZoneRenderer({
             <div
               className="zone-renderer__text-block"
               style={{
-                width: `${textMetrics.blockWidthPx}px`,
-                minHeight: `${textMetrics.blockHeightPx}px`,
+                position: textMetrics.usesResolvedContentBox ? 'absolute' : 'relative',
+                left: textMetrics.usesResolvedContentBox ? `${textMetrics.displayContentXPx}px` : undefined,
+                top: textMetrics.usesResolvedContentBox ? `${textMetrics.displayContentYPx}px` : undefined,
+                width: `${textMetrics.displayContentWidthPx}px`,
+                minHeight: `${textMetrics.displayContentHeightPx}px`,
                 color: textMetrics.color,
                 fontFamily: textMetrics.fontFamily,
                 fontWeight: textMetrics.fontWeight,
@@ -939,12 +1112,26 @@ export default function ZoneRenderer({
                   overflowWrap: 'anywhere',
                 }}
               >
-                {editableText}
+                {textMetrics.useExactResolvedLines
+                  ? textMetrics.resolvedLines.map((line, index) => (
+                      <div
+                        key={`${zone.id}-line-${index}`}
+                        className="zone-renderer__text-line"
+                        style={{
+                          whiteSpace: 'pre',
+                          wordBreak: 'keep-all',
+                          overflowWrap: 'normal',
+                        }}
+                      >
+                        {line || '\u00A0'}
+                      </div>
+                    ))
+                  : editableText}
               </div>
             </div>
           )}
         </div>
-      ) : showPlaceholder ? (
+      ) : !suppressMediaContent && showPlaceholder ? (
         <>
           {zone.type === 'video' && (
             <Film size={24} className="zone-renderer__type-icon" />

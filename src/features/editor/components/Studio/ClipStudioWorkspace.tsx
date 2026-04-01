@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, Pause, Play } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { endpoints, getMediaUrl } from '@/lib/config';
@@ -6,13 +6,67 @@ import { authFetch } from '@/services/auth';
 import { useTemplateStore } from '../../store/templateStore';
 import ZoneRenderer from '../Canvas/ZoneRenderer';
 import ClipStudioTimeline from './ClipStudioTimeline';
-import { getClipLayerDefinitions } from '../../utils/clipLayers';
+import { getClipLayerDefinitions, getClipStageLayerDefinitions } from '../../utils/clipLayers';
 import { getAssetPreviewUrl } from '../../utils/assetPreview';
 import RenderPreview, { type RenderPreviewRequest } from '../RenderPreview/RenderPreview';
 import './ClipStudioWorkspace.css';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+interface TimeWindow {
+  start: number;
+  end: number;
+}
+
+function coerceTimeWindow(value: unknown, fallbackEnd: number): TimeWindow {
+  const raw = value as { start?: unknown; end?: unknown } | null | undefined;
+  const start =
+    typeof raw?.start === 'number' && Number.isFinite(raw.start) ? raw.start : 0;
+  const fallbackWindowEnd = Math.max(fallbackEnd, start);
+  const end =
+    typeof raw?.end === 'number' && Number.isFinite(raw.end) && raw.end > start
+      ? raw.end
+      : fallbackWindowEnd;
+  return {
+    start,
+    end,
+  };
+}
+
+function clampPlayheadToWindow(playheadTime: number, window: TimeWindow): number {
+  return clamp(playheadTime, window.start, Math.max(window.end, window.start));
+}
+
+function timeWindowEquals(left: TimeWindow, right: TimeWindow): boolean {
+  return Math.abs(left.start - right.start) < 0.001 && Math.abs(left.end - right.end) < 0.001;
+}
+
+function cropAnchorToObjectPosition(anchor: unknown): string {
+  switch (anchor) {
+    case 'top':
+      return 'center top';
+    case 'bottom':
+      return 'center bottom';
+    default:
+      return 'center center';
+  }
+}
+
+function normalizeCropFocus(value: unknown): { x: number; y: number } | null {
+  if (!value || typeof value !== 'object') return null;
+  const focus = value as Record<string, unknown>;
+  const x = typeof focus.x === 'number' && Number.isFinite(focus.x) ? focus.x : 0.5;
+  const y = typeof focus.y === 'number' && Number.isFinite(focus.y) ? focus.y : 0.5;
+  return {
+    x: Math.min(Math.max(x, 0), 1),
+    y: Math.min(Math.max(y, 0), 1),
+  };
+}
+
+function readDimension(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
 interface ClipStudioWorkspaceProps {
@@ -34,20 +88,22 @@ export default function ClipStudioWorkspace({
   const {
     template,
     activeManifest,
-    selectedZoneId,
     interactionMode,
     selectZone,
     zoom,
     setZoom,
     updateManifestRenderPayload,
     setUploadedImage,
+    sourceVideoAspectRatio,
     setSourceVideoAspectRatio,
   } = useTemplateStore();
   const { canvas, zones } = template;
   const viewportRef = useRef<HTMLDivElement>(null);
-  const masterVideoRef = useRef<HTMLVideoElement>(null);
+  const sourceVideoRef = useRef<HTMLVideoElement>(null);
   const previousScaleRef = useRef(1);
   const shouldCenterViewportRef = useRef(true);
+  const hasHydratedSourceRef = useRef(false);
+  const previousSourceIdentityRef = useRef<string | null>(null);
   const panSessionRef = useRef<{
     pointerId: number;
     mode: 'space' | 'background';
@@ -65,12 +121,15 @@ export default function ClipStudioWorkspace({
     viewportY: number;
   } | null>(null);
 
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [sourceDuration, setSourceDuration] = useState(0);
+  const [sourceMediaTime, setSourceMediaTime] = useState(0);
+  const [editorPlayheadTime, setEditorPlayheadTime] = useState(0);
+  const [draftTrimWindow, setDraftTrimWindow] = useState<TimeWindow | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [sourceVideoLoading, setSourceVideoLoading] = useState(false);
-  const [timelineCollapsed, setTimelineCollapsed] = useState(true);
+  const [sourceVideoBuffering, setSourceVideoBuffering] = useState(false);
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [spacePanActive, setSpacePanActive] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [assetResolving, setAssetResolving] = useState<Record<string, boolean>>({});
@@ -84,17 +143,16 @@ export default function ClipStudioWorkspace({
     return rawUrl ? getMediaUrl(rawUrl) : null;
   }, [activeManifest?.render_payload?.source_video_url]);
 
-  const rawWindow = activeManifest?.render_payload?.time_window;
-  const startTime = typeof rawWindow?.start === 'number' ? rawWindow.start : 0;
-  const endTime =
-    typeof rawWindow?.end === 'number' && rawWindow.end > startTime
-      ? rawWindow.end
-      : duration || 0;
-  const clipDuration = Math.max(0, endTime - startTime);
+  const committedTrimWindow = useMemo(
+    () => coerceTimeWindow(activeManifest?.render_payload?.time_window, sourceDuration || 0),
+    [activeManifest?.render_payload?.time_window, sourceDuration]
+  );
+  const activeTrimWindow = draftTrimWindow ?? committedTrimWindow;
+  const clipDuration = Math.max(0, activeTrimWindow.end - activeTrimWindow.start);
   const clipCurrentTime = clamp(
-    currentTime - startTime,
+    editorPlayheadTime - activeTrimWindow.start,
     0,
-    clipDuration || Math.max(0, duration - startTime)
+    clipDuration || Math.max(0, sourceDuration - activeTrimWindow.start)
   );
 
   const fitScale = useMemo(() => {
@@ -123,21 +181,20 @@ export default function ClipStudioWorkspace({
       getClipLayerDefinitions(
         orderedZones,
         activeManifest,
-        clipDuration || Math.max(0, duration - startTime)
+        clipDuration || Math.max(0, sourceDuration - activeTrimWindow.start)
       ),
-    [orderedZones, activeManifest, clipDuration, duration, startTime]
+    [
+      orderedZones,
+      activeManifest,
+      clipDuration,
+      sourceDuration,
+      activeTrimWindow.start,
+    ]
   );
 
-  const visibleLayers = useMemo(() => {
-    return clipLayers.filter(({ zone, time }) => {
-      if (zone.type === 'video' || zone.type === 'shape') return true;
-      return clipCurrentTime >= time.start && clipCurrentTime <= time.end;
-    });
-  }, [clipCurrentTime, clipLayers]);
-
-  const selectedZone = useMemo(
-    () => zones.find(zone => zone.id === selectedZoneId) ?? null,
-    [selectedZoneId, zones]
+  const stageLayers = useMemo(
+    () => getClipStageLayerDefinitions(clipLayers, template.styles),
+    [clipLayers, template.styles]
   );
 
   const sourceLayer = useMemo(
@@ -145,19 +202,73 @@ export default function ClipStudioWorkspace({
     [orderedZones]
   );
 
-  useEffect(() => {
-    setIsPlaying(false);
-    setCurrentTime(startTime);
-    setVideoError(null);
-    setSourceVideoLoading(Boolean(sourceVideoUrl));
-    shouldCenterViewportRef.current = true;
-  }, [activeManifest, sourceVideoUrl, startTime]);
+  const sourceLayerRect = useMemo(() => {
+    if (!sourceLayer) return null;
+    const width = readDimension(sourceLayer.bounds.width, canvas.width) * scale;
+    const heightFallback = sourceVideoAspectRatio
+      ? width / sourceVideoAspectRatio
+      : canvas.height * scale;
+    const height = readDimension(sourceLayer.bounds.height, heightFallback) * scale;
+    return {
+      left: readDimension(sourceLayer.bounds.x, 0) * scale,
+      top: readDimension(sourceLayer.bounds.y, 0) * scale,
+      width,
+      height,
+    };
+  }, [
+    canvas.height,
+    canvas.width,
+    scale,
+    sourceLayer,
+    sourceVideoAspectRatio,
+  ]);
+
+  const sourceLayerObjectPosition = useMemo(() => {
+    const cropFocus = normalizeCropFocus(sourceLayer?.media?.crop_focus);
+    if (cropFocus) {
+      return `${Math.round(cropFocus.x * 100)}% ${Math.round(cropFocus.y * 100)}%`;
+    }
+    return cropAnchorToObjectPosition(sourceLayer?.media?.crop_anchor);
+  }, [sourceLayer?.media?.crop_anchor, sourceLayer?.media?.crop_focus]);
+
+  const sourceLayerObjectFit = sourceLayer?.media?.fit ?? 'cover';
+
+  const seekToTime = useCallback(
+    (nextTime: number) => {
+      const targetTime = clamp(nextTime, 0, sourceDuration || nextTime);
+      const element = sourceVideoRef.current;
+      if (element && Math.abs(element.currentTime - targetTime) > 0.05) {
+        try {
+          element.currentTime = targetTime;
+        } catch {
+          // Ignore seek failures during early metadata load.
+        }
+      }
+      setSourceMediaTime(targetTime);
+      setEditorPlayheadTime(targetTime);
+    },
+    [sourceDuration]
+  );
 
   useEffect(() => {
-    if (selectedZone?.type === 'video') {
-      setTimelineCollapsed(false);
+    const sourceIdentity = sourceVideoUrl || '';
+    const sourceChanged = previousSourceIdentityRef.current !== sourceIdentity;
+    if (hasHydratedSourceRef.current && !sourceChanged) {
+      return;
     }
-  }, [selectedZone?.id, selectedZone?.type]);
+
+    hasHydratedSourceRef.current = true;
+    previousSourceIdentityRef.current = sourceIdentity;
+    setDraftTrimWindow(null);
+    setIsPlaying(false);
+    setSourceMediaTime(committedTrimWindow.start);
+    setEditorPlayheadTime(committedTrimWindow.start);
+    setVideoError(null);
+    setSourceVideoLoading(Boolean(sourceVideoUrl));
+    setSourceVideoBuffering(false);
+    setTimelineCollapsed(!sourceVideoUrl);
+    shouldCenterViewportRef.current = true;
+  }, [committedTrimWindow.start, sourceVideoUrl]);
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {
@@ -214,14 +325,9 @@ export default function ClipStudioWorkspace({
     const manifest = activeManifest;
     const imageZones = zones.filter(zone => zone.type === 'image');
 
-    async function fetchBlobPreview(
-      url: string,
-      authenticated: boolean
-    ): Promise<string | null> {
+    async function fetchProtectedPreview(url: string): Promise<string | null> {
       try {
-        const response = authenticated
-          ? await authFetch(url)
-          : await fetch(url, { cache: 'no-store' });
+        const response = await authFetch(url);
         if (!response.ok) return null;
         const blob = await response.blob();
         if (!blob.size) return null;
@@ -249,23 +355,20 @@ export default function ClipStudioWorkspace({
                 )
               )
             : null;
+          const directPreviewUrl = getAssetPreviewUrl(templateAsset, manifestAssetUrl);
           try {
-            const candidates: Array<() => Promise<string | null>> = [];
-
-            if (clipAssetUrl) {
-              candidates.push(() => fetchBlobPreview(clipAssetUrl, true));
-            } else {
-              const directPreviewUrl = getAssetPreviewUrl(
-                templateAsset,
-                manifestAssetUrl
-              );
-              if (directPreviewUrl) {
-                candidates.push(() => fetchBlobPreview(directPreviewUrl, false));
+            if (directPreviewUrl) {
+              if (!cancelled) {
+                setUploadedImage(zone.id, directPreviewUrl);
+                setAssetFailures(previous => ({ ...previous, [zone.id]: false }));
               }
+              return;
             }
 
-            for (const candidate of candidates) {
-              const resolvedUrl = await candidate();
+            const protectedCandidates = clipAssetUrl ? [clipAssetUrl] : [];
+
+            for (const candidate of protectedCandidates) {
+              const resolvedUrl = await fetchProtectedPreview(candidate);
               if (!resolvedUrl) continue;
 
               if (cancelled) {
@@ -304,32 +407,25 @@ export default function ClipStudioWorkspace({
   ]);
 
   useEffect(() => {
-    if (!masterVideoRef.current || !Number.isFinite(currentTime)) return;
-    if (Math.abs(masterVideoRef.current.currentTime - currentTime) > 0.15) {
-      try {
-        masterVideoRef.current.currentTime = currentTime;
-      } catch {
-        // Ignore seek failures during early metadata load.
-      }
+    if (draftTrimWindow) return;
+    const clampedPlayheadTime = clampPlayheadToWindow(
+      editorPlayheadTime,
+      committedTrimWindow
+    );
+    if (Math.abs(clampedPlayheadTime - editorPlayheadTime) > 0.001) {
+      seekToTime(clampedPlayheadTime);
     }
-  }, [currentTime]);
+  }, [committedTrimWindow, draftTrimWindow, seekToTime]);
 
   useEffect(() => {
-    if (!masterVideoRef.current) return;
+    const element = sourceVideoRef.current;
+    if (!element) return;
     if (!sourceVideoUrl) {
-      masterVideoRef.current.pause();
+      element.pause();
       setIsPlaying(false);
       return;
     }
-
-    if (isPlaying) {
-      void masterVideoRef.current.play().catch(() => {
-        setIsPlaying(false);
-      });
-    } else {
-      masterVideoRef.current.pause();
-    }
-  }, [isPlaying, sourceVideoUrl]);
+  }, [sourceVideoUrl]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -397,7 +493,7 @@ export default function ClipStudioWorkspace({
   }, [scale, scaledHeight, scaledWidth, workspacePadding]);
 
   const handleLoadedMetadata = () => {
-    const element = masterVideoRef.current;
+    const element = sourceVideoRef.current;
     const nextDuration = element?.duration;
     if (!Number.isFinite(nextDuration) || !nextDuration) return;
 
@@ -406,12 +502,14 @@ export default function ClipStudioWorkspace({
       setSourceVideoAspectRatio(nextAspectRatio);
     }
 
-    setSourceVideoLoading(false);
-    setDuration(nextDuration);
-    if (!(typeof rawWindow?.end === 'number') || rawWindow.end <= startTime) {
+    setSourceDuration(nextDuration);
+    if (
+      !(typeof activeManifest?.render_payload?.time_window?.end === 'number') ||
+      activeManifest.render_payload.time_window.end <= committedTrimWindow.start
+    ) {
       updateManifestRenderPayload({
         time_window: {
-          start: startTime,
+          start: committedTrimWindow.start,
           end: nextDuration,
         },
       });
@@ -419,49 +517,97 @@ export default function ClipStudioWorkspace({
   };
 
   const handleTimeUpdate = () => {
-    const element = masterVideoRef.current;
+    const element = sourceVideoRef.current;
     if (!element) return;
 
-    if (endTime > startTime && element.currentTime >= endTime) {
+    if (
+      activeTrimWindow.end > activeTrimWindow.start &&
+      element.currentTime >= activeTrimWindow.end
+    ) {
       element.pause();
-      element.currentTime = startTime;
+      element.currentTime = activeTrimWindow.end;
       setIsPlaying(false);
-      setCurrentTime(startTime);
+      setSourceMediaTime(activeTrimWindow.end);
+      setEditorPlayheadTime(activeTrimWindow.end);
       return;
     }
 
-    setCurrentTime(element.currentTime);
+    setSourceMediaTime(element.currentTime);
+    setEditorPlayheadTime(element.currentTime);
   };
 
-  const handleSeek = (time: number) => {
-    const targetTime = clamp(time, 0, duration || time);
-    if (masterVideoRef.current) {
-      masterVideoRef.current.currentTime = targetTime;
+  const handleScrub = (nextPlayheadTime: number) => {
+    seekToTime(clamp(nextPlayheadTime, 0, Math.max(sourceDuration, 0)));
+  };
+
+  const handleTrimDraftChange = (nextTrimWindow: TimeWindow) => {
+    setDraftTrimWindow(nextTrimWindow);
+    const clampedPlayheadTime = clampPlayheadToWindow(
+      editorPlayheadTime,
+      nextTrimWindow
+    );
+    if (Math.abs(clampedPlayheadTime - editorPlayheadTime) > 0.001) {
+      seekToTime(clampedPlayheadTime);
     }
-    setCurrentTime(targetTime);
   };
 
-  const handleTimeWindowChange = (nextStart: number, nextEnd: number) => {
-    updateManifestRenderPayload({
-      time_window: {
-        start: nextStart,
-        end: nextEnd,
-      },
-    });
+  const handleTrimCommit = (nextTrimWindow: TimeWindow) => {
+    setDraftTrimWindow(null);
+    if (!timeWindowEquals(nextTrimWindow, committedTrimWindow)) {
+      updateManifestRenderPayload({
+        time_window: {
+          start: nextTrimWindow.start,
+          end: nextTrimWindow.end,
+        },
+      });
+    }
 
-    if (currentTime < nextStart || currentTime > nextEnd) {
-      handleSeek(nextStart);
+    const clampedPlayheadTime = clampPlayheadToWindow(
+      editorPlayheadTime,
+      nextTrimWindow
+    );
+    if (Math.abs(clampedPlayheadTime - editorPlayheadTime) > 0.001) {
+      seekToTime(clampedPlayheadTime);
+    }
+  };
+
+  const handleTrimCancel = () => {
+    setDraftTrimWindow(null);
+    const clampedPlayheadTime = clampPlayheadToWindow(
+      editorPlayheadTime,
+      committedTrimWindow
+    );
+    if (Math.abs(clampedPlayheadTime - editorPlayheadTime) > 0.001) {
+      seekToTime(clampedPlayheadTime);
     }
   };
 
   const togglePlayback = () => {
-    if (!sourceVideoUrl) return;
+    const element = sourceVideoRef.current;
+    if (!sourceVideoUrl || !element) return;
 
-    if (currentTime < startTime || (endTime > startTime && currentTime > endTime)) {
-      handleSeek(startTime);
+    if (
+      editorPlayheadTime < activeTrimWindow.start ||
+      editorPlayheadTime >= activeTrimWindow.end
+    ) {
+      seekToTime(activeTrimWindow.start);
     }
 
-    setIsPlaying(value => !value);
+    setVideoError(null);
+
+    if (!element.paused) {
+      element.pause();
+      return;
+    }
+
+    setSourceVideoBuffering(true);
+    void element.play().catch(error => {
+      setSourceVideoBuffering(false);
+      setIsPlaying(false);
+      setVideoError(
+        error instanceof Error ? error.message : 'Playback could not start.'
+      );
+    });
   };
 
   useEffect(() => {
@@ -549,9 +695,18 @@ export default function ClipStudioWorkspace({
   ) => {
     const target = event.target as HTMLElement | null;
     const hitZone = Boolean(target?.closest('.zone-renderer'));
+    const hitInteractiveChrome = Boolean(
+      target?.closest(
+        '.clip-studio-workspace__stage-chrome, button, a, input, textarea, select, [data-clip-studio-interactive="true"]'
+      )
+    );
 
     if (spacePanActive) {
       beginPanSession(event, 'space');
+      return;
+    }
+
+    if (hitInteractiveChrome) {
       return;
     }
 
@@ -616,24 +771,6 @@ export default function ClipStudioWorkspace({
 
   return (
     <div className="clip-studio-workspace">
-      <video
-        ref={masterVideoRef}
-        src={sourceVideoUrl || undefined}
-        className="clip-studio-workspace__master-video"
-        muted
-        playsInline
-        preload="metadata"
-        onLoadedMetadata={handleLoadedMetadata}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={() => setIsPlaying(false)}
-        onCanPlay={() => setSourceVideoLoading(false)}
-        onError={() => {
-          setIsPlaying(false);
-          setSourceVideoLoading(false);
-          setVideoError(`Could not load ${sourceVideoUrl}`);
-        }}
-      />
-
       {previewOpen && (
         <div className="clip-studio-workspace__preview-sheet">
           <div className="clip-studio-workspace__preview-sheet-header">
@@ -648,6 +785,7 @@ export default function ClipStudioWorkspace({
 
       <div
         ref={viewportRef}
+        data-testid="clip-studio-viewport"
         className={`clip-studio-workspace__viewport ${
           isPanning
             ? 'clip-studio-workspace__viewport--panning'
@@ -684,6 +822,7 @@ export default function ClipStudioWorkspace({
               </div>
               <div className="clip-studio-workspace__stage-tools">
                 <button
+                  data-testid="clip-studio-transport"
                   className="clip-studio-workspace__transport"
                   onClick={togglePlayback}
                   type="button"
@@ -722,6 +861,46 @@ export default function ClipStudioWorkspace({
               className="clip-studio-workspace__stage"
               style={{ width: scaledWidth, height: scaledHeight }}
             >
+              {sourceVideoUrl && sourceLayerRect && (
+                <video
+                  ref={sourceVideoRef}
+                  data-testid="clip-studio-source-video"
+                  src={sourceVideoUrl}
+                  className="clip-studio-workspace__stage-video"
+                  playsInline
+                  preload="metadata"
+                  style={{
+                    left: `${sourceLayerRect.left}px`,
+                    top: `${sourceLayerRect.top}px`,
+                    width: `${sourceLayerRect.width}px`,
+                    height: `${sourceLayerRect.height}px`,
+                    objectFit: sourceLayerObjectFit,
+                    objectPosition: sourceLayerObjectPosition,
+                  }}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onLoadedData={() => setSourceVideoLoading(false)}
+                  onTimeUpdate={handleTimeUpdate}
+                  onPlay={() => {
+                    setIsPlaying(true);
+                    setSourceVideoBuffering(false);
+                  }}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => setIsPlaying(false)}
+                  onCanPlay={() => {
+                    setSourceVideoLoading(false);
+                    setSourceVideoBuffering(false);
+                  }}
+                  onWaiting={() => setSourceVideoBuffering(true)}
+                  onPlaying={() => setSourceVideoBuffering(false)}
+                  onError={() => {
+                    setIsPlaying(false);
+                    setSourceVideoLoading(false);
+                    setSourceVideoBuffering(false);
+                    setVideoError(`Could not load ${sourceVideoUrl}`);
+                  }}
+                />
+              )}
+
               {sourceVideoUrl && !videoError && sourceVideoLoading && (
                 <div
                   className="clip-studio-workspace__stage-loading"
@@ -751,26 +930,24 @@ export default function ClipStudioWorkspace({
                 </div>
               )}
 
+              {sourceVideoUrl && !videoError && sourceVideoBuffering && !sourceVideoLoading && (
+                <div
+                  className="clip-studio-workspace__buffering"
+                  data-testid="clip-studio-buffering"
+                >
+                  Buffering source video...
+                </div>
+              )}
+
               {sourceVideoUrl &&
                 !videoError &&
-                visibleLayers.map(({ zone, time, resolvedZone }) => {
-                  const isInactive =
-                    zone.type !== 'video' &&
-                    (clipCurrentTime < time.start || clipCurrentTime > time.end);
-
+                stageLayers.map(({ zone, time, resolvedZone }) => {
                   return (
-                    <div
-                      key={zone.id}
-                      className={
-                        isInactive ? 'clip-studio-workspace__zone-muted' : undefined
-                      }
-                    >
+                    <div key={zone.id}>
                       <ZoneRenderer
                         zone={zone}
                         scale={scale}
-                        videoSrc={zone.id === sourceLayer?.id ? sourceVideoUrl : null}
-                        currentTime={currentTime}
-                        isPlaying={isPlaying}
+                        suppressMediaContent={zone.id === sourceLayer?.id}
                         resolvedZone={resolvedZone}
                         renderMode="clip"
                         assetResolving={assetResolving[zone.id] ?? false}
@@ -785,14 +962,16 @@ export default function ClipStudioWorkspace({
       </div>
 
       <ClipStudioTimeline
-        duration={duration}
-        currentTime={currentTime}
+        sourceDuration={sourceDuration}
+        sourceMediaTime={sourceMediaTime}
+        editorPlayheadTime={editorPlayheadTime}
         clipCurrentTime={clipCurrentTime}
-        startTime={startTime}
-        endTime={endTime}
+        draftTrimWindow={activeTrimWindow}
         layers={clipLayers}
-        onSeek={handleSeek}
-        onTimeWindowChange={handleTimeWindowChange}
+        onScrub={handleScrub}
+        onTrimDraftChange={handleTrimDraftChange}
+        onTrimCommit={handleTrimCommit}
+        onTrimCancel={handleTrimCancel}
         collapsed={timelineCollapsed}
         onToggleCollapse={() => setTimelineCollapsed(value => !value)}
       />

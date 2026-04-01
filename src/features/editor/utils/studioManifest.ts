@@ -7,6 +7,7 @@ interface BuildStudioManifestArgs {
   template: TemplateJSON;
   previewTexts: Record<string, string>;
   activeManifest: RenderManifest | null;
+  draftGeometryZoneIds?: ReadonlySet<string>;
 }
 
 function readOptionalAssetRef(value: unknown): string | undefined {
@@ -52,10 +53,53 @@ function resolveCanonicalAssetUrl(
   return undefined;
 }
 
+function isUsableTemplateAssetRef(value: unknown): value is string {
+  const normalized = readOptionalAssetRef(value);
+  if (!normalized) return false;
+  if (normalized.startsWith('blob:') || normalized.startsWith('data:')) return false;
+  if (/^[A-Za-z]:[\\/]/.test(normalized)) return false;
+  if (/^\/(mnt|Users|home|tmp|var|private|opt|usr|etc|Volumes)\//.test(normalized))
+    return false;
+  return true;
+}
+
+function hasUsableTemplateAssetRef(asset: {
+  source_uri?: string;
+  gcs_path?: string;
+  path?: string;
+}): boolean {
+  return [asset.source_uri, asset.gcs_path, asset.path].some(isUsableTemplateAssetRef);
+}
+
+function resolveBaselineBounds(
+  templateZone: TemplateJSON['zones'][number],
+  activeManifest: RenderManifest
+) {
+  const resolvedZonesById = new Map(
+    activeManifest.resolved_zones.map(zone => [zone.id, zone])
+  );
+  const companionTextZoneId =
+    templateZone.role === 'text_background' && templateZone.id.endsWith('__bg')
+      ? templateZone.id.slice(0, -4)
+      : null;
+  const resolvedZone =
+    resolvedZonesById.get(templateZone.id) ||
+    (companionTextZoneId ? resolvedZonesById.get(companionTextZoneId) : undefined);
+  const rect = resolvedZone?.rect;
+  if (!rect) return null;
+  return {
+    x: rect.x,
+    y: rect.y,
+    width: rect.w,
+    height: rect.h,
+  };
+}
+
 export function buildStudioManifest({
   template,
   previewTexts,
   activeManifest,
+  draftGeometryZoneIds = new Set<string>(),
 }: BuildStudioManifestArgs): RenderManifest | null {
   if (!activeManifest) return null;
 
@@ -78,9 +122,22 @@ export function buildStudioManifest({
     const canonicalUrl = resolveCanonicalAssetUrl(asset, nextAssets[assetKey]);
     if (canonicalUrl) {
       nextAssets[assetKey] = canonicalUrl;
+      if (!hasUsableTemplateAssetRef(asset)) {
+        templateJson.assets[assetKey] = {
+          ...asset,
+          source_uri: canonicalUrl,
+        };
+      }
     } else {
       delete nextAssets[assetKey];
     }
+  }
+
+  for (const zone of templateJson.zones) {
+    if (draftGeometryZoneIds.has(zone.id)) continue;
+    const baselineBounds = resolveBaselineBounds(zone, activeManifest);
+    if (!baselineBounds) continue;
+    zone.bounds = baselineBounds;
   }
 
   return {

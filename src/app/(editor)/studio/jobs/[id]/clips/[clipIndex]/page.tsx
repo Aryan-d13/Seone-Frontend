@@ -174,6 +174,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const template = useTemplateStore(state => state.template);
   const previewTexts = useTemplateStore(state => state.previewTexts);
   const activeManifest = useTemplateStore(state => state.activeManifest);
+  const draftGeometryZoneIds = useTemplateStore(state => state.draftGeometryZoneIds);
   const { templates, isLoading: templatesLoading } = useTemplates();
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -200,8 +201,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         template,
         previewTexts,
         activeManifest,
+        draftGeometryZoneIds,
       }),
-    [activeManifest, previewTexts, template]
+    [activeManifest, draftGeometryZoneIds, previewTexts, template]
   );
 
   const studioManifestSignature = useMemo(

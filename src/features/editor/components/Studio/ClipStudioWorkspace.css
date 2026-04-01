@@ -9,14 +9,6 @@
     linear-gradient(180deg, rgba(11, 11, 11, 0.98), rgba(7, 7, 7, 1));
 }
 
-.clip-studio-workspace__master-video {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .clip-studio-workspace__preview-sheet {
   position: absolute;
   top: 14px;
@@ -488,6 +480,14 @@
     0 0 0 10px rgba(5, 5, 5, 0.78);
 }
 
+.clip-studio-workspace__stage-video {
+  position: absolute;
+  display: block;
+  border: 0;
+  background: #05070b;
+  pointer-events: none;
+}
+
 .clip-studio-workspace__stage-loading {
   position: absolute;
   inset: 0;
@@ -529,6 +529,22 @@
   flex: 1;
   height: 84px;
   border-radius: 2px;
+}
+
+.clip-studio-workspace__buffering {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(14, 14, 14, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 .clip-studio-workspace__viewport--space-pan .zone-renderer,

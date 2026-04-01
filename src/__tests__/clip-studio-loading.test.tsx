@@ -29,6 +29,25 @@ vi.mock('@/features/editor/components/Studio/ClipStudioTimeline', () => ({
 
 const initialStoreState = useTemplateStore.getState();
 
+async function flushUi() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+async function renderWorkspace(
+  props: React.ComponentProps<typeof ClipStudioWorkspace> = {}
+) {
+  let view!: ReturnType<typeof render>;
+  await act(async () => {
+    view = render(<ClipStudioWorkspace {...props} />);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  return view;
+}
+
 function makeTemplate() {
   return {
     template_version: '1.0',
@@ -93,7 +112,7 @@ function makeManifest() {
     canvas: { w: 1080, h: 1080 },
     compositing_mode: 'overlay',
     assets: {
-      logo_mark: '/api/v1/jobs/job-123/clips/1/assets/logo_mark',
+      logo_mark: '/data/users/user-123/jobs/job-123/clips/assets/logo_mark.png',
     },
   };
 }
@@ -126,30 +145,27 @@ describe('ClipStudioWorkspace loading', () => {
     useTemplateStore.setState(initialStoreState, true);
   });
 
-  it('prefers authenticated clip asset URLs before Firebase logo resolution', async () => {
-    authFetchMock.mockResolvedValue({
-      ok: true,
-      blob: async () => new Blob(['logo'], { type: 'image/png' }),
-    });
-
-    await act(async () => {
-      render(
-        <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
-      );
+  it('prefers direct browser-loadable asset URLs before the authenticated clip asset proxy', async () => {
+    await renderWorkspace({
+      renderPreviewRequest: { jobId: 'job-123', clipIndex: 1 },
     });
 
     await waitFor(() =>
       expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe(
-        'blob:logo-preview'
+        'http://localhost:8000/data/users/user-123/jobs/job-123/clips/assets/logo_mark.png'
       )
     );
 
-    expect(authFetchMock).toHaveBeenCalledWith(
-      'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark'
-    );
+    expect(authFetchMock).not.toHaveBeenCalled();
   });
 
   it('shows stage and logo skeletons while media is still loading', async () => {
+    useTemplateStore.setState({
+      activeManifest: {
+        ...makeManifest(),
+        assets: {},
+      } as any,
+    });
     authFetchMock.mockImplementation(
       () =>
         new Promise(() => {
@@ -157,17 +173,15 @@ describe('ClipStudioWorkspace loading', () => {
         })
     );
 
-    await act(async () => {
-      render(
-        <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
-      );
+    await renderWorkspace({
+      renderPreviewRequest: { jobId: 'job-123', clipIndex: 1 },
     });
 
     expect(await screen.findByTestId('clip-studio-video-loading')).toBeInTheDocument();
     expect(await screen.findByTestId('zone-loading-logo_mark')).toBeInTheDocument();
   });
 
-  it('uses the manifest preview URL only when no clip asset proxy context exists', async () => {
+  it('uses the manifest preview URL directly when no clip asset proxy context exists', async () => {
     useTemplateStore.setState({
       activeManifest: {
         ...makeManifest(),
@@ -178,38 +192,32 @@ describe('ClipStudioWorkspace loading', () => {
       } as any,
     });
 
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      blob: async () => new Blob(['logo'], { type: 'image/png' }),
-    } as unknown as Response);
-
-    await act(async () => {
-      render(<ClipStudioWorkspace />);
-    });
+    await renderWorkspace();
 
     await waitFor(() =>
       expect(useTemplateStore.getState().uploadedImages.logo_mark).toBe(
-        'blob:logo-preview'
+        'http://localhost:8000/data/templates/kapil_kappu_v1/assets/logo.png'
       )
     );
 
     expect(authFetchMock).not.toHaveBeenCalled();
-    expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:8000/data/templates/kapil_kappu_v1/assets/logo.png',
-      { cache: 'no-store' }
-    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('marks the asset as failed when the proxy fetch cannot resolve it', async () => {
+    useTemplateStore.setState({
+      activeManifest: {
+        ...makeManifest(),
+        assets: {},
+      } as any,
+    });
     authFetchMock.mockResolvedValue({
       ok: false,
       blob: async () => new Blob(),
     });
 
-    await act(async () => {
-      render(
-        <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
-      );
+    await renderWorkspace({
+      renderPreviewRequest: { jobId: 'job-123', clipIndex: 1 },
     });
 
     await waitFor(() => {
@@ -219,5 +227,7 @@ describe('ClipStudioWorkspace loading', () => {
     expect(authFetchMock).toHaveBeenCalledWith(
       'http://localhost:8000/api/v1/jobs/job-123/clips/1/assets/logo_mark'
     );
+
+    await flushUi();
   });
 });
