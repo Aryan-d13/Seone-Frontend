@@ -27,6 +27,12 @@
   letter-spacing: 0.8px;
 }
 
+.render-preview__status {
+  color: var(--text-secondary, rgba(255, 255, 255, 0.72));
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .render-preview__dismiss {
   display: flex;
   align-items: center;

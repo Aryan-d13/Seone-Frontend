@@ -87,21 +87,35 @@ export interface RenderManifest {
   manifest_version: string;
   template_ir: TemplateJSON;
   render_payload: RenderPayload;
-  resolved_zones: ResolvedZone[];
-  canvas: { w: number; h: number };
-  compositing_mode: 'stack' | 'overlay';
-  assets: Record<string, string>; // asset key → download URL
+  resolved_zones?: ResolvedZone[];
+  canvas?: { w: number; h: number };
+  compositing_mode?: 'stack' | 'overlay';
+  assets?: Record<string, string>; // asset key → download URL
+}
+
+export interface StudioPersistedManifest {
+  manifest_version: string;
+  template_ir: TemplateJSON;
+  render_payload: RenderPayload;
+  assets: Record<string, string>;
 }
 
 export interface StudioManifestResponse {
   manifest: RenderManifest;
   source: 'draft' | 'original';
   updated_at?: string | null;
+  layout_rebuilt?: boolean;
+  font_normalized?: boolean;
+  font_normalization_message?: string | null;
 }
 
 export interface StudioSaveResponse {
   updated_at?: string | null;
   source: 'draft';
+  manifest?: RenderManifest;
+  layout_rebuilt?: boolean;
+  font_normalized?: boolean;
+  font_normalization_message?: string | null;
 }
 
 export interface StudioExportResponse {

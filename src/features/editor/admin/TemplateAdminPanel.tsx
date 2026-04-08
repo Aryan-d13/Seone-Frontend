@@ -36,7 +36,6 @@ import {
   type TemplateListItem,
 } from '../lib/firestoreService';
 import {
-  AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE,
   isAzureAssetUploadConfigured,
   uploadAssetToAzure,
 } from '../lib/storageService';
@@ -61,6 +60,7 @@ interface NamingModalState {
   preset: CanvasPresetKey;
   sourceTemplate: TemplateJSON | null;
   allowCanvasPresetChange: boolean;
+  showTagsInput: string;
 }
 
 const CANVAS_PRESETS: Array<{
@@ -69,10 +69,10 @@ const CANVAS_PRESETS: Array<{
   width: number;
   height: number;
 }> = [
-  { key: '1080x1080', label: 'Square 1080×1080', width: 1080, height: 1080 },
-  { key: '1080x1350', label: 'Portrait 1080×1350', width: 1080, height: 1350 },
-  { key: '1920x1080', label: 'Landscape 1920×1080', width: 1920, height: 1080 },
-];
+    { key: '1080x1080', label: 'Square 1080×1080', width: 1080, height: 1080 },
+    { key: '1080x1350', label: 'Portrait 1080×1350', width: 1080, height: 1350 },
+    { key: '1920x1080', label: 'Landscape 1920×1080', width: 1920, height: 1080 },
+  ];
 
 function cloneTemplate(template: TemplateJSON): TemplateJSON {
   return JSON.parse(JSON.stringify(template));
@@ -115,11 +115,28 @@ function buildUniqueId(prefix: string, existingValues: Iterable<string>): string
   return candidate;
 }
 
+/**
+ * Normalize raw comma-separated tag input into a canonical list:
+ * trim, drop empties, lowercase for consistency, dedupe.
+ */
+function normalizeShowTags(raw: string): string[] {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const part of raw.split(',')) {
+    const tag = part.trim().toLowerCase();
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    tags.push(tag);
+  }
+  return tags;
+}
+
 function createBaseTemplate(
   name: string,
   version: string,
   width: number,
-  height: number
+  height: number,
+  showTags: string[] = []
 ): TemplateJSON {
   return {
     template_version: '1.0',
@@ -135,6 +152,7 @@ function createBaseTemplate(
       title_style: { fill: '#000000', bg_fill: '#FFFFFF' },
     },
     assets: {},
+    show_tags: showTags,
   };
 }
 
@@ -162,9 +180,9 @@ function mapAdminError(error: unknown, fallback: string): string {
 
   if (
     message.includes('NEXT_PUBLIC_AZURE_SAS_URL') ||
-    message.includes(AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE)
+    message.includes('upload is not available')
   ) {
-    return AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE;
+    return 'Asset upload is not available.';
   }
 
   return message || fallback;
@@ -348,6 +366,7 @@ export default function TemplateAdminPanel({
       preset: '1080x1080',
       sourceTemplate: null,
       allowCanvasPresetChange: true,
+      showTagsInput: '',
     });
   };
 
@@ -370,6 +389,7 @@ export default function TemplateAdminPanel({
         preset,
         sourceTemplate,
         allowCanvasPresetChange: false,
+        showTagsInput: (sourceTemplate.show_tags ?? []).join(', '),
       });
     } catch (error) {
       setLibraryError(mapAdminError(error, 'Failed to duplicate template'));
@@ -392,6 +412,7 @@ export default function TemplateAdminPanel({
       preset,
       sourceTemplate: cloneTemplate(template),
       allowCanvasPresetChange: false,
+      showTagsInput: (template.show_tags ?? []).join(', '),
     });
   };
 
@@ -404,7 +425,7 @@ export default function TemplateAdminPanel({
       return cloneTemplate(templateToSave);
     }
     if (!isAzureAssetUploadConfigured()) {
-      throw new Error(AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE);
+      throw new Error('Asset upload is not available.');
     }
 
     const nextTemplate = cloneTemplate(templateToSave);
@@ -462,7 +483,8 @@ export default function TemplateAdminPanel({
         namingModal.name || 'Untitled',
         namingModal.version,
         preset.width,
-        preset.height
+        preset.height,
+        normalizeShowTags(namingModal.showTagsInput)
       );
       openEditor(nextTemplate, { unsaved: true });
       setNamingModal(null);
@@ -476,6 +498,7 @@ export default function TemplateAdminPanel({
       namingModal.name || 'Untitled',
       namingModal.version
     );
+    sourceTemplate.show_tags = normalizeShowTags(namingModal.showTagsInput);
 
     if (namingModal.mode === 'duplicate') {
       openEditor(sourceTemplate, { unsaved: true });
@@ -647,6 +670,18 @@ export default function TemplateAdminPanel({
                 ))}
               </select>
             </label>
+            <label className={styles.modalField}>
+              <span>Show tags</span>
+              <input
+                type="text"
+                value={namingModal.showTagsInput}
+                onChange={event =>
+                  setNamingModal({ ...namingModal, showTagsInput: event.target.value })
+                }
+                placeholder="e.g. chaturnath, tenali"
+              />
+              <span className={styles.modalHint}>Comma-separated show names for filtering</span>
+            </label>
             <div className={styles.modalActions}>
               <button
                 type="button"
@@ -759,6 +794,13 @@ export default function TemplateAdminPanel({
                       <p className={styles.templateCardMeta}>
                         {item.canvasWidth}×{item.canvasHeight} · {item.zoneCount} zones
                       </p>
+                      {item.showTags.length > 0 && (
+                        <div className={styles.tagChips}>
+                          {item.showTags.map(tag => (
+                            <span key={tag} className={styles.tagChip}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <span className={styles.templateCardStamp}>
                       {formatUpdatedAt(item.updatedAt)}
@@ -930,13 +972,12 @@ export default function TemplateAdminPanel({
                       onClick={() => selectZone(zone.id)}
                     >
                       <span
-                        className={`${styles.layerDot} ${
-                          zone.type === 'text'
-                            ? styles.layerDotText
-                            : zone.type === 'image'
-                              ? styles.layerDotImage
-                              : styles.layerDotVideo
-                        }`}
+                        className={`${styles.layerDot} ${zone.type === 'text'
+                          ? styles.layerDotText
+                          : zone.type === 'image'
+                            ? styles.layerDotImage
+                            : styles.layerDotVideo
+                          }`}
                       />
                       <span className={styles.layerName}>{zone.id}</span>
                     </button>

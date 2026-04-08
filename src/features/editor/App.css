@@ -22,7 +22,13 @@
 .app__body {
   display: flex;
   flex: 1;
+  min-width: 0;
   overflow: hidden;
+}
+
+.app__body--clip {
+  align-items: stretch;
+  min-width: 0;
 }
 
 .app--template .app__body {
@@ -38,4 +44,63 @@
   background:
     radial-gradient(circle at 50% 0%, rgba(182, 160, 255, 0.04), transparent 32%),
     var(--bg-surface);
+}
+
+.app__clip-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.app__clip-side-panel {
+  width: var(--inspector-w);
+  min-width: var(--inspector-w);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(72, 72, 71, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%), var(--panel-mid);
+}
+
+.app__clip-side-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 12px 12px;
+  border-bottom: 1px solid rgba(72, 72, 71, 0.18);
+}
+
+.app__clip-side-tab {
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition:
+    background 150ms var(--ease-out),
+    color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out);
+  border: 1px solid transparent;
+}
+
+.app__clip-side-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app__clip-side-tab--active {
+  color: var(--text-primary);
+  background: rgba(182, 160, 255, 0.14);
+  border-color: rgba(182, 160, 255, 0.24);
+}
+
+.app__clip-side-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }

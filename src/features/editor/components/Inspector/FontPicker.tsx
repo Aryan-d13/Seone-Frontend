@@ -8,6 +8,7 @@ interface FontPickerProps {
   weight?: number;
   missing?: boolean;
   disabled?: boolean;
+  locked?: boolean;
   emptyLabel?: string;
   onChange: (family: string) => void;
   onWeightChange?: (weight: number) => void;
@@ -41,6 +42,7 @@ export default function FontPicker({
   weight = 400,
   missing = false,
   disabled = false,
+  locked = false,
   emptyLabel = 'No fonts available',
   onChange,
   onWeightChange,
@@ -90,15 +92,17 @@ export default function FontPicker({
     setFilter('');
   };
 
+  const effectiveDisabled = disabled || locked;
+
   return (
-    <div className={`font-picker ${disabled ? 'font-picker--disabled' : ''}`}>
+    <div className={`font-picker ${effectiveDisabled ? 'font-picker--disabled' : ''}`}>
       <button
-        className={`font-picker__trigger ${missing ? 'font-picker__trigger--missing' : ''}`}
-        onClick={() => !disabled && setOpen(value => !value)}
+        className={`font-picker__trigger ${missing ? 'font-picker__trigger--missing' : ''} ${locked ? 'font-picker__trigger--locked' : ''}`}
+        onClick={() => !effectiveDisabled && setOpen(value => !value)}
         type="button"
-        disabled={disabled}
+        disabled={effectiveDisabled}
       >
-        <span className="font-picker__current">{currentFont?.display || value}</span>
+        <span className="font-picker__current">{currentFont?.display || value}{locked ? ' (locked)' : ''}</span>
         <span className="font-picker__meta-pill">
           {currentFont?.scripts?.[0] || 'font'}
         </span>
@@ -120,7 +124,7 @@ export default function FontPicker({
         </svg>
       </button>
 
-      {open && !disabled && (
+      {open && !effectiveDisabled && (
         <div className="font-picker__dropdown">
           <input
             className="font-picker__search"
@@ -186,7 +190,7 @@ export default function FontPicker({
         </div>
       )}
 
-      {(missing || onUpload || uploadHelpText) && (
+      {!locked && (missing || onUpload || uploadHelpText) && (
         <div className="font-picker__footer">
           {missing && (
             <div className="font-picker__notice">

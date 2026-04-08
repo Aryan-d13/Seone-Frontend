@@ -39,6 +39,9 @@ describe('buildStudioManifest', () => {
 
     expect(manifest?.render_payload.inputs.pov_text).toBe('edited headline');
     expect(manifest?.render_payload.template_ref).toBe('clip/test');
+    expect(manifest).not.toHaveProperty('resolved_zones');
+    expect(manifest).not.toHaveProperty('canvas');
+    expect(manifest).not.toHaveProperty('compositing_mode');
   });
 
   it('promotes template asset source_uri into manifest asset URLs', () => {
@@ -331,5 +334,68 @@ describe('buildStudioManifest', () => {
     const logoZone = manifest?.template_ir.zones.find(zone => zone.id === 'logo_mark');
     expect(titleZone?.bounds).toEqual({ x: 0, y: 0, width: 1080, height: 170 });
     expect(logoZone?.bounds).toEqual({ x: 42, y: 18, width: 72, height: 72 });
+  });
+
+  it('tolerates studio draft manifests that omit resolved_zones', () => {
+    const manifest = buildStudioManifest({
+      template: {
+        template_version: '1.0',
+        id: 'clip/test',
+        canvas: { width: 1080, height: 1080, unit: 'px', color_space: 'sRGB' },
+        compositing_mode: 'overlay',
+        zones: [
+          {
+            id: 'title_band',
+            type: 'text',
+            bounds: { x: 220, y: 42, width: 680, height: 82 },
+            z: 10,
+            content_ref: 'pov_text',
+            text: {
+              max_lines: 2,
+              overflow: 'shrink',
+              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              width_percent: 100,
+              min_font_size: 24,
+              horizontal_align: 'center',
+              vertical_align: 'middle',
+              line_spacing_px: 6,
+            },
+            style_ref: 'title_style',
+          },
+        ],
+        styles: {
+          title_style: { fill: '#24c85c', bg_fill: '#d0d0d0' },
+        },
+        assets: {},
+      },
+      previewTexts: { pov_text: 'edited headline' },
+      activeManifest: {
+        manifest_version: '1.0',
+        template_ir: {
+          template_version: '1.0',
+          id: 'clip/test',
+          canvas: { width: 1080, height: 1080, unit: 'px', color_space: 'sRGB' },
+          compositing_mode: 'overlay',
+          zones: [],
+          styles: {},
+          assets: {},
+        },
+        render_payload: {
+          template_ref: 'clip/test',
+          inputs: { pov_text: 'old headline' },
+          source_video_url: '/data/users/user-123/library/videos/source.mp4',
+        },
+        assets: {},
+      },
+      draftGeometryZoneIds: new Set(),
+    });
+
+    expect(manifest?.render_payload.inputs.pov_text).toBe('edited headline');
+    expect(manifest?.template_ir.zones[0]?.bounds).toEqual({
+      x: 220,
+      y: 42,
+      width: 680,
+      height: 82,
+    });
   });
 });

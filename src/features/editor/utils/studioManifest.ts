@@ -1,4 +1,4 @@
-import type { RenderManifest } from '../types/manifest';
+import type { RenderManifest, StudioPersistedManifest } from '../types/manifest';
 import type { TemplateJSON } from '../types/template';
 import { getMediaUrl } from '@/lib/config';
 import { exportTemplate } from './exportTemplate';
@@ -75,8 +75,9 @@ function resolveBaselineBounds(
   templateZone: TemplateJSON['zones'][number],
   activeManifest: RenderManifest
 ) {
+  const resolvedZones = activeManifest.resolved_zones || [];
   const resolvedZonesById = new Map(
-    activeManifest.resolved_zones.map(zone => [zone.id, zone])
+    resolvedZones.map(zone => [zone.id, zone])
   );
   const companionTextZoneId =
     templateZone.role === 'text_background' && templateZone.id.endsWith('__bg')
@@ -100,7 +101,7 @@ export function buildStudioManifest({
   previewTexts,
   activeManifest,
   draftGeometryZoneIds = new Set<string>(),
-}: BuildStudioManifestArgs): RenderManifest | null {
+}: BuildStudioManifestArgs): StudioPersistedManifest | null {
   if (!activeManifest) return null;
 
   const templateJson = JSON.parse(exportTemplate(template)) as TemplateJSON;
@@ -141,7 +142,7 @@ export function buildStudioManifest({
   }
 
   return {
-    ...activeManifest,
+    manifest_version: activeManifest.manifest_version || '1.0',
     template_ir: templateJson,
     render_payload: {
       ...activeManifest.render_payload,
@@ -151,11 +152,36 @@ export function buildStudioManifest({
         ...previewTexts,
       },
     },
-    canvas: {
-      w: templateJson.canvas.width,
-      h: templateJson.canvas.height,
-    },
-    compositing_mode: templateJson.compositing_mode,
     assets: nextAssets,
   };
+}
+
+function sortManifestValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortManifestValue);
+  }
+  if (value && typeof value === 'object') {
+    return Object.keys(value as Record<string, unknown>)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, key) => {
+        acc[key] = sortManifestValue((value as Record<string, unknown>)[key]);
+        return acc;
+      }, {});
+  }
+  return value;
+}
+
+export function stableStudioManifestSignature(value: unknown): string {
+  return JSON.stringify(sortManifestValue(value));
+}
+
+export function buildStudioManifestFromLoadedManifest(
+  manifest: RenderManifest
+): StudioPersistedManifest {
+  return buildStudioManifest({
+    template: manifest.template_ir,
+    previewTexts: { ...(manifest.render_payload?.inputs || {}) },
+    activeManifest: manifest,
+    draftGeometryZoneIds: new Set<string>(),
+  }) as StudioPersistedManifest;
 }

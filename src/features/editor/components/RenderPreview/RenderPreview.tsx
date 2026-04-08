@@ -10,6 +10,7 @@ import { authFetch } from '@/services/auth';
 import { endpoints, getMediaUrl } from '@/lib/config';
 import { useTemplateStore } from '../../store/templateStore';
 import { buildStudioManifest } from '../../utils/studioManifest';
+import type { StudioEditorState } from '../../types/studioUi';
 import './RenderPreview.css';
 
 export interface RenderPreviewRequest {
@@ -19,9 +20,17 @@ export interface RenderPreviewRequest {
 
 interface RenderPreviewProps {
   renderRequest?: RenderPreviewRequest | null;
+  fontIssue?: string | null;
+  editorState?: StudioEditorState | null;
+  onGeneratePreview?: (() => Promise<void> | void) | null;
 }
 
-export default function RenderPreview({ renderRequest = null }: RenderPreviewProps) {
+export default function RenderPreview({
+  renderRequest = null,
+  fontIssue = null,
+  editorState = null,
+  onGeneratePreview = null,
+}: RenderPreviewProps) {
   const {
     template,
     previewTexts,
@@ -33,7 +42,11 @@ export default function RenderPreview({ renderRequest = null }: RenderPreviewPro
   } = useTemplateStore();
 
   const handleReRender = async () => {
-    if (!activeManifest || !renderRequest) return;
+    if (onGeneratePreview) {
+      await onGeneratePreview();
+      return;
+    }
+    if (!activeManifest || !renderRequest || fontIssue) return;
 
     setReRenderLoading(true);
 
@@ -96,12 +109,28 @@ export default function RenderPreview({ renderRequest = null }: RenderPreviewPro
   // Don't render anything if there's no active manifest
   if (!activeManifest || !renderRequest) return null;
 
+  const blockingMessage = editorState?.blockers[0]?.message || fontIssue || null;
+  const previewStateLabel =
+    editorState?.previewState === 'FRESH'
+      ? 'Generated from current draft'
+      : editorState?.previewState === 'STALE'
+        ? 'Preview is outdated'
+        : editorState?.previewState === 'GENERATING'
+          ? 'Generating preview'
+          : editorState?.previewState === 'FAILED'
+            ? 'Preview failed'
+            : 'Preview not generated yet';
+  const generateDisabled =
+    reRenderState.loading ||
+    Boolean(blockingMessage) ||
+    editorState?.renderValidity === 'BLOCKED';
+
   return (
     <div className="render-preview">
       <div className="render-preview__header">
         <span className="render-preview__title">
           <Play size={12} />
-          Re-Render
+          Render Preview
         </span>
         {reRenderState.resultUrl && (
           <button
@@ -114,21 +143,30 @@ export default function RenderPreview({ renderRequest = null }: RenderPreviewPro
         )}
       </div>
 
-      {/* Re-render trigger */}
+      <div className="render-preview__status" data-testid="render-preview-status">
+        {previewStateLabel}
+      </div>
+
       <button
         className="render-preview__render-btn"
         onClick={handleReRender}
-        disabled={reRenderState.loading}
+        disabled={generateDisabled}
         type="button"
       >
         <RefreshCw
           size={14}
           className={reRenderState.loading ? 'render-preview__spin' : ''}
         />
-        {reRenderState.loading ? 'Rendering...' : 'Render with Changes'}
+        {reRenderState.loading ? 'Generating Preview…' : 'Generate Preview'}
       </button>
 
-      {/* Video result */}
+      {blockingMessage && (
+        <div className="render-preview__error" data-testid="render-preview-font-issue">
+          <AlertCircle size={13} />
+          <span>{blockingMessage}</span>
+        </div>
+      )}
+
       {reRenderState.resultUrl && (
         <div className="render-preview__video-wrap">
           <video
@@ -143,7 +181,6 @@ export default function RenderPreview({ renderRequest = null }: RenderPreviewPro
         </div>
       )}
 
-      {/* Error state */}
       {reRenderState.error && (
         <div className="render-preview__error" data-testid="render-preview-error">
           <AlertCircle size={13} />

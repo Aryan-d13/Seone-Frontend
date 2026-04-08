@@ -22,6 +22,7 @@ export interface TemplateListItem {
   compatibilityKey?: string;
   updatedAt?: string;
   updatedBy?: string;
+  showTags: string[];
 }
 
 interface AdminTemplateListWire {
@@ -35,6 +36,7 @@ interface AdminTemplateListWire {
     compatibility_key?: string;
     updated_at?: string;
     updated_by?: string;
+    show_tags?: string[];
   }>;
 }
 
@@ -64,6 +66,7 @@ export async function listTemplates(): Promise<TemplateListItem[]> {
     compatibilityKey: item.compatibility_key,
     updatedAt: item.updated_at,
     updatedBy: item.updated_by,
+    showTags: Array.isArray(item.show_tags) ? item.show_tags : [],
   }));
 }
 

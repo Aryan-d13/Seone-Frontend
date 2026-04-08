@@ -155,8 +155,8 @@ export function buildDefaultZones(canvas: TemplateCanvas): TemplateZone[] {
         max_lines: 3,
         overflow: 'shrink',
         font: {
-          family: 'NotoSansDevanagari',
-          fallbacks: ['NotoSansDevanagari'],
+          family: 'Khand',
+          fallbacks: ['Khand'],
           weight: 700,
           size: 60,
         },

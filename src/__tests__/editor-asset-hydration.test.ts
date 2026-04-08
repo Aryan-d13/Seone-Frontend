@@ -189,7 +189,7 @@ describe('editor asset hydration', () => {
     ).toBeUndefined();
   });
 
-  it('hydrates preview text from resolved text when render inputs are missing', () => {
+  it('keeps preview text empty when render inputs are missing instead of reviving stale resolved text', () => {
     useTemplateStore.getState().loadFromManifest({
       manifest_version: '1.0',
       template_ir: {
@@ -253,7 +253,7 @@ describe('editor asset hydration', () => {
       assets: {},
     } as any);
 
-    expect(useTemplateStore.getState().previewTexts.pov_text).toBe('Recovered headline');
+    expect(useTemplateStore.getState().previewTexts.pov_text).toBeUndefined();
   });
 
   it('keeps original text geometry on hydration and leaves draft geometry empty', () => {

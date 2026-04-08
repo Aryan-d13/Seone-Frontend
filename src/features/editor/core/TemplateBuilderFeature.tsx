@@ -11,8 +11,11 @@ import Toolbar from '../components/Toolbar/Toolbar';
 import PreviewPanel from '../components/Preview/PreviewPanel';
 import { LOCAL_PREVIEW_ENABLED } from '../lib/featureFlags';
 import { useTemplateStore } from '../store/templateStore';
+import type { StudioEditorState } from '../types/studioUi';
+import RenderPreview from '../components/RenderPreview/RenderPreview';
 
 export type EditorMode = 'template' | 'clip';
+export type ClipStudioRailTab = 'properties' | 'preview';
 
 export interface TemplateBuilderFeatureProps {
   mode?: EditorMode;
@@ -25,8 +28,12 @@ export interface TemplateBuilderFeatureProps {
   clipStudioSaveError?: string | null;
   onClipStudioDownload?: (() => void) | null;
   clipStudioExporting?: boolean;
-  clipStudioPreviewOpen?: boolean;
-  onClipStudioPreviewClose?: (() => void) | null;
+  clipStudioRailTab?: ClipStudioRailTab;
+  onClipStudioRailTabChange?: ((tab: ClipStudioRailTab) => void) | null;
+  clipStudioEditorState?: StudioEditorState | null;
+  clipStudioLayoutAuthority?: 'exact' | 'stale_exact' | 'unavailable';
+  clipStudioLayoutAuthorityReason?: string | null;
+  onClipStudioGeneratePreview?: (() => Promise<void> | void) | null;
 }
 
 /**
@@ -46,8 +53,12 @@ export default function TemplateBuilderFeature({
   clipStudioSaveError = null,
   onClipStudioDownload = null,
   clipStudioExporting = false,
-  clipStudioPreviewOpen = false,
-  onClipStudioPreviewClose = null,
+  clipStudioRailTab = 'properties',
+  onClipStudioRailTabChange = null,
+  clipStudioEditorState = null,
+  clipStudioLayoutAuthority = 'exact',
+  clipStudioLayoutAuthorityReason = null,
+  onClipStudioGeneratePreview = null,
 }: TemplateBuilderFeatureProps) {
   const {
     undo,
@@ -97,11 +108,6 @@ export default function TemplateBuilderFeature({
         e.preventDefault();
         duplicateZone(selectedZoneId);
       }
-      if (mode === 'clip' && e.key === 'Escape' && clipStudioPreviewOpen) {
-        onClipStudioPreviewClose?.();
-        return;
-      }
-
       if (e.key === 'Escape' && showPreview) {
         setShowPreview(false);
       }
@@ -119,8 +125,6 @@ export default function TemplateBuilderFeature({
     showPreview,
     endTextEditing,
     mode,
-    clipStudioPreviewOpen,
-    onClipStudioPreviewClose,
   ]);
 
   const showInspector = mode !== 'clip' || selectedZoneId !== null;
@@ -128,8 +132,59 @@ export default function TemplateBuilderFeature({
   return (
     <div className={`app ${mode === 'clip' ? 'app--clip' : 'app--template'}`}>
       <TemplateFontRegistrar />
-      <div className="app__body">
-        {mode !== 'clip' && (
+      {mode === 'clip' ? (
+        <div className="app__body app__body--clip">
+          <div className="app__clip-main">
+            <ClipStudioWorkspace
+              renderPreviewRequest={renderPreviewRequest}
+              layoutAuthority={clipStudioLayoutAuthority}
+              layoutAuthorityReason={clipStudioLayoutAuthorityReason}
+            />
+          </div>
+          <aside className="app__clip-side-panel">
+            <div className="app__clip-side-tabs" role="tablist" aria-label="Clip Studio Panel">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={clipStudioRailTab === 'properties'}
+                className={`app__clip-side-tab ${
+                  clipStudioRailTab === 'properties' ? 'app__clip-side-tab--active' : ''
+                }`}
+                onClick={() => onClipStudioRailTabChange?.('properties')}
+              >
+                Properties
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={clipStudioRailTab === 'preview'}
+                className={`app__clip-side-tab ${
+                  clipStudioRailTab === 'preview' ? 'app__clip-side-tab--active' : ''
+                }`}
+                onClick={() => onClipStudioRailTabChange?.('preview')}
+              >
+                Render Preview
+              </button>
+            </div>
+            <div className="app__clip-side-content">
+              {clipStudioRailTab === 'preview' ? (
+                <RenderPreview
+                  renderRequest={renderPreviewRequest}
+                  editorState={clipStudioEditorState}
+                  onGeneratePreview={onClipStudioGeneratePreview}
+                />
+              ) : (
+                <PropertyInspector
+                  renderPreviewRequest={renderPreviewRequest}
+                  embedded
+                  studioEditorState={clipStudioEditorState}
+                />
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : (
+        <div className="app__body">
           <Sidebar
             onTest={() => setShowPreview(true)}
             mode={mode}
@@ -138,35 +193,20 @@ export default function TemplateBuilderFeature({
             onSignOut={onSignOut}
             renderPreviewRequest={renderPreviewRequest}
           />
-        )}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          {mode !== 'clip' && <Toolbar mode={mode} />}
-          {mode === 'clip' ? (
-            <ClipStudioWorkspace
-              renderPreviewRequest={renderPreviewRequest}
-              studioSource={clipStudioSource}
-              saveStatus={clipStudioSaveStatus}
-              saveError={clipStudioSaveError}
-              onDownloadMp4={onClipStudioDownload}
-              exporting={clipStudioExporting}
-              previewOpen={clipStudioPreviewOpen}
-              onPreviewClose={onClipStudioPreviewClose}
-            />
-          ) : (
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <Toolbar mode={mode} />
             <CanvasWorkspace />
-          )}
+          </div>
+          {showInspector && <PropertyInspector renderPreviewRequest={renderPreviewRequest} />}
         </div>
-        {showInspector && (
-          <PropertyInspector renderPreviewRequest={renderPreviewRequest} />
-        )}
-      </div>
+      )}
 
       {previewEnabled && showPreview && (
         <PreviewPanel onClose={() => setShowPreview(false)} />

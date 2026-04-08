@@ -1,7 +1,14 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { inferFontFamily, inferFontStyle, inferFontWeight } from '../../lib/fontAssets';
+import { type MutableRefObject, useEffect, useRef } from 'react';
+import { useFontCatalog } from '@/hooks/useFontCatalog';
+import {
+  analyzeFontFile,
+  analyzeFontUrl,
+  inferFontFamily,
+  inferFontStyle,
+  inferFontWeight,
+} from '../../lib/fontAssets';
 import {
   acquireProtectedAssetUrl,
   PROTECTED_ASSET_AUTH_MESSAGE,
@@ -19,10 +26,58 @@ interface RegisteredFontHandle {
   protectedUrl?: string;
 }
 
+function registerFontFace({
+  registrationKey,
+  family,
+  weight,
+  style,
+  sourceUrl,
+  nextHandles,
+  registeredRef,
+}: {
+  registrationKey: string;
+  family: string;
+  weight: string;
+  style: string;
+  sourceUrl: string;
+  nextHandles: Map<string, RegisteredFontHandle>;
+  registeredRef: MutableRefObject<Map<string, RegisteredFontHandle>>;
+}) {
+  nextHandles.set(registrationKey, { key: registrationKey });
+  if (registeredRef.current.has(registrationKey)) return;
+
+  const face = new FontFace(family, `url("${sourceUrl}")`, { weight, style });
+  face
+    .load()
+    .then(loadedFace => {
+      document.fonts.add(loadedFace);
+      const handle =
+        nextHandles.get(registrationKey) || registeredRef.current.get(registrationKey);
+      if (handle) {
+        handle.fontFace = loadedFace;
+        registeredRef.current.set(registrationKey, handle);
+      }
+    })
+    .catch(() => undefined);
+  registeredRef.current.set(registrationKey, {
+    key: registrationKey,
+    fontFace: face,
+  });
+}
+
 export default function TemplateFontRegistrar() {
-  const { template, activeManifest, getPendingFiles, setAssetPreviewError } =
-    useTemplateStore();
+  const { fonts: builtinFonts } = useFontCatalog();
+  const {
+    template,
+    activeManifest,
+    getPendingFiles,
+    setAssetPreviewError,
+    fontAnalysis,
+    setFontAnalysis,
+    hydrateAssetMetadata,
+  } = useTemplateStore();
   const registeredRef = useRef<Map<string, RegisteredFontHandle>>(new Map());
+  const analyzingRef = useRef<Set<string>>(new Set());
   const pendingFiles = getPendingFiles();
 
   useEffect(() => {
@@ -35,6 +90,30 @@ export default function TemplateFontRegistrar() {
     }
 
     const nextHandles = new Map<string, RegisteredFontHandle>();
+
+    for (const builtinFont of builtinFonts) {
+      if (builtinFont.source !== 'builtin') continue;
+      for (const file of builtinFont.files || []) {
+        if (!file.preview_url) continue;
+        const style = String(file.style || 'normal');
+        const weights =
+          Array.isArray(file.weights) && file.weights.length > 0 ? file.weights : [400];
+        for (const rawWeight of weights) {
+          const weight = String(rawWeight || 400);
+          const registrationKey = `builtin:${builtinFont.family}:${weight}:${style}:${file.preview_url}`;
+          registerFontFace({
+            registrationKey,
+            family: builtinFont.family,
+            weight,
+            style,
+            sourceUrl: file.preview_url,
+            nextHandles,
+            registeredRef,
+          });
+        }
+      }
+    }
+
     const fontAssets = new Map(
       Object.entries(template.assets || {}).filter(([, asset]) => asset.type === 'font')
     );
@@ -51,6 +130,13 @@ export default function TemplateFontRegistrar() {
 
     for (const [assetKey, asset] of fontAssets.entries()) {
       if (!asset.family) continue;
+      const currentAnalysis = fontAnalysis[assetKey];
+      if (Array.isArray(asset.scripts) && asset.scripts.length > 0 && currentAnalysis?.state !== 'ready') {
+        setFontAnalysis(assetKey, {
+          scripts: asset.scripts,
+          state: 'ready',
+        });
+      }
       const family = asset.family!;
       const weight = String(asset.weight || 400);
       const style = String(asset.style || 'normal');
@@ -63,6 +149,49 @@ export default function TemplateFontRegistrar() {
         pendingFile || directPreviewUrl
           ? null
           : getTemplateAssetProxyUrl(template.id, assetKey);
+
+      const shouldAnalyze =
+        !(asset.scripts && asset.scripts.length > 0) &&
+        currentAnalysis?.state !== 'ready' &&
+        !analyzingRef.current.has(assetKey);
+
+      if (pendingFile && shouldAnalyze) {
+        analyzingRef.current.add(assetKey);
+        setFontAnalysis(assetKey, { scripts: [], state: 'pending' });
+        void analyzeFontFile(pendingFile)
+          .then(scripts => {
+            setFontAnalysis(assetKey, { scripts, state: 'ready' });
+            hydrateAssetMetadata(assetKey, { scripts });
+          })
+          .catch(error => {
+            setFontAnalysis(assetKey, {
+              scripts: [],
+              state: 'failed',
+              error: error instanceof Error ? error.message : 'Font analysis failed',
+            });
+          })
+          .finally(() => {
+            analyzingRef.current.delete(assetKey);
+          });
+      } else if (directPreviewUrl && shouldAnalyze) {
+        analyzingRef.current.add(assetKey);
+        setFontAnalysis(assetKey, { scripts: [], state: 'pending' });
+        void analyzeFontUrl(directPreviewUrl)
+          .then(scripts => {
+            setFontAnalysis(assetKey, { scripts, state: 'ready' });
+            hydrateAssetMetadata(assetKey, { scripts });
+          })
+          .catch(error => {
+            setFontAnalysis(assetKey, {
+              scripts: [],
+              state: 'failed',
+              error: error instanceof Error ? error.message : 'Font analysis failed',
+            });
+          })
+          .finally(() => {
+            analyzingRef.current.delete(assetKey);
+          });
+      }
 
       if (pendingFile) {
         const objectUrl = URL.createObjectURL(pendingFile);
@@ -93,28 +222,14 @@ export default function TemplateFontRegistrar() {
 
       if (directPreviewUrl) {
         const registrationKey = `${assetKey}:${family}:${weight}:${style}:${directPreviewUrl}`;
-        nextHandles.set(registrationKey, { key: registrationKey });
-        if (registeredRef.current.has(registrationKey)) continue;
-        const face = new FontFace(family, `url("${directPreviewUrl}")`, {
+        registerFontFace({
+          registrationKey,
+          family,
           weight,
           style,
-        });
-        face
-          .load()
-          .then(loadedFace => {
-            document.fonts.add(loadedFace);
-            const handle =
-              nextHandles.get(registrationKey) ||
-              registeredRef.current.get(registrationKey);
-            if (handle) {
-              handle.fontFace = loadedFace;
-              registeredRef.current.set(registrationKey, handle);
-            }
-          })
-          .catch(() => undefined);
-        registeredRef.current.set(registrationKey, {
-          key: registrationKey,
-          fontFace: face,
+          sourceUrl: directPreviewUrl,
+          nextHandles,
+          registeredRef,
         });
         continue;
       }
@@ -202,8 +317,12 @@ export default function TemplateFontRegistrar() {
     };
   }, [
     activeManifest?.assets,
+    builtinFonts,
+    fontAnalysis,
     pendingFiles,
+    hydrateAssetMetadata,
     setAssetPreviewError,
+    setFontAnalysis,
     template.assets,
     template.id,
   ]);

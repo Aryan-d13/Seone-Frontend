@@ -11,6 +11,7 @@ import type {
   TextSpec,
   MediaSpec,
   TextFontSpec,
+  TextFontLanguageOverrideSpec,
   StyleDef,
   AssetDef,
   ShapeSpec,
@@ -34,13 +35,52 @@ function readOptionalString(value: unknown): string | undefined {
   return normalized;
 }
 
+function validateScripts(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const scripts = value
+    .map(entry => readOptionalString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+  if (!scripts.length) return undefined;
+  return Array.from(new Set(scripts));
+}
+
+function validateFontLanguageOverride(
+  value: unknown
+): TextFontLanguageOverrideSpec | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const family = readOptionalString(raw.family);
+  if (!family) return undefined;
+  const weight =
+    raw.weight != null && Number.isFinite(Number(raw.weight)) ? Number(raw.weight) : 400;
+  return {
+    family,
+    weight,
+  };
+}
+
 function validateFont(font: unknown): TextFontSpec {
   const f = (font || {}) as Record<string, unknown>;
+  const rawLanguageOverrides =
+    f.language_overrides && typeof f.language_overrides === 'object'
+      ? (f.language_overrides as Record<string, unknown>)
+      : null;
+  const languageOverrides: Partial<Record<'en' | 'hi', TextFontLanguageOverrideSpec>> =
+    {};
+  if (rawLanguageOverrides) {
+    const english = validateFontLanguageOverride(rawLanguageOverrides.en);
+    if (english) languageOverrides.en = english;
+    const hindi = validateFontLanguageOverride(rawLanguageOverrides.hi);
+    if (hindi) languageOverrides.hi = hindi;
+  }
   return {
     family: String(f.family ?? 'NotoSansDevanagari'),
     weight: Number(f.weight ?? 400),
     fallbacks: Array.isArray(f.fallbacks) ? f.fallbacks.map(String) : [],
     size: f.size != null ? Number(f.size) : null,
+    ...(Object.keys(languageOverrides).length > 0
+      ? { language_overrides: languageOverrides }
+      : {}),
   };
 }
 
@@ -164,6 +204,7 @@ export function importTemplate(jsonString: string): TemplateJSON {
   const assets: Record<string, AssetDef> = {};
   const rawAssets = (data.assets || {}) as Record<string, Record<string, string>>;
   for (const [key, value] of Object.entries(rawAssets)) {
+    const scripts = validateScripts(value.scripts);
     assets[key] = {
       type: value.type || 'image',
       path: value.path || '',
@@ -185,6 +226,7 @@ export function importTemplate(jsonString: string): TemplateJSON {
       ...(readOptionalString(value.format)
         ? { format: readOptionalString(value.format) }
         : {}),
+      ...(scripts ? { scripts } : {}),
     };
   }
 

@@ -32,11 +32,17 @@ export interface BoundsSpec {
 
 /* ── Text ──────────────────────────────────────── */
 
+export interface TextFontLanguageOverrideSpec {
+  family: string;
+  weight: number;
+}
+
 export interface TextFontSpec {
   family: string;
   weight: number;
   fallbacks: string[];
   size: number | null;
+  language_overrides?: Partial<Record<'en' | 'hi', TextFontLanguageOverrideSpec>>;
 }
 
 export interface TextSpec {
@@ -78,6 +84,7 @@ export interface AssetDef {
   weight?: number;
   style?: 'normal' | 'italic' | string;
   format?: 'ttf' | 'otf' | string;
+  scripts?: string[];
 }
 
 /**
@@ -123,4 +130,5 @@ export interface TemplateJSON {
     video_slots: string[];
   };
   compatibility_key?: string;
+  show_tags?: string[];
 }

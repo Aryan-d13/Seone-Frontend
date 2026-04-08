@@ -14,6 +14,7 @@ import type {
   AssetDef,
 } from '../types/template';
 import type { RenderManifest, ResolvedTextLayout, ResolvedZone } from '../types/manifest';
+import type { FontAssetAnalysis } from '@/types/fonts';
 import { importTemplate } from '../utils/importTemplate';
 import { hasForcedAutoHeight } from '../utils/zoneRules';
 import { getAssetPreviewUrl } from '../utils/assetPreview';
@@ -39,6 +40,8 @@ interface UIState {
   assetPreviewError: string | null;
   /** Maps asset key → raw File blob for deferred GCS upload on save. */
   pendingFiles: Record<string, File>;
+  /** UI-only uploaded font analysis keyed by asset key. */
+  fontAnalysis: Record<string, FontAssetAnalysis>;
   /** Preview text content keyed by content_ref (e.g. pov_text → "actual words"). */
   previewTexts: Record<string, string>;
   /** Loaded manifest for re-render flow. */
@@ -50,6 +53,7 @@ interface UIState {
     loading: boolean;
     resultUrl: string | null;
     error: string | null;
+    signature: string | null;
   };
   /** Ephemeral AI POV suggestions keyed by content_ref for the current page session. */
   aiCopySessions: Record<string, AICopySessionState>;
@@ -120,6 +124,9 @@ interface TemplateStore extends UIState {
   removePendingFile: (assetKey: string) => void;
   getPendingFiles: () => Record<string, File>;
   clearPendingFiles: () => void;
+  setFontAnalysis: (assetKey: string, analysis: FontAssetAnalysis) => void;
+  clearFontAnalysis: () => void;
+  hydrateAssetMetadata: (assetKey: string, patch: Partial<AssetDef>) => void;
 
   // History
   undo: () => void;
@@ -129,13 +136,21 @@ interface TemplateStore extends UIState {
 
   // Manifest / Interface Editor
   loadFromManifest: (manifest: RenderManifest) => void;
+  applyStudioResolvedManifest: (
+    manifest: RenderManifest,
+    options?: { clearDraftGeometry?: boolean }
+  ) => void;
   setPreviewText: (contentRef: string, text: string) => void;
   setZoneClipTiming: (zoneId: string, start: number, end: number) => void;
   updateManifestRenderPayload: (patch: Record<string, unknown>) => void;
   setSourceVideoAspectRatio: (aspectRatio: number | null) => void;
   repairVideoZoneBounds: (zoneId: string, aspectRatio?: number | null) => void;
   setReRenderLoading: (loading: boolean) => void;
-  setReRenderResult: (url: string | null, error?: string | null) => void;
+  setReRenderResult: (
+    url: string | null,
+    error?: string | null,
+    signature?: string | null
+  ) => void;
   updateAICopySession: (contentRef: string, patch: Partial<AICopySessionState>) => void;
   clearAICopySessions: () => void;
 }
@@ -513,7 +528,8 @@ function splitTextBackgroundLayers(
   const nextStyles: Record<string, StyleDef> = { ...template.styles };
   const nextZones: ZoneSpec[] = [];
   const lockedZoneIds = new Set<string>();
-  const resolvedZonesById = new Map(manifest.resolved_zones.map(zone => [zone.id, zone]));
+  const resolvedZones = manifest.resolved_zones || [];
+  const resolvedZonesById = new Map(resolvedZones.map(zone => [zone.id, zone]));
   const backgroundZonesById = new Map<string, ZoneSpec>();
 
   for (const zone of template.zones) {
@@ -775,10 +791,11 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
     uploadedImages: {},
     assetPreviewError: null,
     pendingFiles: {},
+    fontAnalysis: {},
     previewTexts: {},
     activeManifest: null,
     sourceVideoAspectRatio: null,
-    reRenderState: { loading: false, resultUrl: null, error: null },
+    reRenderState: { loading: false, resultUrl: null, error: null, signature: null },
     aiCopySessions: {},
     history: [
       {
@@ -800,6 +817,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         interactionMode: 'idle',
         editingTextZoneId: null,
         pendingFiles: {},
+        fontAnalysis: {},
         uploadedImages: {},
         assetPreviewError: null,
         lockedZoneIds: new Set(),
@@ -1047,6 +1065,37 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
     },
     getPendingFiles: () => get().pendingFiles,
     clearPendingFiles: () => set({ pendingFiles: {} }),
+    setFontAnalysis: (assetKey, analysis) => {
+      set(s => ({
+        fontAnalysis: {
+          ...s.fontAnalysis,
+          [assetKey]: {
+            scripts: Array.from(new Set(analysis.scripts || [])),
+            state: analysis.state,
+            error: analysis.error ?? null,
+          },
+        },
+      }));
+    },
+    clearFontAnalysis: () => set({ fontAnalysis: {} }),
+    hydrateAssetMetadata: (assetKey, patch) => {
+      set(s => {
+        const currentAsset = s.template.assets[assetKey];
+        if (!currentAsset) return {};
+        return {
+          template: {
+            ...s.template,
+            assets: {
+              ...s.template.assets,
+              [assetKey]: {
+                ...currentAsset,
+                ...patch,
+              },
+            },
+          },
+        };
+      });
+    },
 
     // ── History ───────────────────────────────────
     undo: () => {
@@ -1090,7 +1139,6 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
       const normalized = normalizeTemplate(cloneTemplate(templateJson));
       const normalizedTemplate = normalizeTemplate({
         ...normalized,
-        compositing_mode: 'stack',
         assets: { ...normalized.assets },
       });
 
@@ -1099,16 +1147,6 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
       if (manifest.render_payload?.inputs) {
         for (const [key, value] of Object.entries(manifest.render_payload.inputs)) {
           previewTexts[key] = value;
-        }
-      }
-
-      for (const zone of normalizedTemplate.zones) {
-        if (zone.type !== 'text' || !zone.content_ref || previewTexts[zone.content_ref])
-          continue;
-        const resolvedZone = manifest.resolved_zones.find(entry => entry.id === zone.id);
-        const resolvedText = resolvedZone?.resolved?.text_layout;
-        if (typeof resolvedText?.source_text === 'string') {
-          previewTexts[zone.content_ref] = resolvedText.source_text;
         }
       }
 
@@ -1132,17 +1170,65 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         interactionMode: 'idle',
         editingTextZoneId: null,
         pendingFiles: {},
+        fontAnalysis: {},
         uploadedImages,
         previewTexts,
         activeManifest: manifest,
         sourceVideoAspectRatio: null,
-        reRenderState: { loading: false, resultUrl: null, error: null },
+        reRenderState: { loading: false, resultUrl: null, error: null, signature: null },
         aiCopySessions: {},
         lockedZoneIds: collectLockedZoneIds(normalizedTemplate),
         draftGeometryZoneIds: new Set(),
         history: [{ template: cloneTemplate(normalizedTemplate), draftGeometryZoneIds: [] }],
         historyIndex: 0,
       });
+    },
+
+    applyStudioResolvedManifest: (manifest, options = {}) => {
+      const currentImages = get().uploadedImages;
+      const clearDraftGeometry = options.clearDraftGeometry ?? false;
+
+      const templateJson = importTemplate(JSON.stringify(manifest.template_ir));
+      const normalized = normalizeTemplate(cloneTemplate(templateJson));
+      const normalizedTemplate = normalizeTemplate({
+        ...normalized,
+        assets: { ...normalized.assets },
+      });
+
+      const previewTexts: Record<string, string> = {};
+      if (manifest.render_payload?.inputs) {
+        for (const [key, value] of Object.entries(manifest.render_payload.inputs)) {
+          previewTexts[key] = value;
+        }
+      }
+
+      const uploadedImages: Record<string, string> = {};
+      for (const zone of normalizedTemplate.zones) {
+        if (zone.type !== 'image') continue;
+        const assetKey = zone.asset_ref || zone.id;
+        const asset = normalizedTemplate.assets[assetKey];
+        const previewUrl = asset?.gcs_path
+          ? null
+          : getAssetPreviewUrl(asset, manifest.assets?.[assetKey]);
+
+        if (previewUrl) {
+          uploadedImages[zone.id] = previewUrl;
+          continue;
+        }
+
+        if (currentImages[zone.id]) {
+          uploadedImages[zone.id] = currentImages[zone.id];
+        }
+      }
+
+      set(s => ({
+        template: normalizedTemplate,
+        previewTexts,
+        activeManifest: manifest,
+        uploadedImages,
+        lockedZoneIds: collectLockedZoneIds(normalizedTemplate),
+        draftGeometryZoneIds: clearDraftGeometry ? new Set() : s.draftGeometryZoneIds,
+      }));
     },
 
     setPreviewText: (contentRef, text) => {
@@ -1179,12 +1265,12 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
             end: nextEnd,
           },
           resolved:
-            s.activeManifest.resolved_zones.find(entry => entry.id === zoneId)
+            (s.activeManifest.resolved_zones || []).find(entry => entry.id === zoneId)
               ?.resolved ?? {},
           ...(zone.role ? { role: zone.role } : {}),
         };
 
-        const nextResolvedZones = [...s.activeManifest.resolved_zones];
+        const nextResolvedZones = [...(s.activeManifest.resolved_zones || [])];
         const existingIndex = nextResolvedZones.findIndex(entry => entry.id === zoneId);
         if (existingIndex >= 0) {
           nextResolvedZones[existingIndex] = {
@@ -1282,9 +1368,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
       }));
     },
 
-    setReRenderResult: (url, error = null) => {
+    setReRenderResult: (url, error = null, signature = null) => {
       set({
-        reRenderState: { loading: false, resultUrl: url, error },
+        reRenderState: { loading: false, resultUrl: url, error, signature },
       });
     },
 

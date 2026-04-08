@@ -21,7 +21,7 @@ async function flushUi() {
 
 async function clickRenderButton() {
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: /render with changes/i }));
+    fireEvent.click(screen.getByRole('button', { name: /generate preview/i }));
     await Promise.resolve();
     await Promise.resolve();
   });
@@ -66,7 +66,7 @@ describe('RenderPreview', () => {
       template: makeTemplate(),
       previewTexts: {},
       activeManifest: makeManifest() as any,
-      reRenderState: { loading: false, resultUrl: null, error: null },
+      reRenderState: { loading: false, resultUrl: null, error: null, signature: null },
     });
   });
 
@@ -145,5 +145,27 @@ describe('RenderPreview', () => {
         'Preview video failed to load: http://localhost:8000/data/users/user-123/jobs/job-123/clips/preview.mp4'
       )
     ).toBeInTheDocument();
+  });
+
+  it('blocks re-render when the clip has an invalid runtime font selection', async () => {
+    render(
+      <RenderPreview
+        renderRequest={{ jobId: 'job-123', clipIndex: 1 }}
+        fontIssue='Fix runtime font "Missing Font" before saving or rendering this clip.'
+      />
+    );
+    await flushUi();
+
+    expect(screen.getByTestId('render-preview-status')).toHaveTextContent(
+      'Preview not generated yet'
+    );
+    const button = screen.getByRole('button', { name: /generate preview/i });
+    expect(button).toBeDisabled();
+    expect(
+      screen.getByText(
+        'Fix runtime font "Missing Font" before saving or rendering this clip.'
+      )
+    ).toBeInTheDocument();
+    expect(authFetchMock).not.toHaveBeenCalled();
   });
 });

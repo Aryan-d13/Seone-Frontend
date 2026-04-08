@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useTemplates } from '@/hooks/useTemplates';
@@ -20,6 +21,32 @@ export function TemplateSelector({
   error,
 }: TemplateSelectorProps) {
   const { templates, isLoading, error: fetchError } = useTemplates();
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  // Derive unique tags across all templates
+  const allTags = useMemo(() => {
+    const seen = new Set<string>();
+    const tags: string[] = [];
+    for (const t of templates) {
+      for (const tag of t.show_tags ?? []) {
+        const key = tag.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          tags.push(tag);
+        }
+      }
+    }
+    return tags;
+  }, [templates]);
+
+  // Filter templates by active tag
+  const filteredTemplates = useMemo(() => {
+    if (!activeTag) return templates;
+    const key = activeTag.toLowerCase();
+    return templates.filter(t =>
+      (t.show_tags ?? []).some(tag => tag.toLowerCase() === key)
+    );
+  }, [templates, activeTag]);
 
   if (isLoading) {
     return (
@@ -36,8 +63,8 @@ export function TemplateSelector({
     );
   }
 
-  // Group templates by category
-  const groupedTemplates = templates.reduce(
+  // Group filtered templates by category
+  const groupedTemplates = filteredTemplates.reduce(
     (acc, template) => {
       const category = template.category || 'Other';
       if (!acc[category]) acc[category] = [];
@@ -59,6 +86,35 @@ export function TemplateSelector({
         <p className={styles.subtitle}>Choose a template for your clips</p>
         {selectedTemplate && <span className={styles.selectedCount}>1 selected</span>}
       </div>
+
+      {allTags.length > 0 && (
+        <div className={styles.tagFilterBar}>
+          <button
+            type="button"
+            className={cn(styles.tagPill, !activeTag && styles.tagPillActive)}
+            onClick={() => setActiveTag(null)}
+          >
+            All
+          </button>
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              type="button"
+              className={cn(
+                styles.tagPill,
+                activeTag?.toLowerCase() === tag.toLowerCase() && styles.tagPillActive
+              )}
+              onClick={() =>
+                setActiveTag(prev =>
+                  prev?.toLowerCase() === tag.toLowerCase() ? null : tag
+                )
+              }
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && <div className={styles.error}>{error}</div>}
       {fetchError && <div className={styles.warning}>Using demo templates</div>}

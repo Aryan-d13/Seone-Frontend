@@ -12,29 +12,36 @@ import {
   PROTECTED_ASSET_LOAD_MESSAGE,
 } from '../../lib/protectedAssetLoader';
 import {
-  AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE,
   isAzureAssetUploadConfigured,
 } from '../../lib/storageService';
 import {
+  analyzeFontFile,
   buildFontAssetKey,
   inferFontFamily,
   inferFontStyle,
   inferFontWeight,
-  isFontFamilyAvailable,
   isSupportedFontFile,
   listUploadedFontEntries,
   mergeFontEntries,
 } from '../../lib/fontAssets';
+import {
+  applyTextFontSelection,
+  getActiveTextFontSelection,
+  resolveRuntimeTextFont,
+} from '../../lib/runtimeFontResolver';
 import { useProtectedAssetUrl } from '../../hooks/useProtectedAssetUrl';
 import type { RenderPreviewRequest } from '../RenderPreview/RenderPreview';
 import { hasForcedAutoHeight } from '../../utils/zoneRules';
 import { getAssetPreviewUrl, getTemplateAssetProxyUrl } from '../../utils/assetPreview';
+import type { StudioEditorState } from '../../types/studioUi';
 import FontPicker from './FontPicker';
 import './PropertyInspector.css';
 
 interface PropertyInspectorProps {
   renderPreviewRequest?: RenderPreviewRequest | null;
   variant?: 'default' | 'admin';
+  embedded?: boolean;
+  studioEditorState?: StudioEditorState | null;
 }
 
 function getClipZoneTitle(zone: ZoneSpec, previewTexts: Record<string, string>): string {
@@ -63,6 +70,13 @@ function parseNumericDraftValue(value: string): number | null | undefined {
   const parsed = Number(trimmed);
   if (!Number.isFinite(parsed)) return undefined;
   return parsed;
+}
+
+function formatFontSourceLabel(source: 'builtin' | 'uploaded' | 'fallback' | 'unknown') {
+  if (source === 'uploaded') return 'Uploaded';
+  if (source === 'fallback') return 'Fallback active';
+  if (source === 'unknown') return 'Unknown';
+  return 'Built-in';
 }
 
 interface DraftNumberInputProps {
@@ -159,13 +173,17 @@ function DraftNumberInput({
 export default function PropertyInspector({
   renderPreviewRequest = null,
   variant = 'default',
+  embedded = false,
+  studioEditorState = null,
 }: PropertyInspectorProps) {
   const { template, selectedZoneId, activeManifest } = useTemplateStore();
   const zone = template.zones.find(entry => entry.id === selectedZoneId) ?? null;
 
   if (!zone) {
-    if (activeManifest) return null;
-    return <TemplateCanvasInspector variant={variant} />;
+    if (activeManifest) {
+      return <ClipCanvasInspector embedded={embedded} studioEditorState={studioEditorState} />;
+    }
+    return <TemplateCanvasInspector variant={variant} embedded={embedded} />;
   }
 
   return activeManifest ? (
@@ -173,6 +191,8 @@ export default function PropertyInspector({
       key={zone.id}
       zone={zone}
       renderPreviewRequest={renderPreviewRequest}
+      embedded={embedded}
+      studioEditorState={studioEditorState}
     />
   ) : (
     <TemplateZoneInspector
@@ -180,7 +200,32 @@ export default function PropertyInspector({
       zone={zone}
       renderPreviewRequest={renderPreviewRequest}
       variant={variant}
+      embedded={embedded}
     />
+  );
+}
+
+function NeedsAttentionCard({
+  blockers,
+  zoneId = null,
+}: {
+  blockers: StudioEditorState['blockers'];
+  zoneId?: string | null;
+}) {
+  const relevantBlockers = blockers.filter(blocker => !zoneId || blocker.zoneId === zoneId);
+  if (!relevantBlockers.length) return null;
+
+  return (
+    <div className="inspector__attention">
+      <div className="inspector__attention-title">Needs Attention</div>
+      <div className="inspector__attention-body">
+        {relevantBlockers.map((blocker, index) => (
+          <div key={`${blocker.code}:${blocker.zoneId || 'global'}:${index}`}>
+            {blocker.message}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -195,15 +240,17 @@ function formatTemplateName(templateId: string): string {
 
 function TemplateCanvasInspector({
   variant = 'default',
+  embedded = false,
 }: {
   variant?: 'default' | 'admin';
+  embedded?: boolean;
 }) {
   const { template, setCanvasSize, setTemplateId, setStyle } = useTemplateStore();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const adminMinimal = variant === 'admin';
 
   return (
-    <aside className="inspector">
+    <aside className={`inspector ${embedded ? 'inspector--embedded' : ''}`}>
       <div className="inspector__header">
         <div className="inspector__heading">
           <span className="inspector__eyebrow">Inspector</span>
@@ -263,7 +310,7 @@ function TemplateCanvasInspector({
                 className="inspector__toggle-btn"
                 onClick={() => setShowAdvanced(value => !value)}
               >
-                <span>Advanced</span>
+                <span>Position & Timing</span>
                 {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
             </div>
@@ -366,7 +413,7 @@ function TemplateCanvasInspector({
             className="inspector__toggle-btn"
             onClick={() => setShowAdvanced(true)}
           >
-            <span>Advanced</span>
+            <span>Position & Timing</span>
             <ChevronDown size={14} />
           </button>
         </div>
@@ -379,10 +426,12 @@ function TemplateZoneInspector({
   zone,
   renderPreviewRequest = null,
   variant = 'default',
+  embedded = false,
 }: {
   zone: ZoneSpec;
   renderPreviewRequest?: RenderPreviewRequest | null;
   variant?: 'default' | 'admin';
+  embedded?: boolean;
 }) {
   const {
     template,
@@ -398,7 +447,7 @@ function TemplateZoneInspector({
   const adminMinimal = variant === 'admin';
 
   return (
-    <aside className="inspector">
+    <aside className={`inspector ${embedded ? 'inspector--embedded' : ''}`}>
       <InspectorHeader title={zone.id} zone={zone} hideZoneType={adminMinimal} />
 
       <BoundsEditor zone={zone} title={adminMinimal ? 'Position & Size' : 'Bounds'} />
@@ -427,7 +476,7 @@ function TemplateZoneInspector({
             className="inspector__toggle-btn"
             onClick={() => setShowAdvanced(value => !value)}
           >
-            <span>Advanced</span>
+            <span>Position & Timing</span>
             {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
@@ -538,21 +587,27 @@ function TemplateZoneInspector({
 function ClipZoneInspector({
   zone,
   renderPreviewRequest = null,
+  embedded = false,
+  studioEditorState = null,
 }: {
   zone: ZoneSpec;
   renderPreviewRequest?: RenderPreviewRequest | null;
+  embedded?: boolean;
+  studioEditorState?: StudioEditorState | null;
 }) {
   const { activeManifest, previewTexts, updateManifestRenderPayload } =
     useTemplateStore();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
-    <aside className="inspector">
+    <aside className={`inspector ${embedded ? 'inspector--embedded' : ''}`}>
       <div className="inspector__header inspector__header--compact">
         <div className="inspector__heading">
           <span className="inspector__title">{getClipZoneTitle(zone, previewTexts)}</span>
         </div>
       </div>
+
+      <NeedsAttentionCard blockers={studioEditorState?.blockers || []} zoneId={zone.id} />
 
       {zone.type === 'text' && <TextColorsEditor zone={zone} />}
       {zone.type === 'text' && zone.text && (
@@ -575,7 +630,7 @@ function ClipZoneInspector({
 
       {zone.type === 'video' && (
         <div className="inspector__section">
-          <div className="inspector__section-title">Trim</div>
+          <div className="inspector__section-title">Position & Timing</div>
           <div className="inspector__row">
             <div className="inspector__field" style={{ flex: 1 }}>
               <span className="inspector__label">Source In</span>
@@ -628,11 +683,39 @@ function ClipZoneInspector({
           className="inspector__toggle-btn"
           onClick={() => setShowAdvanced(value => !value)}
         >
-          <span>Advanced</span>
+          <span>Position & Timing</span>
           {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
       {showAdvanced && <BoundsEditor zone={zone} title="Position & Size" />}
+    </aside>
+  );
+}
+
+function ClipCanvasInspector({
+  embedded = false,
+  studioEditorState = null,
+}: {
+  embedded?: boolean;
+  studioEditorState?: StudioEditorState | null;
+}) {
+  return (
+    <aside className={`inspector ${embedded ? 'inspector--embedded' : ''}`}>
+      <div className="inspector__header">
+        <div className="inspector__heading">
+          <span className="inspector__eyebrow">Inspector</span>
+          <span className="inspector__title">Properties</span>
+        </div>
+      </div>
+
+      <NeedsAttentionCard blockers={studioEditorState?.blockers || []} />
+
+      <div className="inspector__section">
+        <div className="inspector__section-title">Content</div>
+        <div className="inspector__empty inspector__empty--inline">
+          <span>Select a layer to edit its content, typography, color, and layout.</span>
+        </div>
+      </div>
     </aside>
   );
 }
@@ -769,8 +852,8 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
   if (!zone.style_ref || !template.styles[zone.style_ref]) return null;
   const backgroundZone = activeManifest
     ? template.zones.find(
-        entry => entry.id === `${zone.id}__bg` && entry.type === 'shape'
-      )
+      entry => entry.id === `${zone.id}__bg` && entry.type === 'shape'
+    )
     : null;
   const backgroundStyle = backgroundZone?.style_ref
     ? template.styles[backgroundZone.style_ref]
@@ -778,10 +861,10 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
 
   return (
     <div className="inspector__section">
-      <div className="inspector__section-title">Appearance</div>
+      <div className="inspector__section-title">Color</div>
       <div className="inspector__row">
         <div className="inspector__field" style={{ flex: 1 }}>
-          <span className="inspector__label">Text</span>
+          <span className="inspector__label">Text color</span>
           <div className="inspector__color-row">
             <input
               type="color"
@@ -808,8 +891,10 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
             />
           </div>
         </div>
+      </div>
+      <div className="inspector__row">
         <div className="inspector__field" style={{ flex: 1 }}>
-          <span className="inspector__label">Background</span>
+          <span className="inspector__label">Background color</span>
           <div className="inspector__color-row">
             <input
               type="color"
@@ -822,13 +907,13 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
               onChange={e =>
                 backgroundZone?.style_ref
                   ? setStyle(backgroundZone.style_ref, {
-                      ...(backgroundStyle || {}),
-                      fill: e.target.value,
-                    })
+                    ...(backgroundStyle || {}),
+                    fill: e.target.value,
+                  })
                   : setStyle(zone.style_ref!, {
-                      ...template.styles[zone.style_ref!],
-                      bg_fill: e.target.value,
-                    })
+                    ...template.styles[zone.style_ref!],
+                    bg_fill: e.target.value,
+                  })
               }
             />
             <input
@@ -842,13 +927,13 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
               onChange={e =>
                 backgroundZone?.style_ref
                   ? setStyle(backgroundZone.style_ref, {
-                      ...(backgroundStyle || {}),
-                      fill: e.target.value,
-                    })
+                    ...(backgroundStyle || {}),
+                    fill: e.target.value,
+                  })
                   : setStyle(zone.style_ref!, {
-                      ...template.styles[zone.style_ref!],
-                      bg_fill: e.target.value,
-                    })
+                    ...template.styles[zone.style_ref!],
+                    bg_fill: e.target.value,
+                  })
               }
               style={{ maxWidth: 72, fontFamily: 'var(--font-mono)', fontSize: 11 }}
             />
@@ -880,19 +965,31 @@ function TextSpecEditor({
     aiCopySessions,
     updateAICopySession,
     setAsset,
+    hydrateAssetMetadata,
     removeAsset,
     pendingFiles,
+    fontAnalysis,
+    setFontAnalysis,
     setPendingFile,
     removePendingFile,
   } = useTemplateStore();
-  const { fonts: builtinFonts } = useFontCatalog();
+  const { fonts: builtinFonts, isLoading: fontsLoading } = useFontCatalog();
   const text = zone.text!;
   const contentRef = zone.content_ref || '';
   const previewText = contentRef ? previewTexts[contentRef] || '' : '';
+  const copyLanguage = activeManifest?.render_payload?.copy_language;
+  const activeFontSelection = useMemo(
+    () => {
+      const sel = getActiveTextFontSelection(text.font, copyLanguage);
+      // Hard-lock to Khand regardless of persisted value
+      return { ...sel, family: 'Khand' };
+    },
+    [copyLanguage, text.font]
+  );
   const aiCopyEnabled = Boolean(renderPreviewRequest && contentRef === 'pov_text');
   const uploadedFonts = useMemo(
-    () => listUploadedFontEntries(template.assets || {}),
-    [template.assets]
+    () => listUploadedFontEntries(template.assets || {}, fontAnalysis),
+    [fontAnalysis, template.assets]
   );
   const pendingFontEntries = useMemo(() => {
     return Object.entries(pendingFiles)
@@ -900,35 +997,74 @@ function TextSpecEditor({
       .map(([assetKey, file]) => ({
         family: inferFontFamily(file.name),
         display: inferFontFamily(file.name),
-        weights: [inferFontWeight(file.name, text.font.weight || 400)],
-        scripts: ['custom'],
+        weights: [inferFontWeight(file.name, activeFontSelection.weight || 400)],
+        scripts: fontAnalysis[assetKey]?.scripts || [],
         source: 'uploaded',
         assetKey,
+        analysisState: fontAnalysis[assetKey]?.state ?? 'pending',
       }));
-  }, [pendingFiles, text.font.weight]);
+  }, [activeFontSelection.weight, fontAnalysis, pendingFiles]);
   const availableFonts = useMemo(
     () => mergeFontEntries(builtinFonts, uploadedFonts, pendingFontEntries),
     [builtinFonts, uploadedFonts, pendingFontEntries]
   );
-  const currentFontMissing =
-    Boolean(text.font.family) && !isFontFamilyAvailable(text.font.family, availableFonts);
+  const resolvedRuntimeFont = useMemo(() => {
+    if (fontsLoading) return null;
+    return resolveRuntimeTextFont({
+      font: text.font,
+      copyLanguage,
+      textContent: previewText,
+      fonts: availableFonts,
+    });
+  }, [availableFonts, copyLanguage, fontsLoading, previewText, text.font]);
+  const currentFontMissing = !fontsLoading && resolvedRuntimeFont?.fontState === 'MISSING';
   const isClipFontUpload = Boolean(renderPreviewRequest?.jobId && activeManifest);
   const fontUploadDisabled = !isClipFontUpload && !isAzureAssetUploadConfigured();
-  const fontUploadHelpText = fontUploadDisabled
-    ? 'Font upload is not configured in this environment.'
-    : null;
+  const fontUploadHelpText = useMemo(() => {
+    const notices: string[] = [];
+    if (fontUploadDisabled) {
+      notices.push('Font upload is not configured in this environment.');
+    }
+    if (resolvedRuntimeFont?.repairMessage) {
+      notices.push(resolvedRuntimeFont.repairMessage);
+    } else if (resolvedRuntimeFont?.blockingReason) {
+      notices.push(resolvedRuntimeFont.blockingReason);
+    } else if (
+      resolvedRuntimeFont &&
+      resolvedRuntimeFont.family !== resolvedRuntimeFont.configuredFamily &&
+      resolvedRuntimeFont.fallbackApplied
+    ) {
+      notices.push(
+        `Canvas is using ${resolvedRuntimeFont.family} because ${resolvedRuntimeFont.configuredFamily} does not match the current text script.`
+      );
+    }
+    return notices.length > 0 ? notices.join(' ') : null;
+  }, [
+    fontUploadDisabled,
+    resolvedRuntimeFont,
+  ]);
   const aiCopyState = aiCopyEnabled
     ? (aiCopySessions[contentRef] ?? {
-        options: [],
-        rejected: [],
-        loading: false,
-        error: null,
-        copyLanguage: null,
-      })
+      options: [],
+      rejected: [],
+      loading: false,
+      error: null,
+      copyLanguage: null,
+    })
     : null;
 
   const patchText = (patch: Partial<TextSpec>) => {
     updateZone(zone.id, { text: { ...text, ...patch } });
+  };
+
+  const patchFontSelection = (_family: string, weight: number) => {
+    patchText({
+      font: applyTextFontSelection(text.font, {
+        family: 'Khand',
+        weight,
+        copyLanguage,
+      }),
+    });
   };
 
   const handleFontFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -942,18 +1078,21 @@ function TextSpecEditor({
     }
 
     if (fontUploadDisabled) {
-      alert(fontUploadHelpText || AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE);
+      alert(fontUploadHelpText || 'Asset upload is not available.');
       event.currentTarget.value = '';
       return;
     }
 
     const inferredStyle = inferFontStyle(file.name);
-    const inferredWeight = inferFontWeight(file.name, text.font.weight || 400);
+    const inferredWeight = inferFontWeight(file.name, activeFontSelection.weight || 400);
     const inferredFamily = inferFontFamily(file.name);
     const format = file.name.toLowerCase().endsWith('.otf') ? 'otf' : 'ttf';
     const assetKey = buildFontAssetKey(inferredFamily, inferredWeight, inferredStyle);
     const previousAsset = template.assets[assetKey];
-    const previousFont = { family: text.font.family, weight: text.font.weight };
+    const previousFont = {
+      family: activeFontSelection.family || text.font.family,
+      weight: activeFontSelection.weight || text.font.weight,
+    };
     const nextFontAsset = {
       type: 'font' as const,
       path: file.name,
@@ -962,15 +1101,23 @@ function TextSpecEditor({
       style: inferredStyle,
       format,
     };
+    let analyzedScripts: string[] = [];
 
     setPendingFile(assetKey, file);
-    patchText({
-      font: {
-        ...text.font,
-        family: inferredFamily,
-        weight: inferredWeight,
-      },
-    });
+    setFontAnalysis(assetKey, { scripts: [], state: 'pending' });
+    patchFontSelection(inferredFamily, inferredWeight);
+
+    try {
+      analyzedScripts = await analyzeFontFile(file);
+      setFontAnalysis(assetKey, { scripts: analyzedScripts, state: 'ready' });
+      hydrateAssetMetadata(assetKey, { scripts: analyzedScripts });
+    } catch (error) {
+      setFontAnalysis(assetKey, {
+        scripts: [],
+        state: 'failed',
+        error: error instanceof Error ? error.message : 'Font analysis failed',
+      });
+    }
 
     if (isClipFontUpload && renderPreviewRequest) {
       try {
@@ -996,6 +1143,7 @@ function TextSpecEditor({
           ...nextFontAsset,
           path: result.storage_key || file.name,
           source_uri: getMediaUrl(result.url),
+          ...(analyzedScripts.length > 0 ? { scripts: analyzedScripts } : {}),
         });
         removePendingFile(assetKey);
       } catch (error) {
@@ -1005,19 +1153,16 @@ function TextSpecEditor({
         } else {
           removeAsset(assetKey);
         }
-        patchText({
-          font: {
-            ...text.font,
-            family: previousFont.family,
-            weight: previousFont.weight,
-          },
-        });
+        patchFontSelection(previousFont.family, previousFont.weight);
         alert(
           `Font upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
       }
     } else {
-      setAsset(assetKey, nextFontAsset);
+      setAsset(assetKey, {
+        ...nextFontAsset,
+        ...(analyzedScripts.length > 0 ? { scripts: analyzedScripts } : {}),
+      });
     }
 
     event.currentTarget.value = '';
@@ -1029,8 +1174,8 @@ function TextSpecEditor({
     const rejectedOptions =
       mode === 'regenerate'
         ? Array.from(
-            new Set([...(aiCopyState?.rejected || []), ...(aiCopyState?.options || [])])
-          )
+          new Set([...(aiCopyState?.rejected || []), ...(aiCopyState?.options || [])])
+        )
         : aiCopyState?.rejected || [];
 
     updateAICopySession(contentRef, {
@@ -1085,171 +1230,218 @@ function TextSpecEditor({
   };
 
   return (
-    <div className="inspector__section">
-      <div className="inspector__section-title">Text</div>
+    <>
       {contentRef && (
-        <div className="inspector__field">
-          <span className="inspector__label">Content</span>
-          <textarea
-            className="inspector__input"
-            value={previewText}
-            onChange={e => setPreviewText(contentRef, e.target.value)}
-            rows={2}
-            style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: 12 }}
-          />
+        <div className="inspector__section">
+          <div className="inspector__section-title">Content</div>
+          <div className="inspector__field inspector__field--stacked">
+            <span className="inspector__label">Headline text</span>
+            <textarea
+              className="inspector__input inspector__input--multiline"
+              value={previewText}
+              onChange={e => setPreviewText(contentRef, e.target.value)}
+              rows={3}
+              style={{ resize: 'vertical', fontFamily: 'inherit', fontSize: 13 }}
+            />
+          </div>
         </div>
       )}
-      <div className="inspector__field">
-        <span className="inspector__label">Font</span>
-        <FontPicker
-          fonts={availableFonts}
-          value={text.font.family}
-          weight={text.font.weight}
-          missing={currentFontMissing}
-          onChange={family => patchText({ font: { ...text.font, family } })}
-          onWeightChange={weight => patchText({ font: { ...text.font, weight } })}
-          onUpload={() => fontUploadInputRef.current?.click()}
-          uploadLabel={isClipFontUpload ? 'Upload custom font' : 'Upload template font'}
-          uploadDisabled={fontUploadDisabled}
-          uploadHelpText={fontUploadHelpText}
-        />
-        <input
-          ref={fontUploadInputRef}
-          type="file"
-          accept=".ttf,.otf"
-          style={{ display: 'none' }}
-          onChange={handleFontFileSelect}
-        />
-      </div>
-      <div className="inspector__row">
-        <div className="inspector__field" style={{ flex: 1 }}>
-          <span className="inspector__label">Size</span>
-          <DraftNumberInput
-            className="inspector__input inspector__input--small"
-            value={text.font.size ?? undefined}
-            ariaLabel="Font Size"
-            allowEmpty
-            onCommit={value =>
-              patchText({
-                font: {
-                  ...text.font,
-                  size: value === null ? null : Math.max(1, Math.round(value)),
-                },
-              })
-            }
-          />
-        </div>
-      </div>
-      <div className="inspector__row">
-        <div className="inspector__field" style={{ flex: 1 }}>
-          <span className="inspector__label">H Align</span>
-          <select
-            className="inspector__select"
-            value={text.horizontal_align}
-            onChange={e =>
-              patchText({
-                horizontal_align: e.target.value as TextSpec['horizontal_align'],
-              })
-            }
-          >
-            <option value="left">Left</option>
-            <option value="center">Center</option>
-            <option value="right">Right</option>
-          </select>
-        </div>
-        <div className="inspector__field" style={{ flex: 1 }}>
-          <span className="inspector__label">V Align</span>
-          <select
-            className="inspector__select"
-            value={text.vertical_align}
-            onChange={e =>
-              patchText({ vertical_align: e.target.value as TextSpec['vertical_align'] })
-            }
-          >
-            <option value="top">Top</option>
-            <option value="middle">Middle</option>
-            <option value="bottom">Bottom</option>
-          </select>
-        </div>
-      </div>
-      {!minimal && (
-        <>
-          <div className="inspector__row">
-            <div className="inspector__field" style={{ flex: 1 }}>
-              <span className="inspector__label">Lines</span>
-              <DraftNumberInput
-                className="inspector__input inspector__input--small"
-                value={text.max_lines}
-                ariaLabel="Max Lines"
-                onCommit={value =>
-                  patchText({
-                    max_lines: Math.max(1, Math.round(value ?? text.max_lines)),
-                  })
-                }
-              />
+
+      <div className="inspector__section">
+        <div className="inspector__section-title">Typography</div>
+        <div className="inspector__font-card">
+          <div className="inspector__font-card-header">
+            <span className="inspector__font-card-title">Applied Font</span>
+            <span className="inspector__font-card-pill">
+              {formatFontSourceLabel(
+                resolvedRuntimeFont?.selectedFont.source || 'unknown'
+              )}
+            </span>
+          </div>
+          <div className="inspector__font-card-meta">
+            <div>
+              <span className="inspector__font-card-label">Selected</span>
+              <strong>
+                Khand
+              </strong>
             </div>
-            <div className="inspector__field" style={{ flex: 1 }}>
-              <span className="inspector__label">Overflow</span>
-              <select
-                className="inspector__select"
-                value={text.overflow}
-                onChange={e =>
-                  patchText({ overflow: e.target.value as TextSpec['overflow'] })
-                }
-              >
-                <option value="wrap">Wrap</option>
-                <option value="shrink">Shrink</option>
-              </select>
+            <div>
+              <span className="inspector__font-card-label">Effective in canvas</span>
+              <strong>
+                Khand
+              </strong>
+            </div>
+            <div>
+              <span className="inspector__font-card-label">Compatibility</span>
+              <strong>{resolvedRuntimeFont?.compatibilityStatus || 'Checking font…'}</strong>
             </div>
           </div>
-          <div className="inspector__row">
-            <div className="inspector__field" style={{ flex: 1 }}>
-              <span className="inspector__label">Width %</span>
-              <DraftNumberInput
-                className="inspector__input inspector__input--small"
-                value={text.width_percent ?? undefined}
-                ariaLabel="Width Percent"
-                allowEmpty
-                onCommit={value =>
-                  patchText({
-                    width_percent: value === null ? null : Math.max(1, Math.round(value)),
-                  })
-                }
-              />
-            </div>
-            <div className="inspector__field" style={{ flex: 1 }}>
-              <span className="inspector__label">Min Size</span>
-              <DraftNumberInput
-                className="inspector__input inspector__input--small"
-                value={text.min_font_size ?? undefined}
-                ariaLabel="Minimum Font Size"
-                allowEmpty
-                onCommit={value =>
-                  patchText({
-                    min_font_size: value === null ? null : Math.max(1, Math.round(value)),
-                  })
-                }
-              />
-            </div>
+          <div className="inspector__field inspector__field--stacked">
+            <span className="inspector__label">Font family</span>
+            <FontPicker
+              fonts={availableFonts}
+              value={activeFontSelection.family}
+              weight={activeFontSelection.weight}
+              locked={true}
+              missing={currentFontMissing}
+              onChange={family => patchFontSelection(family, activeFontSelection.weight)}
+              onWeightChange={weight => patchFontSelection(activeFontSelection.family, weight)}
+              onUpload={() => fontUploadInputRef.current?.click()}
+              uploadLabel={isClipFontUpload ? 'Upload custom font' : 'Upload template font'}
+              uploadDisabled={fontUploadDisabled}
+              uploadHelpText={fontUploadHelpText}
+            />
+            <input
+              ref={fontUploadInputRef}
+              type="file"
+              accept=".ttf,.otf"
+              style={{ display: 'none' }}
+              onChange={handleFontFileSelect}
+            />
           </div>
-          <div className="inspector__field">
-            <span className="inspector__label">Spacing</span>
+          {resolvedRuntimeFont?.repairMessage && (
+            <div className="inspector__font-card-note">{resolvedRuntimeFont.repairMessage}</div>
+          )}
+          {!resolvedRuntimeFont?.repairMessage && resolvedRuntimeFont?.blockingReason && (
+            <div className="inspector__font-card-error">{resolvedRuntimeFont.blockingReason}</div>
+          )}
+        </div>
+
+        <div className="inspector__row">
+          <div className="inspector__field" style={{ flex: 1 }}>
+            <span className="inspector__label">Font size</span>
             <DraftNumberInput
               className="inspector__input inspector__input--small"
-              value={text.line_spacing_px}
-              ariaLabel="Line Spacing"
+              value={text.font.size ?? undefined}
+              ariaLabel="Font Size"
+              allowEmpty
               onCommit={value =>
-                patchText({ line_spacing_px: Math.max(0, Math.round(value ?? 0)) })
+                patchText({
+                  font: {
+                    ...text.font,
+                    size: value === null ? null : Math.max(1, Math.round(value)),
+                  },
+                })
               }
             />
           </div>
-        </>
-      )}
+        </div>
+      </div>
+
+      <div className="inspector__section">
+        <div className="inspector__section-title">Layout</div>
+        <div className="inspector__row">
+          <div className="inspector__field" style={{ flex: 1 }}>
+            <span className="inspector__label">Horizontal align</span>
+            <select
+              className="inspector__select"
+              value={text.horizontal_align}
+              onChange={e =>
+                patchText({
+                  horizontal_align: e.target.value as TextSpec['horizontal_align'],
+                })
+              }
+            >
+              <option value="left">Left</option>
+              <option value="center">Center</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+          <div className="inspector__field" style={{ flex: 1 }}>
+            <span className="inspector__label">Vertical align</span>
+            <select
+              className="inspector__select"
+              value={text.vertical_align}
+              onChange={e =>
+                patchText({ vertical_align: e.target.value as TextSpec['vertical_align'] })
+              }
+            >
+              <option value="top">Top</option>
+              <option value="middle">Middle</option>
+              <option value="bottom">Bottom</option>
+            </select>
+          </div>
+        </div>
+        {!minimal && (
+          <>
+            <div className="inspector__row">
+              <div className="inspector__field" style={{ flex: 1 }}>
+                <span className="inspector__label">Max lines</span>
+                <DraftNumberInput
+                  className="inspector__input inspector__input--small"
+                  value={text.max_lines}
+                  ariaLabel="Max Lines"
+                  onCommit={value =>
+                    patchText({
+                      max_lines: Math.max(1, Math.round(value ?? text.max_lines)),
+                    })
+                  }
+                />
+              </div>
+              <div className="inspector__field" style={{ flex: 1 }}>
+                <span className="inspector__label">Overflow</span>
+                <select
+                  className="inspector__select"
+                  value={text.overflow}
+                  onChange={e =>
+                    patchText({ overflow: e.target.value as TextSpec['overflow'] })
+                  }
+                >
+                  <option value="wrap">Wrap</option>
+                  <option value="shrink">Shrink</option>
+                </select>
+              </div>
+            </div>
+            <div className="inspector__row">
+              <div className="inspector__field" style={{ flex: 1 }}>
+                <span className="inspector__label">Width percent</span>
+                <DraftNumberInput
+                  className="inspector__input inspector__input--small"
+                  value={text.width_percent ?? undefined}
+                  ariaLabel="Width Percent"
+                  allowEmpty
+                  onCommit={value =>
+                    patchText({
+                      width_percent: value === null ? null : Math.max(1, Math.round(value)),
+                    })
+                  }
+                />
+              </div>
+              <div className="inspector__field" style={{ flex: 1 }}>
+                <span className="inspector__label">Minimum size</span>
+                <DraftNumberInput
+                  className="inspector__input inspector__input--small"
+                  value={text.min_font_size ?? undefined}
+                  ariaLabel="Minimum Font Size"
+                  allowEmpty
+                  onCommit={value =>
+                    patchText({
+                      min_font_size: value === null ? null : Math.max(1, Math.round(value)),
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="inspector__field">
+              <span className="inspector__label">Line spacing</span>
+              <DraftNumberInput
+                className="inspector__input inspector__input--small"
+                value={text.line_spacing_px}
+                ariaLabel="Line Spacing"
+                onCommit={value =>
+                  patchText({ line_spacing_px: Math.max(0, Math.round(value ?? 0)) })
+                }
+              />
+            </div>
+          </>
+        )}
+      </div>
+
       {aiCopyEnabled && aiCopyState && (
-        <div className="inspector__ai-copy">
+        <div className="inspector__section">
           <div className="inspector__ai-copy-header">
             <span className="inspector__section-title" style={{ marginBottom: 0 }}>
-              AI Copy
+              Suggestions
             </span>
             {aiCopyState.copyLanguage && (
               <span className="inspector__ai-copy-language">
@@ -1264,7 +1456,7 @@ function TextSpecEditor({
             onClick={() => handleGenerateSuggestions('generate')}
             disabled={aiCopyState.loading}
           >
-            {aiCopyState.loading ? 'Generating...' : 'Generate 3 POVs'}
+            {aiCopyState.loading ? 'Generating suggestions…' : 'Suggest 3 headline options'}
           </button>
 
           {aiCopyState.options.length > 0 && (
@@ -1272,13 +1464,15 @@ function TextSpecEditor({
               {aiCopyState.options.map((option, index) => (
                 <div key={`${option}-${index}`} className="inspector__ai-copy-card">
                   <div className="inspector__ai-copy-text">{option}</div>
-                  <button
-                    type="button"
-                    className="inspector__action-btn inspector__ai-copy-use"
-                    onClick={() => setPreviewText(contentRef, option)}
-                  >
-                    Use
-                  </button>
+                  <div className="inspector__ai-copy-actions inspector__ai-copy-actions--card">
+                    <button
+                      type="button"
+                      className="inspector__action-btn inspector__ai-copy-use"
+                      onClick={() => setPreviewText(contentRef, option)}
+                    >
+                      Replace current text
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1292,7 +1486,7 @@ function TextSpecEditor({
                 onClick={() => handleGenerateSuggestions('regenerate')}
                 disabled={aiCopyState.loading}
               >
-                Regenerate
+                Try again
               </button>
             </div>
           )}
@@ -1302,7 +1496,7 @@ function TextSpecEditor({
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -1474,7 +1668,7 @@ function ImageUploadEditor({
   const uploadDisabled = variant === 'admin' && !uploadConfigured;
   const uploadHelpText =
     uploadDisabled && zone.role === 'logo'
-      ? AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE
+      ? 'Logo upload is not configured in this environment.'
       : uploadDisabled
         ? 'Image upload is not configured in this environment.'
         : null;
@@ -1503,7 +1697,7 @@ function ImageUploadEditor({
     const file = e.target.files?.[0];
     if (!file) return;
     if (uploadDisabled) {
-      alert(uploadHelpText || AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE);
+      alert(uploadHelpText || 'Asset upload is not available.');
       if (fileRef.current) fileRef.current.value = '';
       return;
     }

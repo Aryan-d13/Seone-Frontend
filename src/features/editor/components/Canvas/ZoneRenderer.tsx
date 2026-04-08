@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Film, ImageIcon, Lock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useFontCatalog } from '@/hooks/useFontCatalog';
 import {
   PROTECTED_ASSET_AUTH_MESSAGE,
   PROTECTED_ASSET_LOAD_MESSAGE,
 } from '../../lib/protectedAssetLoader';
 import { useProtectedAssetUrl } from '../../hooks/useProtectedAssetUrl';
+import {
+  inferFontFamily,
+  inferFontWeight,
+  isSupportedFontFile,
+  listUploadedFontEntries,
+  mergeFontEntries,
+} from '../../lib/fontAssets';
+import { resolveRuntimeTextFont } from '../../lib/runtimeFontResolver';
 import { useTemplateStore } from '../../store/templateStore';
 import type { ResolvedTextLayout, ResolvedZone } from '../../types/manifest';
 import type { ZoneSpec } from '../../types/template';
@@ -219,9 +228,12 @@ export default function ZoneRenderer({
     setPreviewText,
     setAssetPreviewError,
     uploadedImages,
+    pendingFiles,
+    fontAnalysis,
     activeManifest,
     sourceVideoAspectRatio,
   } = useTemplateStore();
+  const { fonts: builtinFonts, isLoading: fontsLoading } = useFontCatalog();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const textEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -324,6 +336,46 @@ export default function ZoneRenderer({
 
   const contentRef = zone.content_ref || '';
   const previewText = contentRef ? previewTexts[contentRef] : undefined;
+  const uploadedFonts = useMemo(
+    () => listUploadedFontEntries(template.assets || {}, fontAnalysis),
+    [fontAnalysis, template.assets]
+  );
+  const pendingFontEntries = useMemo(() => {
+    const fallbackWeight = zone.text?.font?.weight || 400;
+    return Object.entries(pendingFiles)
+      .filter(([, file]) => isSupportedFontFile(file))
+      .map(([assetKey, file]) => ({
+        family: inferFontFamily(file.name),
+        display: inferFontFamily(file.name),
+        weights: [inferFontWeight(file.name, fallbackWeight)],
+        scripts: fontAnalysis[assetKey]?.scripts || [],
+        source: 'uploaded',
+        assetKey,
+        analysisState: fontAnalysis[assetKey]?.state ?? 'pending',
+      }));
+  }, [fontAnalysis, pendingFiles, zone.text?.font?.weight]);
+  const availableFonts = useMemo(
+    () => mergeFontEntries(builtinFonts, uploadedFonts, pendingFontEntries),
+    [builtinFonts, pendingFontEntries, uploadedFonts]
+  );
+  const resolvedRuntimeFont = useMemo(() => {
+    if (fontsLoading) return null;
+    if (zone.type !== 'text' || !zone.text) return null;
+    return resolveRuntimeTextFont({
+      font: zone.text.font,
+      copyLanguage: activeManifest?.render_payload?.copy_language,
+      textContent: typeof previewText === 'string' ? previewText : resolvedSourceText,
+      fonts: availableFonts,
+    });
+  }, [
+    activeManifest?.render_payload?.copy_language,
+    availableFonts,
+    fontsLoading,
+    previewText,
+    resolvedSourceText,
+    zone.text,
+    zone.type,
+  ]);
   const hasVideoPreview =
     zone.type === 'video' && Boolean(videoSrc) && !suppressMediaContent;
   const isLogoZone = zone.type === 'image' && zone.role === 'logo';
@@ -524,8 +576,15 @@ export default function ZoneRenderer({
       color: textColor || '#000000',
       backgroundColor:
         isClipMode && hasTextBackgroundLayer ? 'transparent' : bgColor || '#FFFFFF',
-      fontFamily: liveText?.font?.family || textLayout?.font_family_used || 'sans-serif',
-      fontWeight: liveText?.font?.weight ?? coerceNumber(textLayout?.font_weight, 400),
+      fontFamily:
+        resolvedRuntimeFont?.family ||
+        textLayout?.font_family_used ||
+        liveText?.font?.family ||
+        'sans-serif',
+      fontWeight:
+        resolvedRuntimeFont?.weight ??
+        liveText?.font?.weight ??
+        coerceNumber(textLayout?.font_weight, 400),
       fontSizePx,
       lineHeightPx,
       lineAdvancePx: lineHeightPx,
@@ -558,11 +617,13 @@ export default function ZoneRenderer({
       scale,
       textColor,
       textLayout,
-      editableText,
+    editableText,
       resolvedSourceText,
       h,
       isClipMode,
       isEditingText,
+      resolvedRuntimeFont?.family,
+      resolvedRuntimeFont?.weight,
       usesDraftGeometry,
       useResolvedTextGeometry,
       w,

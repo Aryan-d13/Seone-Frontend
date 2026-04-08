@@ -4,15 +4,272 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { endpoints, getMediaUrl } from '@/lib/config';
 import { authFetch } from '@/services/auth';
 import { useTemplateStore } from '../../store/templateStore';
+import {
+  clipDebugLog,
+  registerClipDebugSnapshotProvider,
+  useClipDebugEnabled,
+} from '../../lib/clipStudioDebug';
 import ZoneRenderer from '../Canvas/ZoneRenderer';
 import ClipStudioTimeline from './ClipStudioTimeline';
 import { getClipLayerDefinitions, getClipStageLayerDefinitions } from '../../utils/clipLayers';
 import { getAssetPreviewUrl } from '../../utils/assetPreview';
-import RenderPreview, { type RenderPreviewRequest } from '../RenderPreview/RenderPreview';
+import type { RenderPreviewRequest } from '../RenderPreview/RenderPreview';
 import './ClipStudioWorkspace.css';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+const VIEWPORT_STABLE_FRAME_COUNT = 2;
+const STAGE_RECOVERY_VISIBILITY_THRESHOLD = 0.2;
+
+type ViewportFitReason =
+  | 'initial'
+  | 'canvas_change'
+  | 'source_change'
+  | 'resize'
+  | 'recovery'
+  | 'manual_fit'
+  | 'unknown';
+
+type ViewportFitWaitPhase =
+  | 'idle'
+  | 'viewport_not_ready'
+  | 'scroll_range_not_ready'
+  | 'stabilizing'
+  | 'target_unavailable'
+  | 'applied';
+
+interface ClipDebugRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  right: number;
+  bottom: number;
+}
+
+interface WorkspaceDebugSnapshot {
+  templateId: string;
+  layoutAuthority: 'exact' | 'stale_exact' | 'unavailable';
+  layoutAuthorityReason: string | null;
+  canvas: { width: number; height: number };
+  zoneCount: number;
+  interactionMode: string;
+  zoom: number;
+  scale: number;
+  fitScale: number;
+  sourceVideo: {
+    url: string | null;
+    loading: boolean;
+    buffering: boolean;
+    error: string | null;
+    currentTime: number;
+    duration: number;
+    paused: boolean | null;
+    readyState: number | null;
+  };
+  frame: {
+    clientWidth: number;
+    clientHeight: number;
+  } | null;
+  viewport: {
+    clientWidth: number;
+    clientHeight: number;
+    scrollWidth: number;
+    scrollHeight: number;
+    scrollLeft: number;
+    scrollTop: number;
+    maxLeft: number;
+    maxTop: number;
+  } | null;
+  viewportWidthMismatch: boolean;
+  plane: {
+    width: number;
+    height: number;
+  };
+  stage: {
+    scaledWidth: number;
+    scaledHeight: number;
+    workspacePadding: number;
+    visibilityRatio: number;
+  };
+  geometry: {
+    frameRect: ClipDebugRect | null;
+    viewportRect: ClipDebugRect | null;
+    planeRect: ClipDebugRect | null;
+    stageShellRect: ClipDebugRect | null;
+    stageRect: ClipDebugRect | null;
+  };
+  fit: {
+    pending: boolean;
+    completed: boolean;
+    userHasManuallyMovedViewport: boolean;
+    recoveryFitUsed: boolean;
+    lastRequestedReason: ViewportFitReason;
+    lastWaitPhase: ViewportFitWaitPhase;
+    lastStableFrameCount: number;
+    lastFittedViewportSize: { width: number; height: number };
+    lastTargetScroll: { left: number; top: number } | null;
+    lastAppliedScroll:
+      | {
+          requestedLeft: number;
+          requestedTop: number;
+          appliedLeft: number;
+          appliedTop: number;
+          maxLeft: number;
+          maxTop: number;
+          clamped: boolean;
+          reason: string;
+        }
+      | null;
+  };
+  renderPreviewRequest: RenderPreviewRequest | null;
+}
+
+interface CenteredViewportScrollInput {
+  viewportWidth: number;
+  viewportHeight: number;
+  workspacePadding: number;
+  scaledWidth: number;
+  scaledHeight: number;
+}
+
+function getVisibleViewportSize(
+  frame: HTMLDivElement | null,
+  viewport: HTMLDivElement | null
+): { width: number; height: number } {
+  return {
+    width: frame?.clientWidth ?? viewport?.clientWidth ?? 0,
+    height: frame?.clientHeight ?? viewport?.clientHeight ?? 0,
+  };
+}
+
+function getViewportScrollRange(
+  viewport: HTMLDivElement,
+  visibleViewport: { width: number; height: number } = {
+    width: viewport.clientWidth,
+    height: viewport.clientHeight,
+  }
+): { maxLeft: number; maxTop: number } {
+  return {
+    maxLeft: Math.max(0, viewport.scrollWidth - visibleViewport.width),
+    maxTop: Math.max(0, viewport.scrollHeight - visibleViewport.height),
+  };
+}
+
+export function getCenteredViewportScroll({
+  viewportWidth,
+  viewportHeight,
+  workspacePadding,
+  scaledWidth,
+  scaledHeight,
+}: CenteredViewportScrollInput): { left: number; top: number } | null {
+  if (
+    viewportWidth <= 0 ||
+    viewportHeight <= 0 ||
+    scaledWidth <= 0 ||
+    scaledHeight <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    left: Math.max(0, workspacePadding + scaledWidth / 2 - viewportWidth / 2),
+    top: Math.max(0, workspacePadding + scaledHeight / 2 - viewportHeight / 2),
+  };
+}
+
+interface StageVisibilityInput {
+  viewportWidth: number;
+  viewportHeight: number;
+  scrollLeft: number;
+  scrollTop: number;
+  workspacePadding: number;
+  scaledWidth: number;
+  scaledHeight: number;
+}
+
+export function getStageVisibilityRatio({
+  viewportWidth,
+  viewportHeight,
+  scrollLeft,
+  scrollTop,
+  workspacePadding,
+  scaledWidth,
+  scaledHeight,
+}: StageVisibilityInput): number {
+  if (
+    viewportWidth <= 0 ||
+    viewportHeight <= 0 ||
+    scaledWidth <= 0 ||
+    scaledHeight <= 0
+  ) {
+    return 0;
+  }
+
+  const stageLeft = workspacePadding;
+  const stageTop = workspacePadding;
+  const stageRight = stageLeft + scaledWidth;
+  const stageBottom = stageTop + scaledHeight;
+  const viewportRight = scrollLeft + viewportWidth;
+  const viewportBottom = scrollTop + viewportHeight;
+
+  const intersectionWidth = Math.max(
+    0,
+    Math.min(stageRight, viewportRight) - Math.max(stageLeft, scrollLeft)
+  );
+  const intersectionHeight = Math.max(
+    0,
+    Math.min(stageBottom, viewportBottom) - Math.max(stageTop, scrollTop)
+  );
+  const visibleArea = intersectionWidth * intersectionHeight;
+  const totalStageArea = scaledWidth * scaledHeight;
+
+  if (totalStageArea <= 0) {
+    return 0;
+  }
+
+  return visibleArea / totalStageArea;
+}
+
+function serializeRect(rect: DOMRect | null | undefined): ClipDebugRect | null {
+  if (!rect) {
+    return null;
+  }
+
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+    right: rect.right,
+    bottom: rect.bottom,
+  };
+}
+
+function getRectVisibilityRatio(
+  viewportRect: ClipDebugRect | null,
+  stageRect: ClipDebugRect | null
+): number {
+  if (!viewportRect || !stageRect || stageRect.width <= 0 || stageRect.height <= 0) {
+    return 0;
+  }
+
+  const intersectionWidth = Math.max(
+    0,
+    Math.min(viewportRect.right, stageRect.right) -
+      Math.max(viewportRect.left, stageRect.left)
+  );
+  const intersectionHeight = Math.max(
+    0,
+    Math.min(viewportRect.bottom, stageRect.bottom) -
+      Math.max(viewportRect.top, stageRect.top)
+  );
+  const visibleArea = intersectionWidth * intersectionHeight;
+  const totalArea = stageRect.width * stageRect.height;
+  if (totalArea <= 0) return 0;
+  return visibleArea / totalArea;
 }
 
 interface TimeWindow {
@@ -71,19 +328,14 @@ function readDimension(value: unknown, fallback: number): number {
 
 interface ClipStudioWorkspaceProps {
   renderPreviewRequest?: RenderPreviewRequest | null;
-  studioSource?: 'draft' | 'original';
-  saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
-  saveError?: string | null;
-  onDownloadMp4?: (() => void) | null;
-  exporting?: boolean;
-  previewOpen?: boolean;
-  onPreviewClose?: (() => void) | null;
+  layoutAuthority?: 'exact' | 'stale_exact' | 'unavailable';
+  layoutAuthorityReason?: string | null;
 }
 
 export default function ClipStudioWorkspace({
   renderPreviewRequest = null,
-  previewOpen = false,
-  onPreviewClose = null,
+  layoutAuthority = 'exact',
+  layoutAuthorityReason = null,
 }: ClipStudioWorkspaceProps) {
   const {
     template,
@@ -98,10 +350,21 @@ export default function ClipStudioWorkspace({
     setSourceVideoAspectRatio,
   } = useTemplateStore();
   const { canvas, zones } = template;
+  const viewportFrameRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const planeRef = useRef<HTMLDivElement>(null);
+  const stageShellRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const sourceVideoRef = useRef<HTMLVideoElement>(null);
   const previousScaleRef = useRef(1);
-  const shouldCenterViewportRef = useRef(true);
+  const needsInitialFitRef = useRef(true);
+  const hasCompletedInitialFitRef = useRef(false);
+  const userHasManuallyMovedViewportRef = useRef(false);
+  const recoveryFitUsedRef = useRef(false);
+  const lastFittedViewportSizeRef = useRef({ width: 0, height: 0 });
+  const programmaticScrollRef = useRef(false);
+  const programmaticScrollResetRef = useRef<number | null>(null);
+  const previousViewportScrollRef = useRef({ left: 0, top: 0 });
   const hasHydratedSourceRef = useRef(false);
   const previousSourceIdentityRef = useRef<string | null>(null);
   const panSessionRef = useRef<{
@@ -120,6 +383,14 @@ export default function ClipStudioWorkspace({
     viewportX: number;
     viewportY: number;
   } | null>(null);
+  const lastRequestedFitReasonRef = useRef<ViewportFitReason>('initial');
+  const lastFitWaitPhaseRef = useRef<ViewportFitWaitPhase>('idle');
+  const lastFitStableFrameCountRef = useRef(0);
+  const lastTargetScrollRef = useRef<{ left: number; top: number } | null>(null);
+  const lastAppliedScrollRef = useRef<WorkspaceDebugSnapshot['fit']['lastAppliedScroll']>(
+    null
+  );
+  const fitAttemptCounterRef = useRef(0);
 
   const [sourceDuration, setSourceDuration] = useState(0);
   const [sourceMediaTime, setSourceMediaTime] = useState(0);
@@ -134,6 +405,11 @@ export default function ClipStudioWorkspace({
   const [isPanning, setIsPanning] = useState(false);
   const [assetResolving, setAssetResolving] = useState<Record<string, boolean>>({});
   const [assetFailures, setAssetFailures] = useState<Record<string, boolean>>({});
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [viewportFitNonce, setViewportFitNonce] = useState(0);
+  const [debugOverlayNonce, setDebugOverlayNonce] = useState(0);
+  const debugEnabled = useClipDebugEnabled();
+  const exactLayoutUnavailable = layoutAuthority === 'unavailable';
 
   const sourceVideoUrl = useMemo(() => {
     const rawUrl =
@@ -233,6 +509,239 @@ export default function ClipStudioWorkspace({
 
   const sourceLayerObjectFit = sourceLayer?.media?.fit ?? 'cover';
 
+  const refreshDebugOverlay = useCallback(() => {
+    if (!debugEnabled) return;
+    setDebugOverlayNonce(value => value + 1);
+  }, [debugEnabled]);
+
+  const buildWorkspaceDebugSnapshot = useCallback((): WorkspaceDebugSnapshot => {
+    const frame = viewportFrameRef.current;
+    const viewport = viewportRef.current;
+    const plane = planeRef.current;
+    const stageShell = stageShellRef.current;
+    const stage = stageRef.current;
+    const sourceVideo = sourceVideoRef.current;
+    const visibleViewport = getVisibleViewportSize(frame, viewport);
+    const frameRect =
+      serializeRect(frame?.getBoundingClientRect()) ||
+      serializeRect(viewport?.getBoundingClientRect());
+    const viewportRect = viewport ? serializeRect(viewport.getBoundingClientRect()) : null;
+    const planeRect = plane ? serializeRect(plane.getBoundingClientRect()) : null;
+    const stageShellRect = stageShell
+      ? serializeRect(stageShell.getBoundingClientRect())
+      : null;
+    const stageRect = stage ? serializeRect(stage.getBoundingClientRect()) : null;
+    const scrollRange = viewport
+      ? getViewportScrollRange(viewport, visibleViewport)
+      : { maxLeft: 0, maxTop: 0 };
+
+    return {
+      templateId: template.id,
+      layoutAuthority,
+      layoutAuthorityReason,
+      canvas: {
+        width: canvas.width,
+        height: canvas.height,
+      },
+      zoneCount: zones.length,
+      interactionMode,
+      zoom,
+      scale,
+      fitScale,
+      sourceVideo: {
+        url: sourceVideoUrl,
+        loading: sourceVideoLoading,
+        buffering: sourceVideoBuffering,
+        error: videoError,
+        currentTime: sourceVideo?.currentTime ?? sourceMediaTime,
+        duration: sourceVideo?.duration ?? sourceDuration,
+        paused: sourceVideo ? sourceVideo.paused : null,
+        readyState: sourceVideo ? sourceVideo.readyState : null,
+      },
+      frame:
+        visibleViewport.width > 0 || visibleViewport.height > 0
+          ? {
+              clientWidth: visibleViewport.width,
+              clientHeight: visibleViewport.height,
+            }
+          : null,
+      viewport: viewport
+        ? {
+            clientWidth: viewport.clientWidth,
+            clientHeight: viewport.clientHeight,
+            scrollWidth: viewport.scrollWidth,
+            scrollHeight: viewport.scrollHeight,
+            scrollLeft: viewport.scrollLeft,
+            scrollTop: viewport.scrollTop,
+            maxLeft: scrollRange.maxLeft,
+            maxTop: scrollRange.maxTop,
+          }
+        : null,
+      viewportWidthMismatch: Boolean(
+        viewport &&
+          (Math.abs(viewport.clientWidth - visibleViewport.width) > 1 ||
+            Math.abs(viewport.clientHeight - visibleViewport.height) > 1)
+      ),
+      plane: {
+        width: planeWidth,
+        height: planeHeight,
+      },
+      stage: {
+        scaledWidth,
+        scaledHeight,
+        workspacePadding,
+        visibilityRatio:
+          getRectVisibilityRatio(frameRect, stageRect) ||
+          (viewport
+            ? getStageVisibilityRatio({
+                viewportWidth: visibleViewport.width,
+                viewportHeight: visibleViewport.height,
+                scrollLeft: viewport.scrollLeft,
+                scrollTop: viewport.scrollTop,
+                workspacePadding,
+                scaledWidth,
+                scaledHeight,
+              })
+            : 0),
+      },
+      geometry: {
+        frameRect,
+        viewportRect,
+        planeRect,
+        stageShellRect,
+        stageRect,
+      },
+      fit: {
+        pending: needsInitialFitRef.current,
+        completed: hasCompletedInitialFitRef.current,
+        userHasManuallyMovedViewport: userHasManuallyMovedViewportRef.current,
+        recoveryFitUsed: recoveryFitUsedRef.current,
+        lastRequestedReason: lastRequestedFitReasonRef.current,
+        lastWaitPhase: lastFitWaitPhaseRef.current,
+        lastStableFrameCount: lastFitStableFrameCountRef.current,
+        lastFittedViewportSize: lastFittedViewportSizeRef.current,
+        lastTargetScroll: lastTargetScrollRef.current,
+        lastAppliedScroll: lastAppliedScrollRef.current,
+      },
+      renderPreviewRequest,
+    };
+  }, [
+    canvas.height,
+    canvas.width,
+    fitScale,
+    interactionMode,
+    planeHeight,
+    planeWidth,
+    renderPreviewRequest,
+    scale,
+    scaledHeight,
+    scaledWidth,
+    sourceDuration,
+    sourceMediaTime,
+    sourceVideoBuffering,
+    sourceVideoLoading,
+    sourceVideoUrl,
+    template.id,
+    layoutAuthority,
+    layoutAuthorityReason,
+    videoError,
+    workspacePadding,
+    zoom,
+    zones.length,
+  ]);
+
+  const workspaceDebugSnapshot = useMemo(
+    () => buildWorkspaceDebugSnapshot(),
+    [buildWorkspaceDebugSnapshot, debugOverlayNonce]
+  );
+
+  const applyViewportScroll = useCallback((left: number, top: number, reason = 'unknown') => {
+    const frame = viewportFrameRef.current;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const { maxLeft, maxTop } = getViewportScrollRange(
+      viewport,
+      getVisibleViewportSize(frame, viewport)
+    );
+    const nextLeft = clamp(left, 0, maxLeft);
+    const nextTop = clamp(top, 0, maxTop);
+
+    programmaticScrollRef.current = true;
+    viewport.scrollLeft = nextLeft;
+    viewport.scrollTop = nextTop;
+    previousViewportScrollRef.current = { left: nextLeft, top: nextTop };
+    lastAppliedScrollRef.current = {
+      requestedLeft: left,
+      requestedTop: top,
+      appliedLeft: nextLeft,
+      appliedTop: nextTop,
+      maxLeft,
+      maxTop,
+      clamped: Math.abs(left - nextLeft) > 0.5 || Math.abs(top - nextTop) > 0.5,
+      reason,
+    };
+    clipDebugLog('workspace:scroll:apply', lastAppliedScrollRef.current);
+    refreshDebugOverlay();
+
+    if (programmaticScrollResetRef.current !== null) {
+      cancelAnimationFrame(programmaticScrollResetRef.current);
+    }
+
+    programmaticScrollResetRef.current = requestAnimationFrame(() => {
+      programmaticScrollRef.current = false;
+      programmaticScrollResetRef.current = null;
+      if (!viewportRef.current) return;
+      previousViewportScrollRef.current = {
+        left: viewportRef.current.scrollLeft,
+        top: viewportRef.current.scrollTop,
+      };
+      refreshDebugOverlay();
+    });
+  }, [refreshDebugOverlay]);
+
+  const requestViewportFit = useCallback(
+    ({
+      resetManualState = false,
+      allowRecovery = false,
+      reason = 'unknown',
+    }: {
+      resetManualState?: boolean;
+      allowRecovery?: boolean;
+      reason?: ViewportFitReason;
+    } = {}) => {
+      needsInitialFitRef.current = true;
+      hasCompletedInitialFitRef.current = false;
+      lastRequestedFitReasonRef.current = reason;
+      lastFitWaitPhaseRef.current = 'idle';
+      lastFitStableFrameCountRef.current = 0;
+      if (resetManualState) {
+        userHasManuallyMovedViewportRef.current = false;
+      }
+      if (allowRecovery) {
+        recoveryFitUsedRef.current = false;
+      }
+      const viewport = viewportRef.current;
+      clipDebugLog('workspace:fit:request', {
+        reason,
+        resetManualState,
+        allowRecovery,
+        viewport: viewport
+          ? {
+              clientWidth: viewport.clientWidth,
+              clientHeight: viewport.clientHeight,
+              scrollWidth: viewport.scrollWidth,
+              scrollHeight: viewport.scrollHeight,
+              scrollLeft: viewport.scrollLeft,
+              scrollTop: viewport.scrollTop,
+            }
+          : null,
+      });
+      refreshDebugOverlay();
+      setViewportFitNonce(value => value + 1);
+    },
+    [refreshDebugOverlay]
+  );
+
   const seekToTime = useCallback(
     (nextTime: number) => {
       const targetTime = clamp(nextTime, 0, sourceDuration || nextTime);
@@ -267,8 +776,18 @@ export default function ClipStudioWorkspace({
     setSourceVideoLoading(Boolean(sourceVideoUrl));
     setSourceVideoBuffering(false);
     setTimelineCollapsed(!sourceVideoUrl);
-    shouldCenterViewportRef.current = true;
-  }, [committedTrimWindow.start, sourceVideoUrl]);
+    clipDebugLog('workspace:source:hydrate', {
+      sourceVideoUrl,
+      sourceChanged,
+      committedTrimWindow,
+    });
+    refreshDebugOverlay();
+    requestViewportFit({
+      resetManualState: true,
+      allowRecovery: true,
+      reason: sourceChanged ? 'source_change' : 'initial',
+    });
+  }, [committedTrimWindow.start, requestViewportFit, sourceVideoUrl]);
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {
@@ -315,8 +834,12 @@ export default function ClipStudioWorkspace({
   }, [interactionMode]);
 
   useEffect(() => {
-    shouldCenterViewportRef.current = true;
-  }, [canvas.height, canvas.width]);
+    requestViewportFit({
+      resetManualState: true,
+      allowRecovery: true,
+      reason: 'canvas_change',
+    });
+  }, [canvas.height, canvas.width, requestViewportFit]);
 
   useEffect(() => {
     if (!activeManifest) return;
@@ -428,6 +951,7 @@ export default function ClipStudioWorkspace({
   }, [sourceVideoUrl]);
 
   useEffect(() => {
+    const frame = viewportFrameRef.current;
     const viewport = viewportRef.current;
     if (!viewport) {
       previousScaleRef.current = scale;
@@ -435,22 +959,7 @@ export default function ClipStudioWorkspace({
       return;
     }
 
-    const centerStage = () => {
-      viewport.scrollLeft = Math.max(
-        0,
-        workspacePadding + scaledWidth / 2 - viewport.clientWidth / 2
-      );
-      viewport.scrollTop = Math.max(
-        0,
-        workspacePadding + scaledHeight / 2 - viewport.clientHeight / 2
-      );
-    };
-
-    if (shouldCenterViewportRef.current) {
-      centerStage();
-      shouldCenterViewportRef.current = false;
-      previousScaleRef.current = scale;
-      zoomAnchorRef.current = null;
+    if (needsInitialFitRef.current) {
       return;
     }
 
@@ -461,36 +970,444 @@ export default function ClipStudioWorkspace({
     }
 
     const anchor = zoomAnchorRef.current;
+    const visibleViewport = getVisibleViewportSize(frame, viewport);
     if (anchor) {
-      viewport.scrollLeft = Math.max(
-        0,
-        workspacePadding + anchor.canvasX * scale - anchor.viewportX
-      );
-      viewport.scrollTop = Math.max(
-        0,
-        workspacePadding + anchor.canvasY * scale - anchor.viewportY
+      applyViewportScroll(
+        Math.max(0, workspacePadding + anchor.canvasX * scale - anchor.viewportX),
+        Math.max(0, workspacePadding + anchor.canvasY * scale - anchor.viewportY),
+        'zoom'
       );
     } else {
       const centerCanvasX =
-        (viewport.scrollLeft + viewport.clientWidth / 2 - workspacePadding) /
+        (viewport.scrollLeft + visibleViewport.width / 2 - workspacePadding) /
         Math.max(previousScale, 0.001);
       const centerCanvasY =
-        (viewport.scrollTop + viewport.clientHeight / 2 - workspacePadding) /
+        (viewport.scrollTop + visibleViewport.height / 2 - workspacePadding) /
         Math.max(previousScale, 0.001);
 
-      viewport.scrollLeft = Math.max(
-        0,
-        workspacePadding + centerCanvasX * scale - viewport.clientWidth / 2
-      );
-      viewport.scrollTop = Math.max(
-        0,
-        workspacePadding + centerCanvasY * scale - viewport.clientHeight / 2
+      applyViewportScroll(
+        Math.max(0, workspacePadding + centerCanvasX * scale - visibleViewport.width / 2),
+        Math.max(0, workspacePadding + centerCanvasY * scale - visibleViewport.height / 2),
+        'zoom'
       );
     }
 
     previousScaleRef.current = scale;
     zoomAnchorRef.current = null;
-  }, [scale, scaledHeight, scaledWidth, workspacePadding]);
+  }, [applyViewportScroll, scale, workspacePadding]);
+
+  useEffect(() => {
+    const frame = viewportFrameRef.current;
+    const viewport = viewportRef.current;
+    if (!viewport || !frame || !needsInitialFitRef.current) {
+      return;
+    }
+
+    let frameId = 0;
+    let cancelled = false;
+    let lastMeasuredWidth = -1;
+    let lastMeasuredHeight = -1;
+    let lastMeasuredScrollWidth = -1;
+    let lastMeasuredScrollHeight = -1;
+    let stableFrameCount = 0;
+    let lastWaitLogSignature = '';
+    const attempt = fitAttemptCounterRef.current + 1;
+    fitAttemptCounterRef.current = attempt;
+    const fitReason = lastRequestedFitReasonRef.current;
+    const emitFitWait = (phase: ViewportFitWaitPhase, payload: Record<string, unknown>) => {
+      lastFitWaitPhaseRef.current = phase;
+      lastFitStableFrameCountRef.current = stableFrameCount;
+      const eventPayload = {
+        attempt,
+        reason: fitReason,
+        phase,
+        ...payload,
+      };
+      const signature = JSON.stringify(eventPayload);
+      if (lastWaitLogSignature !== signature) {
+        lastWaitLogSignature = signature;
+        clipDebugLog('workspace:fit:wait', eventPayload);
+        refreshDebugOverlay();
+        return;
+      }
+      if (debugEnabled) {
+        refreshDebugOverlay();
+      }
+    };
+
+    const emitFitApply = (payload: Record<string, unknown>) => {
+      lastWaitLogSignature = '';
+      clipDebugLog('workspace:fit:apply', {
+        attempt,
+        reason: fitReason,
+        ...payload,
+      });
+    };
+
+    clipDebugLog('workspace:fit:start', {
+      attempt,
+      reason: fitReason,
+      viewportSize,
+      plane: { width: planeWidth, height: planeHeight },
+      stage: { width: scaledWidth, height: scaledHeight },
+    });
+    refreshDebugOverlay();
+
+    const fitWhenStable = () => {
+      if (cancelled) return;
+
+      const visibleViewport = getVisibleViewportSize(frame, viewport);
+      const currentWidth = visibleViewport.width;
+      const currentHeight = visibleViewport.height;
+      const currentScrollWidth = viewport.scrollWidth;
+      const currentScrollHeight = viewport.scrollHeight;
+      const scrollRange = getViewportScrollRange(viewport, visibleViewport);
+      const targetScroll = getCenteredViewportScroll({
+        viewportWidth: currentWidth,
+        viewportHeight: currentHeight,
+        workspacePadding,
+        scaledWidth,
+        scaledHeight,
+      });
+
+      if (currentWidth <= 0 || currentHeight <= 0 || scaledWidth <= 0 || scaledHeight <= 0) {
+        emitFitWait('viewport_not_ready', {
+          stableFrameCount,
+          viewport: {
+            width: currentWidth,
+            height: currentHeight,
+          },
+          stage: {
+            width: scaledWidth,
+            height: scaledHeight,
+          },
+        });
+        frameId = requestAnimationFrame(fitWhenStable);
+        return;
+      }
+
+      if (!targetScroll) {
+        emitFitWait('target_unavailable', {
+          stableFrameCount,
+          viewport: {
+            width: currentWidth,
+            height: currentHeight,
+          },
+          target: null,
+        });
+        frameId = requestAnimationFrame(fitWhenStable);
+        return;
+      }
+
+      const horizontalReady = targetScroll.left <= 0.5 || scrollRange.maxLeft > 0.5;
+      const verticalReady = targetScroll.top <= 0.5 || scrollRange.maxTop > 0.5;
+      if (!horizontalReady || !verticalReady) {
+        stableFrameCount = 0;
+        emitFitWait('scroll_range_not_ready', {
+          stableFrameCount,
+          viewport: {
+            width: currentWidth,
+            height: currentHeight,
+          },
+          scroll: {
+            width: currentScrollWidth,
+            height: currentScrollHeight,
+            range: scrollRange,
+          },
+          target: targetScroll,
+          readiness: {
+            horizontalReady,
+            verticalReady,
+          },
+        });
+        frameId = requestAnimationFrame(fitWhenStable);
+        return;
+      }
+
+      if (
+        currentWidth === lastMeasuredWidth &&
+        currentHeight === lastMeasuredHeight &&
+        currentScrollWidth === lastMeasuredScrollWidth &&
+        currentScrollHeight === lastMeasuredScrollHeight
+      ) {
+        stableFrameCount += 1;
+      } else {
+        lastMeasuredWidth = currentWidth;
+        lastMeasuredHeight = currentHeight;
+        lastMeasuredScrollWidth = currentScrollWidth;
+        lastMeasuredScrollHeight = currentScrollHeight;
+        stableFrameCount = 1;
+      }
+
+      if (stableFrameCount < VIEWPORT_STABLE_FRAME_COUNT) {
+        emitFitWait('stabilizing', {
+          stableFrameCount,
+          viewport: {
+            width: currentWidth,
+            height: currentHeight,
+          },
+          scroll: {
+            width: currentScrollWidth,
+            height: currentScrollHeight,
+            range: scrollRange,
+          },
+        });
+        frameId = requestAnimationFrame(fitWhenStable);
+        return;
+      }
+
+      lastFitWaitPhaseRef.current = 'applied';
+      lastFitStableFrameCountRef.current = stableFrameCount;
+      lastTargetScrollRef.current = targetScroll;
+      applyViewportScroll(targetScroll.left, targetScroll.top, fitReason);
+      needsInitialFitRef.current = false;
+      hasCompletedInitialFitRef.current = true;
+      lastFittedViewportSizeRef.current = {
+        width: currentWidth,
+        height: currentHeight,
+      };
+      previousScaleRef.current = scale;
+      zoomAnchorRef.current = null;
+      const geometry = buildWorkspaceDebugSnapshot();
+      emitFitApply({
+        stableFrameCount,
+        targetScroll,
+        appliedScroll: lastAppliedScrollRef.current,
+        viewport: geometry.viewport,
+        plane: geometry.plane,
+        stage: geometry.stage,
+        geometry: geometry.geometry,
+      });
+      refreshDebugOverlay();
+    };
+
+    frameId = requestAnimationFrame(fitWhenStable);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [
+    applyViewportScroll,
+    scale,
+    scaledHeight,
+    scaledWidth,
+    viewportFitNonce,
+    viewportSize.height,
+    viewportSize.width,
+    workspacePadding,
+    debugEnabled,
+  ]);
+
+  useEffect(() => {
+    const frame = viewportFrameRef.current;
+    const viewport = viewportRef.current;
+    if (!viewport || !frame || typeof ResizeObserver === 'undefined') return;
+
+    const syncViewportSize = () => {
+      const visibleViewport = getVisibleViewportSize(frame, viewport);
+      const scrollRange = getViewportScrollRange(viewport, visibleViewport);
+      setViewportSize({
+        width: visibleViewport.width,
+        height: visibleViewport.height,
+      });
+      clipDebugLog('workspace:viewport:resize', {
+        frame: {
+          clientWidth: visibleViewport.width,
+          clientHeight: visibleViewport.height,
+        },
+        viewport: {
+          clientWidth: viewport.clientWidth,
+          clientHeight: viewport.clientHeight,
+          scrollWidth: viewport.scrollWidth,
+          scrollHeight: viewport.scrollHeight,
+          scrollLeft: viewport.scrollLeft,
+          scrollTop: viewport.scrollTop,
+        },
+        scrollRange,
+        viewportWidthMismatch:
+          Math.abs(viewport.clientWidth - visibleViewport.width) > 1 ||
+          Math.abs(viewport.clientHeight - visibleViewport.height) > 1,
+      });
+      refreshDebugOverlay();
+    };
+
+    syncViewportSize();
+    const observer = new ResizeObserver(() => {
+      syncViewportSize();
+    });
+    observer.observe(frame);
+    observer.observe(viewport);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+
+    previousViewportScrollRef.current = {
+      left: viewport.scrollLeft,
+      top: viewport.scrollTop,
+    };
+
+    const handleScroll = () => {
+      const nextLeft = viewport.scrollLeft;
+      const nextTop = viewport.scrollTop;
+      const previousScroll = previousViewportScrollRef.current;
+      previousViewportScrollRef.current = { left: nextLeft, top: nextTop };
+
+      if (programmaticScrollRef.current) {
+        clipDebugLog('workspace:viewport:scroll', {
+          scrollLeft: nextLeft,
+          scrollTop: nextTop,
+          programmatic: true,
+          userHasManuallyMovedViewport: userHasManuallyMovedViewportRef.current,
+        });
+        refreshDebugOverlay();
+        return;
+      }
+
+      const moved =
+        Math.abs(nextLeft - previousScroll.left) > 1 ||
+        Math.abs(nextTop - previousScroll.top) > 1;
+      if (!moved || !hasCompletedInitialFitRef.current) {
+        clipDebugLog('workspace:viewport:scroll', {
+          scrollLeft: nextLeft,
+          scrollTop: nextTop,
+          programmatic: false,
+          moved,
+          fitCompleted: hasCompletedInitialFitRef.current,
+          userHasManuallyMovedViewport: userHasManuallyMovedViewportRef.current,
+        });
+        refreshDebugOverlay();
+        return;
+      }
+
+      userHasManuallyMovedViewportRef.current = true;
+      clipDebugLog('workspace:viewport:scroll', {
+        scrollLeft: nextLeft,
+        scrollTop: nextTop,
+        programmatic: false,
+        moved: true,
+        fitCompleted: true,
+        userHasManuallyMovedViewport: true,
+      });
+      refreshDebugOverlay();
+    };
+
+    viewport.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      viewport.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      viewportSize.width <= 0 ||
+      viewportSize.height <= 0 ||
+      !hasCompletedInitialFitRef.current ||
+      userHasManuallyMovedViewportRef.current
+    ) {
+      return;
+    }
+
+    const lastFittedSize = lastFittedViewportSizeRef.current;
+    if (
+      lastFittedSize.width === viewportSize.width &&
+      lastFittedSize.height === viewportSize.height
+    ) {
+      return;
+    }
+
+    clipDebugLog('workspace:fit:resize-trigger', {
+      previousViewportSize: lastFittedSize,
+      nextViewportSize: viewportSize,
+    });
+    requestViewportFit({ reason: 'resize' });
+  }, [requestViewportFit, viewportSize.height, viewportSize.width]);
+
+  useEffect(() => {
+    const frame = viewportFrameRef.current;
+    const viewport = viewportRef.current;
+    if (
+      !viewport ||
+      !frame ||
+      needsInitialFitRef.current ||
+      !hasCompletedInitialFitRef.current ||
+      userHasManuallyMovedViewportRef.current ||
+      recoveryFitUsedRef.current
+    ) {
+      return;
+    }
+
+    const visibleViewport = getVisibleViewportSize(frame, viewport);
+    const visibleRatio = getStageVisibilityRatio({
+      viewportWidth: visibleViewport.width,
+      viewportHeight: visibleViewport.height,
+      scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop,
+      workspacePadding,
+      scaledWidth,
+      scaledHeight,
+    });
+
+    clipDebugLog('workspace:fit:recovery-check', {
+      visibleRatio,
+      threshold: STAGE_RECOVERY_VISIBILITY_THRESHOLD,
+      userHasManuallyMovedViewport: userHasManuallyMovedViewportRef.current,
+      recoveryFitUsed: recoveryFitUsedRef.current,
+    });
+    refreshDebugOverlay();
+
+    if (visibleRatio >= STAGE_RECOVERY_VISIBILITY_THRESHOLD) {
+      return;
+    }
+
+    recoveryFitUsedRef.current = true;
+    requestViewportFit({ reason: 'recovery' });
+  }, [
+    requestViewportFit,
+    scale,
+    scaledHeight,
+    scaledWidth,
+    viewportFitNonce,
+    viewportSize.height,
+    viewportSize.width,
+    workspacePadding,
+  ]);
+
+  useEffect(() => {
+    clipDebugLog('workspace:mount', {
+      templateId: template.id,
+      canvas,
+      renderPreviewRequest,
+    });
+    refreshDebugOverlay();
+
+    return () => {
+      clipDebugLog('workspace:unmount', {
+        templateId: template.id,
+      });
+    };
+  }, [canvas, refreshDebugOverlay, renderPreviewRequest, template.id]);
+
+  useEffect(() => {
+    return registerClipDebugSnapshotProvider('workspace', () =>
+      buildWorkspaceDebugSnapshot()
+    );
+  }, [buildWorkspaceDebugSnapshot]);
+
+  useEffect(() => {
+    return () => {
+      if (programmaticScrollResetRef.current !== null) {
+        cancelAnimationFrame(programmaticScrollResetRef.current);
+      }
+    };
+  }, []);
 
   const handleLoadedMetadata = () => {
     const element = sourceVideoRef.current;
@@ -503,6 +1420,13 @@ export default function ClipStudioWorkspace({
     }
 
     setSourceDuration(nextDuration);
+    clipDebugLog('workspace:source:loaded-metadata', {
+      duration: nextDuration,
+      videoWidth: element?.videoWidth ?? null,
+      videoHeight: element?.videoHeight ?? null,
+      sourceVideoUrl,
+    });
+    refreshDebugOverlay();
     if (
       !(typeof activeManifest?.render_payload?.time_window?.end === 'number') ||
       activeManifest.render_payload.time_window.end <= committedTrimWindow.start
@@ -611,6 +1535,7 @@ export default function ClipStudioWorkspace({
   };
 
   useEffect(() => {
+    const frame = viewportFrameRef.current;
     const viewport = viewportRef.current;
     if (!viewport) return undefined;
 
@@ -619,7 +1544,7 @@ export default function ClipStudioWorkspace({
 
       event.preventDefault();
 
-      const rect = viewport.getBoundingClientRect();
+      const rect = (frame ?? viewport).getBoundingClientRect();
       const viewportX = event.clientX - rect.left;
       const viewportY = event.clientY - rect.top;
       zoomAnchorRef.current = {
@@ -634,6 +1559,7 @@ export default function ClipStudioWorkspace({
       const direction = event.deltaY < 0 ? 1 : -1;
       const nextZoom = clamp(Number((zoom + direction * 0.1).toFixed(2)), 0.25, 3);
       if (nextZoom === zoom) return;
+      userHasManuallyMovedViewportRef.current = true;
       setZoom(nextZoom);
     };
 
@@ -732,6 +1658,12 @@ export default function ClipStudioWorkspace({
       session.moved = true;
       suppressViewportClickRef.current = true;
       setIsPanning(true);
+      userHasManuallyMovedViewportRef.current = true;
+      clipDebugLog('workspace:pan:latched', {
+        mode: session.mode,
+        pointerId: session.pointerId,
+      });
+      refreshDebugOverlay();
     }
 
     event.preventDefault();
@@ -752,37 +1684,46 @@ export default function ClipStudioWorkspace({
   };
 
   const handleResetViewport = () => {
-    shouldCenterViewportRef.current = true;
     setZoom(1);
+    requestViewportFit({
+      resetManualState: true,
+      allowRecovery: true,
+      reason: 'manual_fit',
+    });
 
     if (zoom === 1 && viewportRef.current) {
-      const viewport = viewportRef.current;
-      viewport.scrollLeft = Math.max(
-        0,
-        workspacePadding + scaledWidth / 2 - viewport.clientWidth / 2
+      const visibleViewport = getVisibleViewportSize(
+        viewportFrameRef.current,
+        viewportRef.current
       );
-      viewport.scrollTop = Math.max(
-        0,
-        workspacePadding + scaledHeight / 2 - viewport.clientHeight / 2
-      );
-      shouldCenterViewportRef.current = false;
+      const targetScroll = getCenteredViewportScroll({
+        viewportWidth: visibleViewport.width,
+        viewportHeight: visibleViewport.height,
+        workspacePadding,
+        scaledWidth,
+        scaledHeight,
+      });
+      if (targetScroll) {
+        lastTargetScrollRef.current = targetScroll;
+        applyViewportScroll(targetScroll.left, targetScroll.top, 'manual_fit');
+        needsInitialFitRef.current = false;
+        hasCompletedInitialFitRef.current = true;
+        lastFittedViewportSizeRef.current = {
+          width: visibleViewport.width,
+          height: visibleViewport.height,
+        };
+        refreshDebugOverlay();
+      }
     }
   };
 
   return (
     <div className="clip-studio-workspace">
-      {previewOpen && (
-        <div className="clip-studio-workspace__preview-sheet">
-          <div className="clip-studio-workspace__preview-sheet-header">
-            <span>Preview</span>
-            <button type="button" onClick={() => onPreviewClose?.()}>
-              <ChevronUp size={14} />
-            </button>
-          </div>
-          <RenderPreview renderRequest={renderPreviewRequest} />
-        </div>
-      )}
-
+      <div
+        ref={viewportFrameRef}
+        data-testid="clip-studio-viewport-frame"
+        className="clip-studio-workspace__viewport-frame"
+      >
       <div
         ref={viewportRef}
         data-testid="clip-studio-viewport"
@@ -807,10 +1748,12 @@ export default function ClipStudioWorkspace({
         onClick={handleViewportClick}
       >
         <div
+          ref={planeRef}
           className="clip-studio-workspace__plane"
           style={{ width: planeWidth, height: planeHeight }}
         >
           <div
+            ref={stageShellRef}
             className="clip-studio-workspace__stage-shell"
             style={{ left: workspacePadding, top: workspacePadding }}
           >
@@ -831,11 +1774,27 @@ export default function ClipStudioWorkspace({
                   {isPlaying ? <Pause size={14} /> : <Play size={14} />}
                 </button>
                 <div className="clip-studio-workspace__zoom">
-                  <button type="button" onClick={() => setZoom(zoom - 0.1)}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextZoom = clamp(Number((zoom - 0.1).toFixed(2)), 0.25, 3);
+                      if (nextZoom === zoom) return;
+                      userHasManuallyMovedViewportRef.current = true;
+                      setZoom(nextZoom);
+                    }}
+                  >
                     -
                   </button>
                   <span>{Math.round(zoom * 100)}%</span>
-                  <button type="button" onClick={() => setZoom(zoom + 0.1)}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextZoom = clamp(Number((zoom + 0.1).toFixed(2)), 0.25, 3);
+                      if (nextZoom === zoom) return;
+                      userHasManuallyMovedViewportRef.current = true;
+                      setZoom(nextZoom);
+                    }}
+                  >
                     +
                   </button>
                   <button type="button" onClick={handleResetViewport}>
@@ -858,6 +1817,7 @@ export default function ClipStudioWorkspace({
             </div>
 
             <div
+              ref={stageRef}
               className="clip-studio-workspace__stage"
               style={{ width: scaledWidth, height: scaledHeight }}
             >
@@ -878,25 +1838,67 @@ export default function ClipStudioWorkspace({
                     objectPosition: sourceLayerObjectPosition,
                   }}
                   onLoadedMetadata={handleLoadedMetadata}
-                  onLoadedData={() => setSourceVideoLoading(false)}
+                  onLoadedData={() => {
+                    setSourceVideoLoading(false);
+                    clipDebugLog('workspace:source:loaded-data', {
+                      sourceVideoUrl,
+                    });
+                    refreshDebugOverlay();
+                  }}
                   onTimeUpdate={handleTimeUpdate}
                   onPlay={() => {
                     setIsPlaying(true);
                     setSourceVideoBuffering(false);
+                    clipDebugLog('workspace:source:play', {
+                      currentTime: sourceVideoRef.current?.currentTime ?? null,
+                    });
+                    refreshDebugOverlay();
                   }}
-                  onPause={() => setIsPlaying(false)}
-                  onEnded={() => setIsPlaying(false)}
+                  onPause={() => {
+                    setIsPlaying(false);
+                    clipDebugLog('workspace:source:pause', {
+                      currentTime: sourceVideoRef.current?.currentTime ?? null,
+                    });
+                    refreshDebugOverlay();
+                  }}
+                  onEnded={() => {
+                    setIsPlaying(false);
+                    clipDebugLog('workspace:source:ended', {
+                      currentTime: sourceVideoRef.current?.currentTime ?? null,
+                    });
+                    refreshDebugOverlay();
+                  }}
                   onCanPlay={() => {
                     setSourceVideoLoading(false);
                     setSourceVideoBuffering(false);
+                    clipDebugLog('workspace:source:can-play', {
+                      readyState: sourceVideoRef.current?.readyState ?? null,
+                    });
+                    refreshDebugOverlay();
                   }}
-                  onWaiting={() => setSourceVideoBuffering(true)}
-                  onPlaying={() => setSourceVideoBuffering(false)}
+                  onWaiting={() => {
+                    setSourceVideoBuffering(true);
+                    clipDebugLog('workspace:source:waiting', {
+                      currentTime: sourceVideoRef.current?.currentTime ?? null,
+                    });
+                    refreshDebugOverlay();
+                  }}
+                  onPlaying={() => {
+                    setSourceVideoBuffering(false);
+                    clipDebugLog('workspace:source:playing', {
+                      currentTime: sourceVideoRef.current?.currentTime ?? null,
+                    });
+                    refreshDebugOverlay();
+                  }}
                   onError={() => {
                     setIsPlaying(false);
                     setSourceVideoLoading(false);
                     setSourceVideoBuffering(false);
                     setVideoError(`Could not load ${sourceVideoUrl}`);
+                    clipDebugLog('workspace:source:error', {
+                      sourceVideoUrl,
+                    });
+                    refreshDebugOverlay();
                   }}
                 />
               )}
@@ -939,6 +1941,24 @@ export default function ClipStudioWorkspace({
                 </div>
               )}
 
+              {exactLayoutUnavailable && (
+                <div
+                  className="clip-studio-workspace__authority-overlay"
+                  data-testid="clip-studio-layout-unavailable"
+                >
+                  <strong>
+                    {layoutAuthorityReason?.includes('Preparing exact layout') ||
+                    layoutAuthorityReason?.includes('Saving exact layout')
+                      ? 'Preparing exact layout'
+                      : 'Exact layout unavailable'}
+                  </strong>
+                  <span>
+                    {layoutAuthorityReason ||
+                      'Studio is waiting for resolver-generated geometry before this canvas can be treated as exact.'}
+                  </span>
+                </div>
+              )}
+
               {sourceVideoUrl &&
                 !videoError &&
                 stageLayers.map(({ zone, time, resolvedZone }) => {
@@ -960,6 +1980,60 @@ export default function ClipStudioWorkspace({
           </div>
         </div>
       </div>
+      </div>
+
+      {debugEnabled && (
+        <div className="clip-studio-workspace__debug-overlay" data-testid="clip-studio-debug-overlay">
+          <strong>Clip Debug</strong>
+          <span>
+            fit: {workspaceDebugSnapshot.fit.lastRequestedReason} /{' '}
+            {workspaceDebugSnapshot.fit.lastWaitPhase}
+          </span>
+          <span>layout: {workspaceDebugSnapshot.layoutAuthority}</span>
+          <span>
+            frame:{' '}
+            {workspaceDebugSnapshot.frame
+              ? `${workspaceDebugSnapshot.frame.clientWidth}×${workspaceDebugSnapshot.frame.clientHeight}`
+              : 'n/a'}
+          </span>
+          <span>
+            viewport:{' '}
+            {workspaceDebugSnapshot.viewport
+              ? `${workspaceDebugSnapshot.viewport.clientWidth}×${workspaceDebugSnapshot.viewport.clientHeight}`
+              : 'n/a'}
+          </span>
+          {workspaceDebugSnapshot.viewportWidthMismatch && (
+            <span>mismatch: true</span>
+          )}
+          <span>
+            scroll:{' '}
+            {workspaceDebugSnapshot.viewport
+              ? `${Math.round(workspaceDebugSnapshot.viewport.scrollLeft)},${Math.round(workspaceDebugSnapshot.viewport.scrollTop)} / ${Math.round(workspaceDebugSnapshot.viewport.maxLeft)},${Math.round(workspaceDebugSnapshot.viewport.maxTop)}`
+              : 'n/a'}
+          </span>
+          <span>
+            stage:{' '}
+            {workspaceDebugSnapshot.geometry.stageRect
+              ? `${Math.round(workspaceDebugSnapshot.geometry.stageRect.left)},${Math.round(workspaceDebugSnapshot.geometry.stageRect.top)}`
+              : 'n/a'}
+          </span>
+          <span>
+            visible: {(workspaceDebugSnapshot.stage.visibilityRatio * 100).toFixed(1)}%
+          </span>
+          <span>
+            source:{' '}
+            {workspaceDebugSnapshot.sourceVideo.url
+              ? workspaceDebugSnapshot.sourceVideo.error
+                ? `error: ${workspaceDebugSnapshot.sourceVideo.error}`
+                : workspaceDebugSnapshot.sourceVideo.loading
+                  ? 'loading'
+                  : workspaceDebugSnapshot.sourceVideo.buffering
+                    ? 'buffering'
+                    : 'ready'
+              : 'missing'}
+          </span>
+        </div>
+      )}
 
       <ClipStudioTimeline
         sourceDuration={sourceDuration}

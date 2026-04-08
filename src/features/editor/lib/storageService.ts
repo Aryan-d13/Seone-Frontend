@@ -1,13 +1,13 @@
 /**
- * Azure Blob Storage upload for template assets.
+ * Template asset upload — proxied through the backend API.
  *
- * Uploads logo images to Azure Blob Storage (seone-data container).
- * Path convention matches the worker's firestore_resolver.py:
- *   templates/{template_doc_id}/assets/logo.png
- *
- * The render worker's firestore_resolver.py downloads via:
- *   BlobServiceClient → container_client.get_blob_client(blob_path).download_blob()
+ * Uploads logo images via POST /admin/templates/{doc_id}/assets/{asset_key}.
+ * The backend handles Azure auth (connection string), Pillow resize, and SAS signing.
+ * No client-side SAS token or NEXT_PUBLIC_AZURE_SAS_URL needed.
  */
+
+import { authFetch } from '@/services/auth';
+import { endpoints } from '@/lib/config';
 
 export interface UploadResult {
   /** Azure Blob path (relative to container root). */
@@ -18,9 +18,6 @@ export interface UploadResult {
   downloadUrl: string;
 }
 
-export const AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE =
-  'Logo upload is not configured in this environment.';
-
 export type AzureTemplateAssetType = 'image' | 'font';
 
 interface UploadAssetOptions {
@@ -28,43 +25,12 @@ interface UploadAssetOptions {
   assetKey?: string;
 }
 
+/**
+ * Upload is always available — proxied through the backend.
+ * Kept for API compat with callers that still check before uploading.
+ */
 export function isAzureAssetUploadConfigured(): boolean {
-  const sasUrl = process.env.NEXT_PUBLIC_AZURE_SAS_URL;
-  return typeof sasUrl === 'string' && sasUrl.trim().length > 0;
-}
-
-function sanitizeSegment(value: string, fallback: string): string {
-  const cleaned = value
-    .trim()
-    .replace(/[^a-zA-Z0-9._-]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return cleaned || fallback;
-}
-
-function inferFontContentType(fileName: string): string {
-  const normalized = fileName.toLowerCase();
-  if (normalized.endsWith('.otf')) return 'font/otf';
-  return 'font/ttf';
-}
-
-function buildTemplateBlobPath(
-  templateDocId: string,
-  filename: string,
-  options: UploadAssetOptions
-): string {
-  const assetType = options.assetType || 'image';
-  const safeDocId = sanitizeSegment(templateDocId, 'template');
-
-  if (assetType === 'font') {
-    const safeFileName = sanitizeSegment(filename, 'custom-font.ttf');
-    return `templates/${safeDocId}/fonts/${safeFileName}`;
-  }
-
-  const safeAssetKey = sanitizeSegment(
-    options.assetKey || filename.replace(/\.[^.]+$/, ''),
-    'asset'
-  );
-  return `templates/${safeDocId}/assets/${safeAssetKey}.png`;
+  return true;
 }
 
 /**
@@ -104,11 +70,40 @@ export function resizeImage(file: File | Blob, targetWidth = 200): Promise<Blob>
 }
 
 /**
- * Upload an asset file to Azure Blob Storage via SAS URL.
- * Resizes logos to 200px width before upload.
+ * Validate that an image is square (1:1 aspect ratio).
+ * Tolerates up to 5% deviation.
+ */
+function validateSquareImage(file: File | Blob): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const ratio = img.width / img.height;
+      if (ratio < 0.95 || ratio > 1.05) {
+        reject(
+          new Error(
+            `Logo must be square (1:1). Uploaded image is ${img.width}×${img.height}px. Please crop or resize to a square before uploading.`
+          )
+        );
+        return;
+      }
+      resolve();
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read image dimensions.'));
+    };
+    img.src = url;
+  });
+}
+
+/**
+ * Upload an asset file via the backend proxy.
+ * The backend handles Azure storage, resize, and signed URL generation.
  *
  * @param templateDocId - Firestore document ID, e.g. "chaturnath_v1"
- * @param _filename - Original filename (unused, we standardize to logo.png)
+ * @param filename - Original filename
  * @param file - The File or Blob to upload
  */
 export async function uploadAssetToAzure(
@@ -118,23 +113,23 @@ export async function uploadAssetToAzure(
   options: UploadAssetOptions = {}
 ): Promise<UploadResult> {
   const assetType = options.assetType || 'image';
-  const payload = assetType === 'image' ? await resizeImage(file, 200) : file;
-  const contentType =
-    assetType === 'image' ? 'image/png' : inferFontContentType(filename);
-  const blobPath = buildTemplateBlobPath(templateDocId, filename, options);
+  const assetKey = options.assetKey || filename.replace(/\.[^.]+$/, '') || 'logo_mark';
 
-  const sasUrl = process.env.NEXT_PUBLIC_AZURE_SAS_URL;
-  if (!isAzureAssetUploadConfigured() || !sasUrl) {
-    throw new Error(AZURE_UPLOAD_NOT_CONFIGURED_MESSAGE);
+  // Enforce 1:1 aspect ratio for image uploads (logos)
+  if (assetType === 'image') {
+    await validateSquareImage(file);
   }
 
-  const [baseUrl, sasToken] = sasUrl.split('?');
-  const uploadUrl = `${baseUrl}/${blobPath}?${sasToken}`;
+  // Resize images client-side for a faster upload (backend also resizes as fallback)
+  const payload = assetType === 'image' ? await resizeImage(file, 200) : file;
+  const contentType =
+    assetType === 'image' ? 'image/png' : file.type || 'application/octet-stream';
 
-  const response = await fetch(uploadUrl, {
-    method: 'PUT',
+  const endpoint = endpoints.pages.adminTemplateAsset(templateDocId, assetKey);
+
+  const response = await authFetch(endpoint, {
+    method: 'POST',
     headers: {
-      'x-ms-blob-type': 'BlockBlob',
       'Content-Type': contentType,
     },
     body: payload,
@@ -142,14 +137,14 @@ export async function uploadAssetToAzure(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Azure upload failed (${response.status}): ${errorText}`);
+    throw new Error(`Upload failed (${response.status}): ${errorText}`);
   }
 
-  const downloadUrl = `${baseUrl}/${blobPath}`;
+  const data = await response.json();
 
   return {
-    azureBlobPath: blobPath,
-    sourceUri: `azure://seone-data/${blobPath}`,
-    downloadUrl,
+    azureBlobPath: data.blob_path,
+    sourceUri: data.source_uri,
+    downloadUrl: data.download_url,
   };
 }
