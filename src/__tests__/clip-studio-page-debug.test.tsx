@@ -180,8 +180,12 @@ describe('ClipStudioPage diagnostics', () => {
       snapshot?: Record<string, any>;
     };
 
-    expect(exported?.buffer?.some(entry => entry.event === 'manifest:fetch:start')).toBe(true);
-    expect(exported?.buffer?.some(entry => entry.event === 'manifest:fetch:success')).toBe(true);
+    expect(exported?.buffer?.some(entry => entry.event === 'manifest:fetch:start')).toBe(
+      true
+    );
+    expect(
+      exported?.buffer?.some(entry => entry.event === 'manifest:fetch:success')
+    ).toBe(true);
     expect(exported?.buffer?.some(entry => entry.event === 'page:state')).toBe(true);
     expect(exported?.snapshot?.page).toMatchObject({
       jobId: 'job-123',
@@ -190,7 +194,9 @@ describe('ClipStudioPage diagnostics', () => {
       studioSource: 'draft',
       layoutRebuiltOnLoad: true,
     });
-    expect(['exact', 'stale_exact', 'unavailable']).toContain(exported?.snapshot?.page?.layoutAuthority);
+    expect(['exact', 'stale_exact', 'unavailable']).toContain(
+      exported?.snapshot?.page?.layoutAuthority
+    );
 
     await waitFor(() => {
       expect(authFetchMock).toHaveBeenCalled();
@@ -229,7 +235,8 @@ describe('ClipStudioPage diagnostics', () => {
         source: 'draft',
         layout_rebuilt: true,
         font_normalized: true,
-        font_normalization_message: 'Adjusted font to NotoSans for English compatibility.',
+        font_normalization_message:
+          'Adjusted font to NotoSans for English compatibility.',
       }),
     });
 

@@ -64,7 +64,9 @@ function getProviders(target: Window): Record<string, ClipDebugSnapshotProvider>
 
 function readQueryFlag(target: Window): boolean {
   try {
-    return new URLSearchParams(target.location.search).get(CLIP_DEBUG_QUERY_PARAM) === '1';
+    return (
+      new URLSearchParams(target.location.search).get(CLIP_DEBUG_QUERY_PARAM) === '1'
+    );
   } catch {
     return false;
   }
@@ -80,7 +82,11 @@ function readStorageFlag(target: Window): boolean {
 
 export function isClipDebugEnabled(target: Window | null = getWindow()): boolean {
   if (!target) return false;
-  return target.__SEONE_CLIP_DEBUG__ === true || readQueryFlag(target) || readStorageFlag(target);
+  return (
+    target.__SEONE_CLIP_DEBUG__ === true ||
+    readQueryFlag(target) ||
+    readStorageFlag(target)
+  );
 }
 
 function buildSnapshot(target: Window): Record<string, unknown> {
@@ -128,7 +134,10 @@ function installGlobals(target: Window): void {
   };
 }
 
-export function clipDebugLog(event: string, payload: unknown = null): ClipDebugLogEntry | null {
+export function clipDebugLog(
+  event: string,
+  payload: unknown = null
+): ClipDebugLogEntry | null {
   const target = getWindow();
   if (!target || !isClipDebugEnabled(target)) {
     return null;

@@ -300,7 +300,7 @@
   gap: 10px;
 }
 
-.inspector__font-card-meta>div {
+.inspector__font-card-meta > div {
   display: flex;
   flex-direction: column;
   gap: 4px;

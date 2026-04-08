@@ -316,7 +316,8 @@ export default function ZoneRenderer({
         : bounds.width,
     coerceNumber(resolvedRect?.w, 0)
   );
-  const isAutoHeight = !useResolvedGeometry && !useResolvedTextGeometry && bounds.height === undefined;
+  const isAutoHeight =
+    !useResolvedGeometry && !useResolvedTextGeometry && bounds.height === undefined;
 
   const assetKey = zone.asset_ref || zone.id;
   const templateAsset = zone.type === 'image' ? template.assets[assetKey] : undefined;
@@ -382,12 +383,15 @@ export default function ZoneRenderer({
   const derivedTextBackgroundFill =
     isClipMode &&
     zone.type === 'text' &&
-    (typeof (resolvedZone?.resolved?.fills as Record<string, unknown> | undefined)?.bg === 'string'
+    (typeof (resolvedZone?.resolved?.fills as Record<string, unknown> | undefined)?.bg ===
+    'string'
       ? ((resolvedZone?.resolved?.fills as Record<string, unknown>).bg as string)
       : undefined);
   const hasTextBackgroundLayer =
     zone.type === 'text' &&
-    (template.zones.some(entry => entry.id === `${zone.id}__bg` && entry.type === 'shape') ||
+    (template.zones.some(
+      entry => entry.id === `${zone.id}__bg` && entry.type === 'shape'
+    ) ||
       Boolean(derivedTextBackgroundFill) ||
       Boolean(zone.style_ref && template.styles[zone.style_ref]?.bg_fill));
 
@@ -401,13 +405,17 @@ export default function ZoneRenderer({
   let shapeColor: string | undefined;
   if (zone.type === 'text' && style) {
     bgColor =
-      style.bg_fill || (typeof resolvedFills?.bg === 'string' ? resolvedFills.bg : undefined);
+      style.bg_fill ||
+      (typeof resolvedFills?.bg === 'string' ? resolvedFills.bg : undefined);
     textColor =
-      style.fill || (typeof resolvedFills?.text === 'string' ? resolvedFills.text : undefined);
+      style.fill ||
+      (typeof resolvedFills?.text === 'string' ? resolvedFills.text : undefined);
   }
   if (zone.type === 'shape' && style) {
     if (zone.role === 'text_background') {
-      const pairedFills = resolvedZone?.resolved?.fills as Record<string, unknown> | undefined;
+      const pairedFills = resolvedZone?.resolved?.fills as
+        | Record<string, unknown>
+        | undefined;
       shapeColor =
         (typeof pairedFills?.bg === 'string' ? pairedFills.bg : undefined) ||
         style.bg_fill ||
@@ -437,13 +445,11 @@ export default function ZoneRenderer({
       );
   const videoAspectRatio =
     zone.type === 'video'
-      ? (
-          (useResolvedGeometry && resolvedRect?.h
-            ? resolvedRect.w / resolvedRect.h
-            : undefined) ??
-          readBoundsAspectRatio(zone.bounds) ??
-          sourceVideoAspectRatio
-        )
+      ? ((useResolvedGeometry && resolvedRect?.h
+          ? resolvedRect.w / resolvedRect.h
+          : undefined) ??
+        readBoundsAspectRatio(zone.bounds) ??
+        sourceVideoAspectRatio)
       : null;
 
   const h = useMemo(() => {
@@ -505,11 +511,11 @@ export default function ZoneRenderer({
       ? textLayout.lines.filter((line): line is string => typeof line === 'string')
       : [];
     const useExactResolvedLines =
-      !isEditingText &&
-      resolvedLines.length > 0 &&
-      editableText === resolvedSourceText;
+      !isEditingText && resolvedLines.length > 0 && editableText === resolvedSourceText;
     const useZoneBoundsAsContentBox =
-      isClipMode && zone.type === 'text' && (useResolvedTextGeometry || usesDraftGeometry);
+      isClipMode &&
+      zone.type === 'text' &&
+      (useResolvedTextGeometry || usesDraftGeometry);
     const paddingXBase = Math.max(12, Math.round(fontSizeBase * 0.24));
     const paddingYBase = Math.max(8, Math.round(fontSizeBase * 0.16));
     const paddingXPx = paddingXBase * scale;
@@ -528,8 +534,10 @@ export default function ZoneRenderer({
     );
     const lineSpacingPx = lineSpacingBase * scale;
     const resolvedLineAdvancePx =
-      coerceNumber(textLayout?.line_advance_px, coerceNumber(textLayout?.line_height_px, fontSizeBase)) *
-      scale;
+      coerceNumber(
+        textLayout?.line_advance_px,
+        coerceNumber(textLayout?.line_height_px, fontSizeBase)
+      ) * scale;
     const lineHeightPx = Math.max(fontSizePx, resolvedLineAdvancePx);
     const resolvedLineCount = Math.max(
       1,
@@ -537,31 +545,35 @@ export default function ZoneRenderer({
     );
     const resolvedBlockHeightPx = Math.max(
       coerceNumber(textLayout?.block_height_px, 0) * scale,
-      resolvedLineCount * lineHeightPx + Math.max(0, resolvedLineCount - 1) * lineSpacingPx
+      resolvedLineCount * lineHeightPx +
+        Math.max(0, resolvedLineCount - 1) * lineSpacingPx
     );
     const contentWidthPx = useZoneBoundsAsContentBox
       ? Math.max(w * scale, 1)
       : resolvedContentBox
-      ? Math.min(Math.max(resolvedContentBox.width * scale, 1), w * scale)
-      : Math.min(Math.max(textWidthPx, 1), usableWidth);
+        ? Math.min(Math.max(resolvedContentBox.width * scale, 1), w * scale)
+        : Math.min(Math.max(textWidthPx, 1), usableWidth);
     const contentHeightPx = useZoneBoundsAsContentBox
       ? Math.max(h * scale, lineHeightPx)
       : resolvedContentBox
-      ? Math.min(Math.max(resolvedContentBox.height * scale, lineHeightPx), h * scale)
-      : Math.max(
-          h * scale - paddingYPx * 2,
-          resolvedBlockHeightPx
-        );
+        ? Math.min(Math.max(resolvedContentBox.height * scale, lineHeightPx), h * scale)
+        : Math.max(h * scale - paddingYPx * 2, resolvedBlockHeightPx);
     const contentXPx = useZoneBoundsAsContentBox
       ? 0
       : resolvedContentBox
-      ? Math.min(Math.max(resolvedContentBox.x * scale, 0), Math.max(0, w * scale - contentWidthPx))
-      : paddingXPx;
+        ? Math.min(
+            Math.max(resolvedContentBox.x * scale, 0),
+            Math.max(0, w * scale - contentWidthPx)
+          )
+        : paddingXPx;
     const contentYPx = useZoneBoundsAsContentBox
       ? 0
       : resolvedContentBox
-      ? Math.min(Math.max(resolvedContentBox.y * scale, 0), Math.max(0, h * scale - contentHeightPx))
-      : paddingYPx;
+        ? Math.min(
+            Math.max(resolvedContentBox.y * scale, 0),
+            Math.max(0, h * scale - contentHeightPx)
+          )
+        : paddingYPx;
     const maxLines =
       typeof liveText?.max_lines === 'number' && Number.isFinite(liveText.max_lines)
         ? Math.max(1, liveText.max_lines)
@@ -607,26 +619,24 @@ export default function ZoneRenderer({
       justifyContent: verticalAlignToJustifyContent(
         liveText?.vertical_align ?? textLayout?.vertical_align
       ),
-      alignItems: horizontalAlignToItems(
-        horizontalAlign
-      ),
+      alignItems: horizontalAlignToItems(horizontalAlign),
       textAlign,
     };
   }, [
     bgColor,
-      scale,
-      textColor,
-      textLayout,
+    scale,
+    textColor,
+    textLayout,
     editableText,
-      resolvedSourceText,
-      h,
-      isClipMode,
-      isEditingText,
-      resolvedRuntimeFont?.family,
-      resolvedRuntimeFont?.weight,
-      usesDraftGeometry,
-      useResolvedTextGeometry,
-      w,
+    resolvedSourceText,
+    h,
+    isClipMode,
+    isEditingText,
+    resolvedRuntimeFont?.family,
+    resolvedRuntimeFont?.weight,
+    usesDraftGeometry,
+    useResolvedTextGeometry,
+    w,
     zone.text?.font?.family,
     zone.text?.font?.size,
     zone.text?.font?.weight,
@@ -1061,7 +1071,10 @@ export default function ZoneRenderer({
             }}
           />
         </>
-      ) : !suppressMediaContent && zone.type === 'image' && imageSrc && !imageLoadFailed ? (
+      ) : !suppressMediaContent &&
+        zone.type === 'image' &&
+        imageSrc &&
+        !imageLoadFailed ? (
         <>
           {showImageSkeleton && (
             <div className="zone-renderer__loading" data-testid={loadingTestId}>
@@ -1135,8 +1148,12 @@ export default function ZoneRenderer({
               spellCheck={false}
               style={{
                 position: textMetrics.usesResolvedContentBox ? 'absolute' : 'relative',
-                left: textMetrics.usesResolvedContentBox ? `${textMetrics.editContentXPx}px` : undefined,
-                top: textMetrics.usesResolvedContentBox ? `${textMetrics.editContentYPx}px` : undefined,
+                left: textMetrics.usesResolvedContentBox
+                  ? `${textMetrics.editContentXPx}px`
+                  : undefined,
+                top: textMetrics.usesResolvedContentBox
+                  ? `${textMetrics.editContentYPx}px`
+                  : undefined,
                 width: `${textMetrics.editContentWidthPx}px`,
                 minHeight: `${textMetrics.editContentHeightPx}px`,
                 color: textMetrics.color,
@@ -1152,8 +1169,12 @@ export default function ZoneRenderer({
               className="zone-renderer__text-block"
               style={{
                 position: textMetrics.usesResolvedContentBox ? 'absolute' : 'relative',
-                left: textMetrics.usesResolvedContentBox ? `${textMetrics.displayContentXPx}px` : undefined,
-                top: textMetrics.usesResolvedContentBox ? `${textMetrics.displayContentYPx}px` : undefined,
+                left: textMetrics.usesResolvedContentBox
+                  ? `${textMetrics.displayContentXPx}px`
+                  : undefined,
+                top: textMetrics.usesResolvedContentBox
+                  ? `${textMetrics.displayContentYPx}px`
+                  : undefined,
                 width: `${textMetrics.displayContentWidthPx}px`,
                 minHeight: `${textMetrics.displayContentHeightPx}px`,
                 color: textMetrics.color,

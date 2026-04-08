@@ -44,8 +44,10 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function createSourceTrackTimeMapper(trackRect: SourceTrackRect, sourceDuration: number) {
-  const safeDuration = Number.isFinite(sourceDuration) && sourceDuration > 0 ? sourceDuration : 0;
-  const safeWidth = Number.isFinite(trackRect.width) && trackRect.width > 0 ? trackRect.width : 0;
+  const safeDuration =
+    Number.isFinite(sourceDuration) && sourceDuration > 0 ? sourceDuration : 0;
+  const safeWidth =
+    Number.isFinite(trackRect.width) && trackRect.width > 0 ? trackRect.width : 0;
 
   const clampTime = (time: number) => clamp(time, 0, safeDuration);
 

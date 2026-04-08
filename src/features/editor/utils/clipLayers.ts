@@ -15,7 +15,9 @@ function resolveTextBackgroundFill(
   resolvedZone: ResolvedZone | undefined,
   styles: Record<string, StyleDef>
 ): string | null {
-  const resolvedFills = resolvedZone?.resolved?.fills as Record<string, unknown> | undefined;
+  const resolvedFills = resolvedZone?.resolved?.fills as
+    | Record<string, unknown>
+    | undefined;
   if (typeof resolvedFills?.bg === 'string' && resolvedFills.bg.trim()) {
     return resolvedFills.bg;
   }

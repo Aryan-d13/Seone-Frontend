@@ -28,7 +28,9 @@ function installPointerCapturePolyfill() {
   const capturedPointers = new WeakMap<Element, Set<number>>();
 
   if (!HTMLElement.prototype.setPointerCapture) {
-    HTMLElement.prototype.setPointerCapture = function setPointerCapture(pointerId: number) {
+    HTMLElement.prototype.setPointerCapture = function setPointerCapture(
+      pointerId: number
+    ) {
       const current = capturedPointers.get(this) ?? new Set<number>();
       current.add(pointerId);
       capturedPointers.set(this, current);
@@ -44,7 +46,9 @@ function installPointerCapturePolyfill() {
   }
 
   if (!HTMLElement.prototype.hasPointerCapture) {
-    HTMLElement.prototype.hasPointerCapture = function hasPointerCapture(pointerId: number) {
+    HTMLElement.prototype.hasPointerCapture = function hasPointerCapture(
+      pointerId: number
+    ) {
       return capturedPointers.get(this)?.has(pointerId) ?? false;
     };
   }
@@ -343,7 +347,9 @@ describe('ClipStudioWorkspace interactions', () => {
     const leftHandle = screen.getByTestId('clip-studio-trim-handle-left');
     mockTrackGeometry(trackSurface, sourceTrack);
 
-    expect(useTemplateStore.getState().activeManifest?.render_payload.time_window?.start).toBe(0);
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload.time_window?.start
+    ).toBe(0);
 
     act(() => {
       fireEvent.pointerDown(leftHandle, { pointerId: 1, clientX: 160, button: 0 });
@@ -352,17 +358,18 @@ describe('ClipStudioWorkspace interactions', () => {
     await flushUi();
 
     expect(screen.getByText(/Source In 00:03\.0/)).toBeInTheDocument();
-    expect(useTemplateStore.getState().activeManifest?.render_payload.time_window?.start).toBe(0);
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload.time_window?.start
+    ).toBe(0);
 
     act(() => {
       fireEvent.pointerUp(sourceTrack, { pointerId: 1, clientX: 260 });
     });
     await flushUi();
 
-    expect(useTemplateStore.getState().activeManifest?.render_payload.time_window?.start).toBeCloseTo(
-      3,
-      1
-    );
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload.time_window?.start
+    ).toBeCloseTo(3, 1);
   });
 
   it('commits the right trim handle using the final pointer position', async () => {
@@ -381,23 +388,28 @@ describe('ClipStudioWorkspace interactions', () => {
     mockTrackGeometry(trackSurface, sourceTrack);
 
     act(() => {
-      fireEvent.pointerDown(rightHandle, { pointerId: 6, clientX: 326.6666667, button: 0 });
+      fireEvent.pointerDown(rightHandle, {
+        pointerId: 6,
+        clientX: 326.6666667,
+        button: 0,
+      });
       fireEvent.pointerMove(sourceTrack, { pointerId: 6, clientX: 460 });
     });
     await flushUi();
 
     expect(screen.getByText(/Source Out 00:09\.0/)).toBeInTheDocument();
-    expect(useTemplateStore.getState().activeManifest?.render_payload.time_window?.end).toBe(5);
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload.time_window?.end
+    ).toBe(5);
 
     act(() => {
       fireEvent.pointerUp(sourceTrack, { pointerId: 6, clientX: 460 });
     });
     await flushUi();
 
-    expect(useTemplateStore.getState().activeManifest?.render_payload.time_window?.end).toBeCloseTo(
-      9,
-      1
-    );
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload.time_window?.end
+    ).toBeCloseTo(9, 1);
   });
 
   it('scrubbing moves only the playhead and leaves committed trim untouched', async () => {
@@ -420,7 +432,9 @@ describe('ClipStudioWorkspace interactions', () => {
     });
     await flushUi();
 
-    expect(useTemplateStore.getState().activeManifest?.render_payload.time_window).toEqual({
+    expect(
+      useTemplateStore.getState().activeManifest?.render_payload.time_window
+    ).toEqual({
       start: 0,
       end: 5,
     });

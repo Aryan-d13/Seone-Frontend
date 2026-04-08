@@ -105,18 +105,22 @@ describe('ZoneRenderer text layout contract', () => {
   });
 
   it('positions non-editing text from backend content_box_px instead of heuristic padding', () => {
-    const zone = (makeTemplate().zones[0] as any);
+    const zone = makeTemplate().zones[0] as any;
     const resolvedZone = makeResolvedZone() as any;
 
     const { container } = render(
       <ZoneRenderer zone={zone} scale={1} resolvedZone={resolvedZone} renderMode="clip" />
     );
 
-    const textBlock = container.querySelector('.zone-renderer__text-block') as HTMLElement;
+    const textBlock = container.querySelector(
+      '.zone-renderer__text-block'
+    ) as HTMLElement;
     const textLine = container.querySelector('.zone-renderer__text-line') as HTMLElement;
     expect(textBlock).toBeTruthy();
     expect(textLine).toBeTruthy();
-    const zoneElement = container.querySelector('[data-testid="zone-title_band"]') as HTMLElement;
+    const zoneElement = container.querySelector(
+      '[data-testid="zone-title_band"]'
+    ) as HTMLElement;
     expect(zoneElement.style.left).toBe('188px');
     expect(zoneElement.style.top).toBe('45px');
     expect(zoneElement.style.width).toBe('704px');
@@ -147,7 +151,9 @@ describe('ZoneRenderer text layout contract', () => {
       await Promise.resolve();
     });
 
-    const textarea = container.querySelector('.zone-renderer__text-editor') as HTMLTextAreaElement;
+    const textarea = container.querySelector(
+      '.zone-renderer__text-editor'
+    ) as HTMLTextAreaElement;
     expect(textarea).toBeTruthy();
     expect(textarea.style.left).toBe('0px');
     expect(textarea.style.top).toBe('0px');
@@ -165,7 +171,9 @@ describe('ZoneRenderer text layout contract', () => {
       <ZoneRenderer zone={zone} scale={1} resolvedZone={resolvedZone} renderMode="clip" />
     );
 
-    const untouchedZone = container.querySelector('[data-testid="zone-title_band"]') as HTMLElement;
+    const untouchedZone = container.querySelector(
+      '[data-testid="zone-title_band"]'
+    ) as HTMLElement;
     expect(untouchedZone.style.left).toBe('188px');
     expect(untouchedZone.style.top).toBe('45px');
     expect(untouchedZone.style.width).toBe('704px');
@@ -175,9 +183,13 @@ describe('ZoneRenderer text layout contract', () => {
       draftGeometryZoneIds: new Set(['title_band']),
     });
 
-    rerender(<ZoneRenderer zone={zone} scale={1} resolvedZone={resolvedZone} renderMode="clip" />);
+    rerender(
+      <ZoneRenderer zone={zone} scale={1} resolvedZone={resolvedZone} renderMode="clip" />
+    );
 
-    const editedZone = container.querySelector('[data-testid="zone-title_band"]') as HTMLElement;
+    const editedZone = container.querySelector(
+      '[data-testid="zone-title_band"]'
+    ) as HTMLElement;
     expect(editedZone.style.left).toBe('220px');
     expect(editedZone.style.top).toBe('42px');
     expect(editedZone.style.width).toBe('680px');
@@ -210,7 +222,9 @@ describe('ZoneRenderer text layout contract', () => {
       />
     );
 
-    const zoneElement = container.querySelector('[data-testid="zone-title_band__bg"]') as HTMLElement;
+    const zoneElement = container.querySelector(
+      '[data-testid="zone-title_band__bg"]'
+    ) as HTMLElement;
     expect(zoneElement.style.left).toBe('0px');
     expect(zoneElement.style.top).toBe('0px');
     expect(zoneElement.style.width).toBe('1080px');
@@ -225,9 +239,13 @@ describe('ZoneRenderer text layout contract', () => {
       <ZoneRenderer zone={zone} scale={1} resolvedZone={resolvedZone} renderMode="clip" />
     );
 
-    const zoneElement = container.querySelector('[data-testid="zone-title_band"]') as HTMLElement;
+    const zoneElement = container.querySelector(
+      '[data-testid="zone-title_band"]'
+    ) as HTMLElement;
     const fill = container.querySelector('.zone-renderer__fill') as HTMLElement;
-    const textBlock = container.querySelector('.zone-renderer__text-block') as HTMLElement;
+    const textBlock = container.querySelector(
+      '.zone-renderer__text-block'
+    ) as HTMLElement;
     const lines = Array.from(container.querySelectorAll('.zone-renderer__text-line'));
 
     expect(zoneElement.style.width).toBe('704px');

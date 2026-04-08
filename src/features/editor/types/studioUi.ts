@@ -1,11 +1,6 @@
 export type DraftState = 'CLEAN' | 'DIRTY' | 'SAVING' | 'SAVE_FAILED';
 
-export type PreviewState =
-  | 'NOT_GENERATED'
-  | 'GENERATING'
-  | 'FRESH'
-  | 'STALE'
-  | 'FAILED';
+export type PreviewState = 'NOT_GENERATED' | 'GENERATING' | 'FRESH' | 'STALE' | 'FAILED';
 
 export type RenderValidityState = 'VALID' | 'BLOCKED';
 export type LayoutAuthority = 'exact' | 'stale_exact' | 'unavailable';

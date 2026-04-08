@@ -35,10 +35,7 @@ import {
   toDocId,
   type TemplateListItem,
 } from '../lib/firestoreService';
-import {
-  isAzureAssetUploadConfigured,
-  uploadAssetToAzure,
-} from '../lib/storageService';
+import { isAzureAssetUploadConfigured, uploadAssetToAzure } from '../lib/storageService';
 import { useTemplateStore } from '../store/templateStore';
 import type { TemplateJSON, ZoneSpec } from '../types/template';
 import { createImageZone, createTextZone, createVideoZone } from '../utils/defaults';
@@ -69,10 +66,10 @@ const CANVAS_PRESETS: Array<{
   width: number;
   height: number;
 }> = [
-    { key: '1080x1080', label: 'Square 1080×1080', width: 1080, height: 1080 },
-    { key: '1080x1350', label: 'Portrait 1080×1350', width: 1080, height: 1350 },
-    { key: '1920x1080', label: 'Landscape 1920×1080', width: 1920, height: 1080 },
-  ];
+  { key: '1080x1080', label: 'Square 1080×1080', width: 1080, height: 1080 },
+  { key: '1080x1350', label: 'Portrait 1080×1350', width: 1080, height: 1350 },
+  { key: '1920x1080', label: 'Landscape 1920×1080', width: 1920, height: 1080 },
+];
 
 function cloneTemplate(template: TemplateJSON): TemplateJSON {
   return JSON.parse(JSON.stringify(template));
@@ -680,7 +677,9 @@ export default function TemplateAdminPanel({
                 }
                 placeholder="e.g. chaturnath, tenali"
               />
-              <span className={styles.modalHint}>Comma-separated show names for filtering</span>
+              <span className={styles.modalHint}>
+                Comma-separated show names for filtering
+              </span>
             </label>
             <div className={styles.modalActions}>
               <button
@@ -797,7 +796,9 @@ export default function TemplateAdminPanel({
                       {item.showTags.length > 0 && (
                         <div className={styles.tagChips}>
                           {item.showTags.map(tag => (
-                            <span key={tag} className={styles.tagChip}>{tag}</span>
+                            <span key={tag} className={styles.tagChip}>
+                              {tag}
+                            </span>
                           ))}
                         </div>
                       )}
@@ -972,12 +973,13 @@ export default function TemplateAdminPanel({
                       onClick={() => selectZone(zone.id)}
                     >
                       <span
-                        className={`${styles.layerDot} ${zone.type === 'text'
-                          ? styles.layerDotText
-                          : zone.type === 'image'
-                            ? styles.layerDotImage
-                            : styles.layerDotVideo
-                          }`}
+                        className={`${styles.layerDot} ${
+                          zone.type === 'text'
+                            ? styles.layerDotText
+                            : zone.type === 'image'
+                              ? styles.layerDotImage
+                              : styles.layerDotVideo
+                        }`}
                       />
                       <span className={styles.layerName}>{zone.id}</span>
                     </button>

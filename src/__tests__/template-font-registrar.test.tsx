@@ -18,7 +18,8 @@ vi.mock('@/hooks/useFontCatalog', () => ({
             style: 'normal',
             weights: [700],
             filename: 'NotoSans-Bold.ttf',
-            preview_url: 'http://localhost:8000/api/v1/pages/fonts/NotoSans/NotoSans-Bold.ttf',
+            preview_url:
+              'http://localhost:8000/api/v1/pages/fonts/NotoSans/NotoSans-Bold.ttf',
           },
         ],
       },
@@ -78,11 +79,7 @@ describe('TemplateFontRegistrar', () => {
       source: string;
       descriptors?: Record<string, string>;
 
-      constructor(
-        family: string,
-        source: string,
-        descriptors?: Record<string, string>
-      ) {
+      constructor(family: string, source: string, descriptors?: Record<string, string>) {
         this.family = family;
         this.source = source;
         this.descriptors = descriptors;

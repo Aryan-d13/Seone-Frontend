@@ -102,7 +102,10 @@ export default function FontPicker({
         type="button"
         disabled={effectiveDisabled}
       >
-        <span className="font-picker__current">{currentFont?.display || value}{locked ? ' (locked)' : ''}</span>
+        <span className="font-picker__current">
+          {currentFont?.display || value}
+          {locked ? ' (locked)' : ''}
+        </span>
         <span className="font-picker__meta-pill">
           {currentFont?.scripts?.[0] || 'font'}
         </span>

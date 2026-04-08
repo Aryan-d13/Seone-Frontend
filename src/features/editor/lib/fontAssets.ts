@@ -114,8 +114,7 @@ export function analyzeFontBuffer(buffer: ArrayBuffer): string[] {
     const subtableOffset = cmapOffset + readUint32(view, recordOffset + 4);
     const format = readUint16(view, subtableOffset);
     const isUnicodeSubtable =
-      platformId === 0 ||
-      (platformId === 3 && (encodingId === 1 || encodingId === 10));
+      platformId === 0 || (platformId === 3 && (encodingId === 1 || encodingId === 10));
     if (!isUnicodeSubtable) continue;
     if (format !== 4 && format !== 12) continue;
     if (format === 12) {
@@ -253,7 +252,9 @@ export function listUploadedFontEntries(
     seen.set(key, {
       ...existing,
       weights: mergedWeights,
-      scripts: Array.from(new Set([...(existing.scripts || []), ...(entry.scripts || [])])),
+      scripts: Array.from(
+        new Set([...(existing.scripts || []), ...(entry.scripts || [])])
+      ),
       analysisState: pickAnalysisState(existing.analysisState, entry.analysisState),
     });
   }

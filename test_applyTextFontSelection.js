@@ -1,22 +1,22 @@
 const font = {
-  "family": "NotoSans",
-  "weight": 700,
-  "fallbacks": [],
-  "size": 60,
-  "language_overrides": {
-    "en": {
-      "family": "NotoSans",
-      "weight": 700
+  family: 'NotoSans',
+  weight: 700,
+  fallbacks: [],
+  size: 60,
+  language_overrides: {
+    en: {
+      family: 'NotoSans',
+      weight: 700,
     },
-    "hi": {
-      "family": "NotoSansDevanagari",
-      "weight": 700
-    }
-  }
+    hi: {
+      family: 'NotoSansDevanagari',
+      weight: 700,
+    },
+  },
 };
 
-const nextSelection = { family: "Hind", weight: 400, copyLanguage: "hi" };
-const language = "hi";
+const nextSelection = { family: 'Hind', weight: 400, copyLanguage: 'hi' };
+const language = 'hi';
 
 const nextFont = {
   ...font,

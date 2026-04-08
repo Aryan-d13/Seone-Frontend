@@ -86,10 +86,14 @@ export function normalizeCopyLanguage(value: unknown): RuntimeFontLanguage | nul
   return null;
 }
 
-export function detectTextLanguage(text: string | null | undefined): RuntimeFontLanguage | null {
+export function detectTextLanguage(
+  text: string | null | undefined
+): RuntimeFontLanguage | null {
   if (typeof text !== 'string' || !text.trim()) return null;
 
-  const hasDevanagari = Array.from(text).some(char => char >= '\u0900' && char <= '\u097f');
+  const hasDevanagari = Array.from(text).some(
+    char => char >= '\u0900' && char <= '\u097f'
+  );
   const hasLatin = Array.from(text).some(char => {
     return (
       (char >= 'A' && char <= 'Z') ||
@@ -119,7 +123,10 @@ export function findFontEntry(
   );
 }
 
-export function nearestRuntimeWeight(entry: FontCatalogEntry, requestedWeight: number): number {
+export function nearestRuntimeWeight(
+  entry: FontCatalogEntry,
+  requestedWeight: number
+): number {
   const weights =
     Array.isArray(entry.weights) && entry.weights.length > 0 ? entry.weights : [400];
   return weights.reduce((best, candidate) =>
@@ -159,7 +166,9 @@ export function getActiveTextFontSelection(
 ): ActiveTextFontSelection {
   const language = normalizeCopyLanguage(copyLanguage);
   const override =
-    language && font.language_overrides ? font.language_overrides[language] || null : null;
+    language && font.language_overrides
+      ? font.language_overrides[language] || null
+      : null;
   return {
     family: String(override?.family || font.family || '').trim(),
     weight: Number(override?.weight ?? font.weight ?? 400),

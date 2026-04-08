@@ -76,9 +76,7 @@ function resolveBaselineBounds(
   activeManifest: RenderManifest
 ) {
   const resolvedZones = activeManifest.resolved_zones || [];
-  const resolvedZonesById = new Map(
-    resolvedZones.map(zone => [zone.id, zone])
-  );
+  const resolvedZonesById = new Map(resolvedZones.map(zone => [zone.id, zone]));
   const companionTextZoneId =
     templateZone.role === 'text_background' && templateZone.id.endsWith('__bg')
       ? templateZone.id.slice(0, -4)

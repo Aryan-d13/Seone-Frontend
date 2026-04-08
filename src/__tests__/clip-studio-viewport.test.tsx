@@ -1,5 +1,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import ClipStudioWorkspace, {
   getCenteredViewportScroll,
   getStageVisibilityRatio,
@@ -13,7 +22,9 @@ const resizeObserverCallbacks = new Map<Element, ResizeObserverCallback[]>();
 const initialStoreState = useTemplateStore.getState();
 
 vi.mock('@/features/editor/components/Canvas/ZoneRenderer', () => ({
-  default: ({ zone }: { zone: { id: string } }) => <div data-testid={`zone-${zone.id}`} />,
+  default: ({ zone }: { zone: { id: string } }) => (
+    <div data-testid={`zone-${zone.id}`} />
+  ),
 }));
 
 vi.mock('@/features/editor/components/Studio/ClipStudioTimeline', () => ({
@@ -330,7 +341,9 @@ describe('clip studio viewport fitting', () => {
   });
 
   it('auto-fits the stage after the viewport becomes measurable', async () => {
-    render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     const frame = screen.getByTestId('clip-studio-viewport-frame');
     const viewport = screen.getByTestId('clip-studio-viewport');
@@ -343,7 +356,9 @@ describe('clip studio viewport fitting', () => {
   });
 
   it('fits using the clipped frame width when the internal viewport expands to content width', async () => {
-    render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     const frame = screen.getByTestId('clip-studio-viewport-frame');
     const viewport = screen.getByTestId('clip-studio-viewport');
@@ -362,7 +377,9 @@ describe('clip studio viewport fitting', () => {
   });
 
   it('fits vertically when only the vertical axis needs scrolling', async () => {
-    render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     const frame = screen.getByTestId('clip-studio-viewport-frame');
     const viewport = screen.getByTestId('clip-studio-viewport');
@@ -381,7 +398,9 @@ describe('clip studio viewport fitting', () => {
   });
 
   it('re-fits on layout resize before the user pans, but preserves manual navigation afterward', async () => {
-    render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     const frame = screen.getByTestId('clip-studio-viewport-frame');
     const viewport = screen.getByTestId('clip-studio-viewport');
@@ -416,7 +435,9 @@ describe('clip studio viewport fitting', () => {
   });
 
   it('restores the stage into view when Fit is pressed after the user scrolls away', async () => {
-    render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     const frame = screen.getByTestId('clip-studio-viewport-frame');
     const viewport = screen.getByTestId('clip-studio-viewport');
@@ -441,14 +462,12 @@ describe('clip studio viewport fitting', () => {
   });
 
   it('emits workspace diagnostics and exposes snapshot/export helpers when debug mode is enabled', async () => {
-    window.history.replaceState(
-      {},
-      '',
-      '/studio/jobs/job-123/clips/1?clipDebug=1'
-    );
+    window.history.replaceState({}, '', '/studio/jobs/job-123/clips/1?clipDebug=1');
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
-    render(<ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />);
+    render(
+      <ClipStudioWorkspace renderPreviewRequest={{ jobId: 'job-123', clipIndex: 1 }} />
+    );
 
     const frame = screen.getByTestId('clip-studio-viewport-frame');
     const viewport = screen.getByTestId('clip-studio-viewport');
@@ -475,10 +494,12 @@ describe('clip studio viewport fitting', () => {
     const exported = window.__SEONE_CLIP_DEBUG_EXPORT__?.() as {
       buffer?: Array<{ event: string }>;
     };
-    expect(exported?.buffer?.some(entry => entry.event === 'workspace:viewport:resize')).toBe(
+    expect(
+      exported?.buffer?.some(entry => entry.event === 'workspace:viewport:resize')
+    ).toBe(true);
+    expect(exported?.buffer?.some(entry => entry.event === 'workspace:fit:apply')).toBe(
       true
     );
-    expect(exported?.buffer?.some(entry => entry.event === 'workspace:fit:apply')).toBe(true);
     expect(consoleSpy).toHaveBeenCalled();
   });
 

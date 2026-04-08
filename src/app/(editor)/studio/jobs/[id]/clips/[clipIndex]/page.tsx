@@ -220,7 +220,9 @@ function summarizeManifest(manifest: RenderManifest | null | undefined) {
   };
 }
 
-function hasResolvedRect(value: unknown): value is { x: number; y: number; w: number; h: number } {
+function hasResolvedRect(
+  value: unknown
+): value is { x: number; y: number; w: number; h: number } {
   if (!value || typeof value !== 'object') return false;
   const rect = value as Record<string, unknown>;
   return ['x', 'y', 'w', 'h'].every(
@@ -241,9 +243,10 @@ function hasResolvedTextContentBox(value: unknown): boolean {
       : null;
   return Boolean(
     contentBox &&
-      ['x', 'y', 'width', 'height'].every(
-        key => typeof contentBox[key] === 'number' && Number.isFinite(contentBox[key] as number)
-      )
+    ['x', 'y', 'width', 'height'].every(
+      key =>
+        typeof contentBox[key] === 'number' && Number.isFinite(contentBox[key] as number)
+    )
   );
 }
 
@@ -301,7 +304,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const [switchingTemplate, setSwitchingTemplate] = useState(false);
   const [layoutRebuiltOnLoad, setLayoutRebuiltOnLoad] = useState(false);
   const [lastSaveLayoutRebuilt, setLastSaveLayoutRebuilt] = useState(false);
-  const [fontNormalizationMessage, setFontNormalizationMessage] = useState<string | null>(null);
+  const [fontNormalizationMessage, setFontNormalizationMessage] = useState<string | null>(
+    null
+  );
   const hasLoadedStudioRef = useRef(false);
   const savePromiseRef = useRef<Promise<void> | null>(null);
   const savingSignatureRef = useRef<string | null>(null);
@@ -356,7 +361,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const resolvedManifestSignature = useMemo(
     () =>
       activeManifest
-        ? stableStudioManifestSignature(buildStudioManifestFromLoadedManifest(activeManifest))
+        ? stableStudioManifestSignature(
+            buildStudioManifestFromLoadedManifest(activeManifest)
+          )
         : null,
     [activeManifest]
   );
@@ -384,7 +391,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const layoutAuthority = useMemo<'exact' | 'stale_exact' | 'unavailable'>(() => {
     if (!hasExactResolvedGeometry) return 'unavailable';
     if (!studioManifestSignature || !resolvedManifestSignature) return 'unavailable';
-    return resolvedManifestSignature === studioManifestSignature ? 'exact' : 'stale_exact';
+    return resolvedManifestSignature === studioManifestSignature
+      ? 'exact'
+      : 'stale_exact';
   }, [hasExactResolvedGeometry, resolvedManifestSignature, studioManifestSignature]);
   const layoutAuthorityReason = useMemo(() => {
     if (!hasExactResolvedGeometry) {
@@ -678,10 +687,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     };
   }, [clipIndex, clipIndexNumber, id, loadFromManifest, setReRenderResult]);
 
-
-
   const persistStudioDraft = useCallback(
-
     async (
       manifest: StudioPersistedManifest | null,
       signature: string | null,
@@ -740,7 +746,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         const payload = (await response.json()) as StudioSaveResponse;
         const resolvedManifest = payload.manifest as RenderManifest | undefined;
         const returnedSignature = resolvedManifest
-          ? stableStudioManifestSignature(buildStudioManifestFromLoadedManifest(resolvedManifest))
+          ? stableStudioManifestSignature(
+              buildStudioManifestFromLoadedManifest(resolvedManifest)
+            )
           : signature;
         setSavedDraftSignature(returnedSignature);
         setStudioSource(payload.source || 'draft');
@@ -771,7 +779,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         return manifest;
       } catch (error) {
         setSaveStatus('error');
-        setSaveError(error instanceof Error ? error.message : 'Failed to save Studio draft');
+        setSaveError(
+          error instanceof Error ? error.message : 'Failed to save Studio draft'
+        );
         clipDebugLog('save:error', {
           reason,
           signature,
@@ -806,9 +816,11 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         signature: studioManifestSignature,
         delayMs: 800,
       });
-      void persistStudioDraft(studioManifest, studioManifestSignature, 'autosave').catch(() => {
-        if (cancelled) return;
-      });
+      void persistStudioDraft(studioManifest, studioManifestSignature, 'autosave').catch(
+        () => {
+          if (cancelled) return;
+        }
+      );
     }, 800);
 
     return () => {
@@ -992,7 +1004,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       ? 'Save failed'
       : editorState.layoutAuthority === 'unavailable'
         ? 'Exact layout unavailable'
-        : editorState.draftState === 'SAVING' && editorState.layoutAuthority === 'stale_exact'
+        : editorState.draftState === 'SAVING' &&
+            editorState.layoutAuthority === 'stale_exact'
           ? 'Saving exact layout…'
           : editorState.renderValidity === 'BLOCKED'
             ? 'Preview and export are blocked'
@@ -1080,23 +1093,23 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
           <div style={statusRailSecondaryStyle}>{statusSecondary}</div>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
-          {editorState.draftState === 'SAVE_FAILED' && studioManifest && studioManifestSignature && (
-            <button
-              type="button"
-              style={topbarButtonActiveStyle}
-              onClick={() => {
-                void persistStudioDraft(
-                  studioManifest,
-                  studioManifestSignature,
-                  'retry'
-                ).catch(
-                  () => undefined
-                );
-              }}
-            >
-              Retry save
-            </button>
-          )}
+          {editorState.draftState === 'SAVE_FAILED' &&
+            studioManifest &&
+            studioManifestSignature && (
+              <button
+                type="button"
+                style={topbarButtonActiveStyle}
+                onClick={() => {
+                  void persistStudioDraft(
+                    studioManifest,
+                    studioManifestSignature,
+                    'retry'
+                  ).catch(() => undefined);
+                }}
+              >
+                Retry save
+              </button>
+            )}
           {editorState.blockers.length > 0 && (
             <button
               type="button"

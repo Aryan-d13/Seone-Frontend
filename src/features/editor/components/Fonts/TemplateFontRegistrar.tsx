@@ -131,7 +131,11 @@ export default function TemplateFontRegistrar() {
     for (const [assetKey, asset] of fontAssets.entries()) {
       if (!asset.family) continue;
       const currentAnalysis = fontAnalysis[assetKey];
-      if (Array.isArray(asset.scripts) && asset.scripts.length > 0 && currentAnalysis?.state !== 'ready') {
+      if (
+        Array.isArray(asset.scripts) &&
+        asset.scripts.length > 0 &&
+        currentAnalysis?.state !== 'ready'
+      ) {
         setFontAnalysis(assetKey, {
           scripts: asset.scripts,
           state: 'ready',

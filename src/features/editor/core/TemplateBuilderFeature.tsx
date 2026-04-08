@@ -142,7 +142,11 @@ export default function TemplateBuilderFeature({
             />
           </div>
           <aside className="app__clip-side-panel">
-            <div className="app__clip-side-tabs" role="tablist" aria-label="Clip Studio Panel">
+            <div
+              className="app__clip-side-tabs"
+              role="tablist"
+              aria-label="Clip Studio Panel"
+            >
               <button
                 type="button"
                 role="tab"
@@ -204,7 +208,9 @@ export default function TemplateBuilderFeature({
             <Toolbar mode={mode} />
             <CanvasWorkspace />
           </div>
-          {showInspector && <PropertyInspector renderPreviewRequest={renderPreviewRequest} />}
+          {showInspector && (
+            <PropertyInspector renderPreviewRequest={renderPreviewRequest} />
+          )}
         </div>
       )}
 

@@ -262,7 +262,12 @@ describe('buildStudioManifest', () => {
             text: {
               max_lines: 2,
               overflow: 'shrink',
-              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              font: {
+                family: 'NotoSansDevanagari',
+                weight: 700,
+                fallbacks: [],
+                size: 60,
+              },
               width_percent: 100,
               min_font_size: 24,
               horizontal_align: 'center',
@@ -353,7 +358,12 @@ describe('buildStudioManifest', () => {
             text: {
               max_lines: 2,
               overflow: 'shrink',
-              font: { family: 'NotoSansDevanagari', weight: 700, fallbacks: [], size: 60 },
+              font: {
+                family: 'NotoSansDevanagari',
+                weight: 700,
+                fallbacks: [],
+                size: 60,
+              },
               width_percent: 100,
               min_font_size: 24,
               horizontal_align: 'center',

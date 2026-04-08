@@ -426,7 +426,10 @@ function deriveEditableTextBounds(
     coerceFiniteNumber(layout.line_spacing_px, zone.text.line_spacing_px ?? 0)
   );
   const estimatedLineHeight = Math.max(
-    coerceFiniteNumber(layout.line_advance_px, coerceFiniteNumber(layout.line_height_px, fontSize)),
+    coerceFiniteNumber(
+      layout.line_advance_px,
+      coerceFiniteNumber(layout.line_height_px, fontSize)
+    ),
     fontSize
   );
   const estimatedBlockHeight = Math.max(
@@ -440,7 +443,8 @@ function deriveEditableTextBounds(
     rect.h
   );
 
-  const horizontalAlign = zone.text.horizontal_align ?? layout.horizontal_align ?? 'center';
+  const horizontalAlign =
+    zone.text.horizontal_align ?? layout.horizontal_align ?? 'center';
   const verticalAlign = zone.text.vertical_align ?? layout.vertical_align ?? 'middle';
 
   let nextX = rect.x + (rect.w - totalWidth) / 2;
@@ -1179,7 +1183,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => {
         aiCopySessions: {},
         lockedZoneIds: collectLockedZoneIds(normalizedTemplate),
         draftGeometryZoneIds: new Set(),
-        history: [{ template: cloneTemplate(normalizedTemplate), draftGeometryZoneIds: [] }],
+        history: [
+          { template: cloneTemplate(normalizedTemplate), draftGeometryZoneIds: [] },
+        ],
         historyIndex: 0,
       });
     },

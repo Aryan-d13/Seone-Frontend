@@ -11,9 +11,7 @@ import {
   PROTECTED_ASSET_AUTH_MESSAGE,
   PROTECTED_ASSET_LOAD_MESSAGE,
 } from '../../lib/protectedAssetLoader';
-import {
-  isAzureAssetUploadConfigured,
-} from '../../lib/storageService';
+import { isAzureAssetUploadConfigured } from '../../lib/storageService';
 import {
   analyzeFontFile,
   buildFontAssetKey,
@@ -181,7 +179,9 @@ export default function PropertyInspector({
 
   if (!zone) {
     if (activeManifest) {
-      return <ClipCanvasInspector embedded={embedded} studioEditorState={studioEditorState} />;
+      return (
+        <ClipCanvasInspector embedded={embedded} studioEditorState={studioEditorState} />
+      );
     }
     return <TemplateCanvasInspector variant={variant} embedded={embedded} />;
   }
@@ -212,7 +212,9 @@ function NeedsAttentionCard({
   blockers: StudioEditorState['blockers'];
   zoneId?: string | null;
 }) {
-  const relevantBlockers = blockers.filter(blocker => !zoneId || blocker.zoneId === zoneId);
+  const relevantBlockers = blockers.filter(
+    blocker => !zoneId || blocker.zoneId === zoneId
+  );
   if (!relevantBlockers.length) return null;
 
   return (
@@ -852,8 +854,8 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
   if (!zone.style_ref || !template.styles[zone.style_ref]) return null;
   const backgroundZone = activeManifest
     ? template.zones.find(
-      entry => entry.id === `${zone.id}__bg` && entry.type === 'shape'
-    )
+        entry => entry.id === `${zone.id}__bg` && entry.type === 'shape'
+      )
     : null;
   const backgroundStyle = backgroundZone?.style_ref
     ? template.styles[backgroundZone.style_ref]
@@ -907,13 +909,13 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
               onChange={e =>
                 backgroundZone?.style_ref
                   ? setStyle(backgroundZone.style_ref, {
-                    ...(backgroundStyle || {}),
-                    fill: e.target.value,
-                  })
+                      ...(backgroundStyle || {}),
+                      fill: e.target.value,
+                    })
                   : setStyle(zone.style_ref!, {
-                    ...template.styles[zone.style_ref!],
-                    bg_fill: e.target.value,
-                  })
+                      ...template.styles[zone.style_ref!],
+                      bg_fill: e.target.value,
+                    })
               }
             />
             <input
@@ -927,13 +929,13 @@ function TextColorsEditor({ zone }: { zone: ZoneSpec }) {
               onChange={e =>
                 backgroundZone?.style_ref
                   ? setStyle(backgroundZone.style_ref, {
-                    ...(backgroundStyle || {}),
-                    fill: e.target.value,
-                  })
+                      ...(backgroundStyle || {}),
+                      fill: e.target.value,
+                    })
                   : setStyle(zone.style_ref!, {
-                    ...template.styles[zone.style_ref!],
-                    bg_fill: e.target.value,
-                  })
+                      ...template.styles[zone.style_ref!],
+                      bg_fill: e.target.value,
+                    })
               }
               style={{ maxWidth: 72, fontFamily: 'var(--font-mono)', fontSize: 11 }}
             />
@@ -978,14 +980,11 @@ function TextSpecEditor({
   const contentRef = zone.content_ref || '';
   const previewText = contentRef ? previewTexts[contentRef] || '' : '';
   const copyLanguage = activeManifest?.render_payload?.copy_language;
-  const activeFontSelection = useMemo(
-    () => {
-      const sel = getActiveTextFontSelection(text.font, copyLanguage);
-      // Hard-lock to Khand regardless of persisted value
-      return { ...sel, family: 'Khand' };
-    },
-    [copyLanguage, text.font]
-  );
+  const activeFontSelection = useMemo(() => {
+    const sel = getActiveTextFontSelection(text.font, copyLanguage);
+    // Hard-lock to Khand regardless of persisted value
+    return { ...sel, family: 'Khand' };
+  }, [copyLanguage, text.font]);
   const aiCopyEnabled = Boolean(renderPreviewRequest && contentRef === 'pov_text');
   const uploadedFonts = useMemo(
     () => listUploadedFontEntries(template.assets || {}, fontAnalysis),
@@ -1017,7 +1016,8 @@ function TextSpecEditor({
       fonts: availableFonts,
     });
   }, [availableFonts, copyLanguage, fontsLoading, previewText, text.font]);
-  const currentFontMissing = !fontsLoading && resolvedRuntimeFont?.fontState === 'MISSING';
+  const currentFontMissing =
+    !fontsLoading && resolvedRuntimeFont?.fontState === 'MISSING';
   const isClipFontUpload = Boolean(renderPreviewRequest?.jobId && activeManifest);
   const fontUploadDisabled = !isClipFontUpload && !isAzureAssetUploadConfigured();
   const fontUploadHelpText = useMemo(() => {
@@ -1039,18 +1039,15 @@ function TextSpecEditor({
       );
     }
     return notices.length > 0 ? notices.join(' ') : null;
-  }, [
-    fontUploadDisabled,
-    resolvedRuntimeFont,
-  ]);
+  }, [fontUploadDisabled, resolvedRuntimeFont]);
   const aiCopyState = aiCopyEnabled
     ? (aiCopySessions[contentRef] ?? {
-      options: [],
-      rejected: [],
-      loading: false,
-      error: null,
-      copyLanguage: null,
-    })
+        options: [],
+        rejected: [],
+        loading: false,
+        error: null,
+        copyLanguage: null,
+      })
     : null;
 
   const patchText = (patch: Partial<TextSpec>) => {
@@ -1174,8 +1171,8 @@ function TextSpecEditor({
     const rejectedOptions =
       mode === 'regenerate'
         ? Array.from(
-          new Set([...(aiCopyState?.rejected || []), ...(aiCopyState?.options || [])])
-        )
+            new Set([...(aiCopyState?.rejected || []), ...(aiCopyState?.options || [])])
+          )
         : aiCopyState?.rejected || [];
 
     updateAICopySession(contentRef, {
@@ -1261,19 +1258,17 @@ function TextSpecEditor({
           <div className="inspector__font-card-meta">
             <div>
               <span className="inspector__font-card-label">Selected</span>
-              <strong>
-                Khand
-              </strong>
+              <strong>Khand</strong>
             </div>
             <div>
               <span className="inspector__font-card-label">Effective in canvas</span>
-              <strong>
-                Khand
-              </strong>
+              <strong>Khand</strong>
             </div>
             <div>
               <span className="inspector__font-card-label">Compatibility</span>
-              <strong>{resolvedRuntimeFont?.compatibilityStatus || 'Checking font…'}</strong>
+              <strong>
+                {resolvedRuntimeFont?.compatibilityStatus || 'Checking font…'}
+              </strong>
             </div>
           </div>
           <div className="inspector__field inspector__field--stacked">
@@ -1285,9 +1280,13 @@ function TextSpecEditor({
               locked={true}
               missing={currentFontMissing}
               onChange={family => patchFontSelection(family, activeFontSelection.weight)}
-              onWeightChange={weight => patchFontSelection(activeFontSelection.family, weight)}
+              onWeightChange={weight =>
+                patchFontSelection(activeFontSelection.family, weight)
+              }
               onUpload={() => fontUploadInputRef.current?.click()}
-              uploadLabel={isClipFontUpload ? 'Upload custom font' : 'Upload template font'}
+              uploadLabel={
+                isClipFontUpload ? 'Upload custom font' : 'Upload template font'
+              }
               uploadDisabled={fontUploadDisabled}
               uploadHelpText={fontUploadHelpText}
             />
@@ -1300,10 +1299,14 @@ function TextSpecEditor({
             />
           </div>
           {resolvedRuntimeFont?.repairMessage && (
-            <div className="inspector__font-card-note">{resolvedRuntimeFont.repairMessage}</div>
+            <div className="inspector__font-card-note">
+              {resolvedRuntimeFont.repairMessage}
+            </div>
           )}
           {!resolvedRuntimeFont?.repairMessage && resolvedRuntimeFont?.blockingReason && (
-            <div className="inspector__font-card-error">{resolvedRuntimeFont.blockingReason}</div>
+            <div className="inspector__font-card-error">
+              {resolvedRuntimeFont.blockingReason}
+            </div>
           )}
         </div>
 
@@ -1353,7 +1356,9 @@ function TextSpecEditor({
               className="inspector__select"
               value={text.vertical_align}
               onChange={e =>
-                patchText({ vertical_align: e.target.value as TextSpec['vertical_align'] })
+                patchText({
+                  vertical_align: e.target.value as TextSpec['vertical_align'],
+                })
               }
             >
               <option value="top">Top</option>
@@ -1402,7 +1407,8 @@ function TextSpecEditor({
                   allowEmpty
                   onCommit={value =>
                     patchText({
-                      width_percent: value === null ? null : Math.max(1, Math.round(value)),
+                      width_percent:
+                        value === null ? null : Math.max(1, Math.round(value)),
                     })
                   }
                 />
@@ -1416,7 +1422,8 @@ function TextSpecEditor({
                   allowEmpty
                   onCommit={value =>
                     patchText({
-                      min_font_size: value === null ? null : Math.max(1, Math.round(value)),
+                      min_font_size:
+                        value === null ? null : Math.max(1, Math.round(value)),
                     })
                   }
                 />
@@ -1456,7 +1463,9 @@ function TextSpecEditor({
             onClick={() => handleGenerateSuggestions('generate')}
             disabled={aiCopyState.loading}
           >
-            {aiCopyState.loading ? 'Generating suggestions…' : 'Suggest 3 headline options'}
+            {aiCopyState.loading
+              ? 'Generating suggestions…'
+              : 'Suggest 3 headline options'}
           </button>
 
           {aiCopyState.options.length > 0 && (

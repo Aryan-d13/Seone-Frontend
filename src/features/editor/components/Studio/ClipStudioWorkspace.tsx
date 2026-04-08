@@ -11,7 +11,10 @@ import {
 } from '../../lib/clipStudioDebug';
 import ZoneRenderer from '../Canvas/ZoneRenderer';
 import ClipStudioTimeline from './ClipStudioTimeline';
-import { getClipLayerDefinitions, getClipStageLayerDefinitions } from '../../utils/clipLayers';
+import {
+  getClipLayerDefinitions,
+  getClipStageLayerDefinitions,
+} from '../../utils/clipLayers';
 import { getAssetPreviewUrl } from '../../utils/assetPreview';
 import type { RenderPreviewRequest } from '../RenderPreview/RenderPreview';
 import './ClipStudioWorkspace.css';
@@ -111,18 +114,16 @@ interface WorkspaceDebugSnapshot {
     lastStableFrameCount: number;
     lastFittedViewportSize: { width: number; height: number };
     lastTargetScroll: { left: number; top: number } | null;
-    lastAppliedScroll:
-      | {
-          requestedLeft: number;
-          requestedTop: number;
-          appliedLeft: number;
-          appliedTop: number;
-          maxLeft: number;
-          maxTop: number;
-          clamped: boolean;
-          reason: string;
-        }
-      | null;
+    lastAppliedScroll: {
+      requestedLeft: number;
+      requestedTop: number;
+      appliedLeft: number;
+      appliedTop: number;
+      maxLeft: number;
+      maxTop: number;
+      clamped: boolean;
+      reason: string;
+    } | null;
   };
   renderPreviewRequest: RenderPreviewRequest | null;
 }
@@ -297,7 +298,9 @@ function clampPlayheadToWindow(playheadTime: number, window: TimeWindow): number
 }
 
 function timeWindowEquals(left: TimeWindow, right: TimeWindow): boolean {
-  return Math.abs(left.start - right.start) < 0.001 && Math.abs(left.end - right.end) < 0.001;
+  return (
+    Math.abs(left.start - right.start) < 0.001 && Math.abs(left.end - right.end) < 0.001
+  );
 }
 
 function cropAnchorToObjectPosition(anchor: unknown): string {
@@ -387,9 +390,8 @@ export default function ClipStudioWorkspace({
   const lastFitWaitPhaseRef = useRef<ViewportFitWaitPhase>('idle');
   const lastFitStableFrameCountRef = useRef(0);
   const lastTargetScrollRef = useRef<{ left: number; top: number } | null>(null);
-  const lastAppliedScrollRef = useRef<WorkspaceDebugSnapshot['fit']['lastAppliedScroll']>(
-    null
-  );
+  const lastAppliedScrollRef =
+    useRef<WorkspaceDebugSnapshot['fit']['lastAppliedScroll']>(null);
   const fitAttemptCounterRef = useRef(0);
 
   const [sourceDuration, setSourceDuration] = useState(0);
@@ -420,7 +422,8 @@ export default function ClipStudioWorkspace({
   }, [activeManifest?.render_payload?.source_video_url]);
 
   const committedTrimWindow = useMemo(
-    () => coerceTimeWindow(activeManifest?.render_payload?.time_window, sourceDuration || 0),
+    () =>
+      coerceTimeWindow(activeManifest?.render_payload?.time_window, sourceDuration || 0),
     [activeManifest?.render_payload?.time_window, sourceDuration]
   );
   const activeTrimWindow = draftTrimWindow ?? committedTrimWindow;
@@ -459,13 +462,7 @@ export default function ClipStudioWorkspace({
         activeManifest,
         clipDuration || Math.max(0, sourceDuration - activeTrimWindow.start)
       ),
-    [
-      orderedZones,
-      activeManifest,
-      clipDuration,
-      sourceDuration,
-      activeTrimWindow.start,
-    ]
+    [orderedZones, activeManifest, clipDuration, sourceDuration, activeTrimWindow.start]
   );
 
   const stageLayers = useMemo(
@@ -491,13 +488,7 @@ export default function ClipStudioWorkspace({
       width,
       height,
     };
-  }, [
-    canvas.height,
-    canvas.width,
-    scale,
-    sourceLayer,
-    sourceVideoAspectRatio,
-  ]);
+  }, [canvas.height, canvas.width, scale, sourceLayer, sourceVideoAspectRatio]);
 
   const sourceLayerObjectPosition = useMemo(() => {
     const cropFocus = normalizeCropFocus(sourceLayer?.media?.crop_focus);
@@ -525,7 +516,9 @@ export default function ClipStudioWorkspace({
     const frameRect =
       serializeRect(frame?.getBoundingClientRect()) ||
       serializeRect(viewport?.getBoundingClientRect());
-    const viewportRect = viewport ? serializeRect(viewport.getBoundingClientRect()) : null;
+    const viewportRect = viewport
+      ? serializeRect(viewport.getBoundingClientRect())
+      : null;
     const planeRect = plane ? serializeRect(plane.getBoundingClientRect()) : null;
     const stageShellRect = stageShell
       ? serializeRect(stageShell.getBoundingClientRect())
@@ -579,8 +572,8 @@ export default function ClipStudioWorkspace({
         : null,
       viewportWidthMismatch: Boolean(
         viewport &&
-          (Math.abs(viewport.clientWidth - visibleViewport.width) > 1 ||
-            Math.abs(viewport.clientHeight - visibleViewport.height) > 1)
+        (Math.abs(viewport.clientWidth - visibleViewport.width) > 1 ||
+          Math.abs(viewport.clientHeight - visibleViewport.height) > 1)
       ),
       plane: {
         width: planeWidth,
@@ -655,49 +648,52 @@ export default function ClipStudioWorkspace({
     [buildWorkspaceDebugSnapshot, debugOverlayNonce]
   );
 
-  const applyViewportScroll = useCallback((left: number, top: number, reason = 'unknown') => {
-    const frame = viewportFrameRef.current;
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const { maxLeft, maxTop } = getViewportScrollRange(
-      viewport,
-      getVisibleViewportSize(frame, viewport)
-    );
-    const nextLeft = clamp(left, 0, maxLeft);
-    const nextTop = clamp(top, 0, maxTop);
+  const applyViewportScroll = useCallback(
+    (left: number, top: number, reason = 'unknown') => {
+      const frame = viewportFrameRef.current;
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+      const { maxLeft, maxTop } = getViewportScrollRange(
+        viewport,
+        getVisibleViewportSize(frame, viewport)
+      );
+      const nextLeft = clamp(left, 0, maxLeft);
+      const nextTop = clamp(top, 0, maxTop);
 
-    programmaticScrollRef.current = true;
-    viewport.scrollLeft = nextLeft;
-    viewport.scrollTop = nextTop;
-    previousViewportScrollRef.current = { left: nextLeft, top: nextTop };
-    lastAppliedScrollRef.current = {
-      requestedLeft: left,
-      requestedTop: top,
-      appliedLeft: nextLeft,
-      appliedTop: nextTop,
-      maxLeft,
-      maxTop,
-      clamped: Math.abs(left - nextLeft) > 0.5 || Math.abs(top - nextTop) > 0.5,
-      reason,
-    };
-    clipDebugLog('workspace:scroll:apply', lastAppliedScrollRef.current);
-    refreshDebugOverlay();
-
-    if (programmaticScrollResetRef.current !== null) {
-      cancelAnimationFrame(programmaticScrollResetRef.current);
-    }
-
-    programmaticScrollResetRef.current = requestAnimationFrame(() => {
-      programmaticScrollRef.current = false;
-      programmaticScrollResetRef.current = null;
-      if (!viewportRef.current) return;
-      previousViewportScrollRef.current = {
-        left: viewportRef.current.scrollLeft,
-        top: viewportRef.current.scrollTop,
+      programmaticScrollRef.current = true;
+      viewport.scrollLeft = nextLeft;
+      viewport.scrollTop = nextTop;
+      previousViewportScrollRef.current = { left: nextLeft, top: nextTop };
+      lastAppliedScrollRef.current = {
+        requestedLeft: left,
+        requestedTop: top,
+        appliedLeft: nextLeft,
+        appliedTop: nextTop,
+        maxLeft,
+        maxTop,
+        clamped: Math.abs(left - nextLeft) > 0.5 || Math.abs(top - nextTop) > 0.5,
+        reason,
       };
+      clipDebugLog('workspace:scroll:apply', lastAppliedScrollRef.current);
       refreshDebugOverlay();
-    });
-  }, [refreshDebugOverlay]);
+
+      if (programmaticScrollResetRef.current !== null) {
+        cancelAnimationFrame(programmaticScrollResetRef.current);
+      }
+
+      programmaticScrollResetRef.current = requestAnimationFrame(() => {
+        programmaticScrollRef.current = false;
+        programmaticScrollResetRef.current = null;
+        if (!viewportRef.current) return;
+        previousViewportScrollRef.current = {
+          left: viewportRef.current.scrollLeft,
+          top: viewportRef.current.scrollTop,
+        };
+        refreshDebugOverlay();
+      });
+    },
+    [refreshDebugOverlay]
+  );
 
   const requestViewportFit = useCallback(
     ({
@@ -987,7 +983,10 @@ export default function ClipStudioWorkspace({
 
       applyViewportScroll(
         Math.max(0, workspacePadding + centerCanvasX * scale - visibleViewport.width / 2),
-        Math.max(0, workspacePadding + centerCanvasY * scale - visibleViewport.height / 2),
+        Math.max(
+          0,
+          workspacePadding + centerCanvasY * scale - visibleViewport.height / 2
+        ),
         'zoom'
       );
     }
@@ -1014,7 +1013,10 @@ export default function ClipStudioWorkspace({
     const attempt = fitAttemptCounterRef.current + 1;
     fitAttemptCounterRef.current = attempt;
     const fitReason = lastRequestedFitReasonRef.current;
-    const emitFitWait = (phase: ViewportFitWaitPhase, payload: Record<string, unknown>) => {
+    const emitFitWait = (
+      phase: ViewportFitWaitPhase,
+      payload: Record<string, unknown>
+    ) => {
       lastFitWaitPhaseRef.current = phase;
       lastFitStableFrameCountRef.current = stableFrameCount;
       const eventPayload = {
@@ -1070,7 +1072,12 @@ export default function ClipStudioWorkspace({
         scaledHeight,
       });
 
-      if (currentWidth <= 0 || currentHeight <= 0 || scaledWidth <= 0 || scaledHeight <= 0) {
+      if (
+        currentWidth <= 0 ||
+        currentHeight <= 0 ||
+        scaledWidth <= 0 ||
+        scaledHeight <= 0
+      ) {
         emitFitWait('viewport_not_ready', {
           stableFrameCount,
           viewport: {
@@ -1466,10 +1473,7 @@ export default function ClipStudioWorkspace({
 
   const handleTrimDraftChange = (nextTrimWindow: TimeWindow) => {
     setDraftTrimWindow(nextTrimWindow);
-    const clampedPlayheadTime = clampPlayheadToWindow(
-      editorPlayheadTime,
-      nextTrimWindow
-    );
+    const clampedPlayheadTime = clampPlayheadToWindow(editorPlayheadTime, nextTrimWindow);
     if (Math.abs(clampedPlayheadTime - editorPlayheadTime) > 0.001) {
       seekToTime(clampedPlayheadTime);
     }
@@ -1486,10 +1490,7 @@ export default function ClipStudioWorkspace({
       });
     }
 
-    const clampedPlayheadTime = clampPlayheadToWindow(
-      editorPlayheadTime,
-      nextTrimWindow
-    );
+    const clampedPlayheadTime = clampPlayheadToWindow(editorPlayheadTime, nextTrimWindow);
     if (Math.abs(clampedPlayheadTime - editorPlayheadTime) > 0.001) {
       seekToTime(clampedPlayheadTime);
     }
@@ -1528,9 +1529,7 @@ export default function ClipStudioWorkspace({
     void element.play().catch(error => {
       setSourceVideoBuffering(false);
       setIsPlaying(false);
-      setVideoError(
-        error instanceof Error ? error.message : 'Playback could not start.'
-      );
+      setVideoError(error instanceof Error ? error.message : 'Playback could not start.');
     });
   };
 
@@ -1724,266 +1723,272 @@ export default function ClipStudioWorkspace({
         data-testid="clip-studio-viewport-frame"
         className="clip-studio-workspace__viewport-frame"
       >
-      <div
-        ref={viewportRef}
-        data-testid="clip-studio-viewport"
-        className={`clip-studio-workspace__viewport ${
-          isPanning
-            ? 'clip-studio-workspace__viewport--panning'
-            : spacePanActive
-              ? 'clip-studio-workspace__viewport--space-pan'
-              : ''
-        }`}
-        onPointerDownCapture={handleViewportPointerDownCapture}
-        onPointerMove={handleViewportPointerMove}
-        onPointerUp={finishPanSession}
-        onPointerCancel={finishPanSession}
-        onLostPointerCapture={() => {
-          panSessionRef.current = null;
-          setIsPanning(false);
-          window.setTimeout(() => {
-            suppressViewportClickRef.current = false;
-          }, 0);
-        }}
-        onClick={handleViewportClick}
-      >
         <div
-          ref={planeRef}
-          className="clip-studio-workspace__plane"
-          style={{ width: planeWidth, height: planeHeight }}
+          ref={viewportRef}
+          data-testid="clip-studio-viewport"
+          className={`clip-studio-workspace__viewport ${
+            isPanning
+              ? 'clip-studio-workspace__viewport--panning'
+              : spacePanActive
+                ? 'clip-studio-workspace__viewport--space-pan'
+                : ''
+          }`}
+          onPointerDownCapture={handleViewportPointerDownCapture}
+          onPointerMove={handleViewportPointerMove}
+          onPointerUp={finishPanSession}
+          onPointerCancel={finishPanSession}
+          onLostPointerCapture={() => {
+            panSessionRef.current = null;
+            setIsPanning(false);
+            window.setTimeout(() => {
+              suppressViewportClickRef.current = false;
+            }, 0);
+          }}
+          onClick={handleViewportClick}
         >
           <div
-            ref={stageShellRef}
-            className="clip-studio-workspace__stage-shell"
-            style={{ left: workspacePadding, top: workspacePadding }}
+            ref={planeRef}
+            className="clip-studio-workspace__plane"
+            style={{ width: planeWidth, height: planeHeight }}
           >
-            <div className="clip-studio-workspace__stage-chrome">
-              <div className="clip-studio-workspace__stage-label">
-                <strong>
-                  {canvas.width} × {canvas.height}
-                </strong>
-              </div>
-              <div className="clip-studio-workspace__stage-tools">
-                <button
-                  data-testid="clip-studio-transport"
-                  className="clip-studio-workspace__transport"
-                  onClick={togglePlayback}
-                  type="button"
-                  disabled={!sourceVideoUrl}
-                >
-                  {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-                </button>
-                <div className="clip-studio-workspace__zoom">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextZoom = clamp(Number((zoom - 0.1).toFixed(2)), 0.25, 3);
-                      if (nextZoom === zoom) return;
-                      userHasManuallyMovedViewportRef.current = true;
-                      setZoom(nextZoom);
-                    }}
-                  >
-                    -
-                  </button>
-                  <span>{Math.round(zoom * 100)}%</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextZoom = clamp(Number((zoom + 0.1).toFixed(2)), 0.25, 3);
-                      if (nextZoom === zoom) return;
-                      userHasManuallyMovedViewportRef.current = true;
-                      setZoom(nextZoom);
-                    }}
-                  >
-                    +
-                  </button>
-                  <button type="button" onClick={handleResetViewport}>
-                    Fit
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="clip-studio-workspace__trim-toggle"
-                  onClick={() => setTimelineCollapsed(value => !value)}
-                >
-                  {timelineCollapsed ? (
-                    <ChevronUp size={14} />
-                  ) : (
-                    <ChevronDown size={14} />
-                  )}
-                  Trim
-                </button>
-              </div>
-            </div>
-
             <div
-              ref={stageRef}
-              className="clip-studio-workspace__stage"
-              style={{ width: scaledWidth, height: scaledHeight }}
+              ref={stageShellRef}
+              className="clip-studio-workspace__stage-shell"
+              style={{ left: workspacePadding, top: workspacePadding }}
             >
-              {sourceVideoUrl && sourceLayerRect && (
-                <video
-                  ref={sourceVideoRef}
-                  data-testid="clip-studio-source-video"
-                  src={sourceVideoUrl}
-                  className="clip-studio-workspace__stage-video"
-                  playsInline
-                  preload="metadata"
-                  style={{
-                    left: `${sourceLayerRect.left}px`,
-                    top: `${sourceLayerRect.top}px`,
-                    width: `${sourceLayerRect.width}px`,
-                    height: `${sourceLayerRect.height}px`,
-                    objectFit: sourceLayerObjectFit,
-                    objectPosition: sourceLayerObjectPosition,
-                  }}
-                  onLoadedMetadata={handleLoadedMetadata}
-                  onLoadedData={() => {
-                    setSourceVideoLoading(false);
-                    clipDebugLog('workspace:source:loaded-data', {
-                      sourceVideoUrl,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                  onTimeUpdate={handleTimeUpdate}
-                  onPlay={() => {
-                    setIsPlaying(true);
-                    setSourceVideoBuffering(false);
-                    clipDebugLog('workspace:source:play', {
-                      currentTime: sourceVideoRef.current?.currentTime ?? null,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                  onPause={() => {
-                    setIsPlaying(false);
-                    clipDebugLog('workspace:source:pause', {
-                      currentTime: sourceVideoRef.current?.currentTime ?? null,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                  onEnded={() => {
-                    setIsPlaying(false);
-                    clipDebugLog('workspace:source:ended', {
-                      currentTime: sourceVideoRef.current?.currentTime ?? null,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                  onCanPlay={() => {
-                    setSourceVideoLoading(false);
-                    setSourceVideoBuffering(false);
-                    clipDebugLog('workspace:source:can-play', {
-                      readyState: sourceVideoRef.current?.readyState ?? null,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                  onWaiting={() => {
-                    setSourceVideoBuffering(true);
-                    clipDebugLog('workspace:source:waiting', {
-                      currentTime: sourceVideoRef.current?.currentTime ?? null,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                  onPlaying={() => {
-                    setSourceVideoBuffering(false);
-                    clipDebugLog('workspace:source:playing', {
-                      currentTime: sourceVideoRef.current?.currentTime ?? null,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                  onError={() => {
-                    setIsPlaying(false);
-                    setSourceVideoLoading(false);
-                    setSourceVideoBuffering(false);
-                    setVideoError(`Could not load ${sourceVideoUrl}`);
-                    clipDebugLog('workspace:source:error', {
-                      sourceVideoUrl,
-                    });
-                    refreshDebugOverlay();
-                  }}
-                />
-              )}
-
-              {sourceVideoUrl && !videoError && sourceVideoLoading && (
-                <div
-                  className="clip-studio-workspace__stage-loading"
-                  data-testid="clip-studio-video-loading"
-                >
-                  <Skeleton className="clip-studio-workspace__stage-loading-video" />
-                  <div className="clip-studio-workspace__stage-loading-top">
-                    <Skeleton className="clip-studio-workspace__stage-loading-logo" />
-                    <Skeleton className="clip-studio-workspace__stage-loading-title" />
-                  </div>
-                </div>
-              )}
-
-              {!sourceVideoUrl && (
-                <div className="clip-studio-workspace__empty">
-                  <strong>Source video unavailable</strong>
-                  <span>
-                    This clip manifest does not expose a usable source video URL yet.
-                  </span>
-                </div>
-              )}
-
-              {sourceVideoUrl && videoError && (
-                <div className="clip-studio-workspace__empty">
-                  <strong>Source video failed to load</strong>
-                  <span>{videoError}</span>
-                </div>
-              )}
-
-              {sourceVideoUrl && !videoError && sourceVideoBuffering && !sourceVideoLoading && (
-                <div
-                  className="clip-studio-workspace__buffering"
-                  data-testid="clip-studio-buffering"
-                >
-                  Buffering source video...
-                </div>
-              )}
-
-              {exactLayoutUnavailable && (
-                <div
-                  className="clip-studio-workspace__authority-overlay"
-                  data-testid="clip-studio-layout-unavailable"
-                >
+              <div className="clip-studio-workspace__stage-chrome">
+                <div className="clip-studio-workspace__stage-label">
                   <strong>
-                    {layoutAuthorityReason?.includes('Preparing exact layout') ||
-                    layoutAuthorityReason?.includes('Saving exact layout')
-                      ? 'Preparing exact layout'
-                      : 'Exact layout unavailable'}
+                    {canvas.width} × {canvas.height}
                   </strong>
-                  <span>
-                    {layoutAuthorityReason ||
-                      'Studio is waiting for resolver-generated geometry before this canvas can be treated as exact.'}
-                  </span>
                 </div>
-              )}
+                <div className="clip-studio-workspace__stage-tools">
+                  <button
+                    data-testid="clip-studio-transport"
+                    className="clip-studio-workspace__transport"
+                    onClick={togglePlayback}
+                    type="button"
+                    disabled={!sourceVideoUrl}
+                  >
+                    {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                  </button>
+                  <div className="clip-studio-workspace__zoom">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextZoom = clamp(Number((zoom - 0.1).toFixed(2)), 0.25, 3);
+                        if (nextZoom === zoom) return;
+                        userHasManuallyMovedViewportRef.current = true;
+                        setZoom(nextZoom);
+                      }}
+                    >
+                      -
+                    </button>
+                    <span>{Math.round(zoom * 100)}%</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextZoom = clamp(Number((zoom + 0.1).toFixed(2)), 0.25, 3);
+                        if (nextZoom === zoom) return;
+                        userHasManuallyMovedViewportRef.current = true;
+                        setZoom(nextZoom);
+                      }}
+                    >
+                      +
+                    </button>
+                    <button type="button" onClick={handleResetViewport}>
+                      Fit
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="clip-studio-workspace__trim-toggle"
+                    onClick={() => setTimelineCollapsed(value => !value)}
+                  >
+                    {timelineCollapsed ? (
+                      <ChevronUp size={14} />
+                    ) : (
+                      <ChevronDown size={14} />
+                    )}
+                    Trim
+                  </button>
+                </div>
+              </div>
 
-              {sourceVideoUrl &&
-                !videoError &&
-                stageLayers.map(({ zone, time, resolvedZone }) => {
-                  return (
-                    <div key={zone.id}>
-                      <ZoneRenderer
-                        zone={zone}
-                        scale={scale}
-                        suppressMediaContent={zone.id === sourceLayer?.id}
-                        resolvedZone={resolvedZone}
-                        renderMode="clip"
-                        assetResolving={assetResolving[zone.id] ?? false}
-                        assetFailed={assetFailures[zone.id] ?? false}
-                      />
+              <div
+                ref={stageRef}
+                className="clip-studio-workspace__stage"
+                style={{ width: scaledWidth, height: scaledHeight }}
+              >
+                {sourceVideoUrl && sourceLayerRect && (
+                  <video
+                    ref={sourceVideoRef}
+                    data-testid="clip-studio-source-video"
+                    src={sourceVideoUrl}
+                    className="clip-studio-workspace__stage-video"
+                    playsInline
+                    preload="metadata"
+                    style={{
+                      left: `${sourceLayerRect.left}px`,
+                      top: `${sourceLayerRect.top}px`,
+                      width: `${sourceLayerRect.width}px`,
+                      height: `${sourceLayerRect.height}px`,
+                      objectFit: sourceLayerObjectFit,
+                      objectPosition: sourceLayerObjectPosition,
+                    }}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onLoadedData={() => {
+                      setSourceVideoLoading(false);
+                      clipDebugLog('workspace:source:loaded-data', {
+                        sourceVideoUrl,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                    onTimeUpdate={handleTimeUpdate}
+                    onPlay={() => {
+                      setIsPlaying(true);
+                      setSourceVideoBuffering(false);
+                      clipDebugLog('workspace:source:play', {
+                        currentTime: sourceVideoRef.current?.currentTime ?? null,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                    onPause={() => {
+                      setIsPlaying(false);
+                      clipDebugLog('workspace:source:pause', {
+                        currentTime: sourceVideoRef.current?.currentTime ?? null,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                    onEnded={() => {
+                      setIsPlaying(false);
+                      clipDebugLog('workspace:source:ended', {
+                        currentTime: sourceVideoRef.current?.currentTime ?? null,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                    onCanPlay={() => {
+                      setSourceVideoLoading(false);
+                      setSourceVideoBuffering(false);
+                      clipDebugLog('workspace:source:can-play', {
+                        readyState: sourceVideoRef.current?.readyState ?? null,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                    onWaiting={() => {
+                      setSourceVideoBuffering(true);
+                      clipDebugLog('workspace:source:waiting', {
+                        currentTime: sourceVideoRef.current?.currentTime ?? null,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                    onPlaying={() => {
+                      setSourceVideoBuffering(false);
+                      clipDebugLog('workspace:source:playing', {
+                        currentTime: sourceVideoRef.current?.currentTime ?? null,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                    onError={() => {
+                      setIsPlaying(false);
+                      setSourceVideoLoading(false);
+                      setSourceVideoBuffering(false);
+                      setVideoError(`Could not load ${sourceVideoUrl}`);
+                      clipDebugLog('workspace:source:error', {
+                        sourceVideoUrl,
+                      });
+                      refreshDebugOverlay();
+                    }}
+                  />
+                )}
+
+                {sourceVideoUrl && !videoError && sourceVideoLoading && (
+                  <div
+                    className="clip-studio-workspace__stage-loading"
+                    data-testid="clip-studio-video-loading"
+                  >
+                    <Skeleton className="clip-studio-workspace__stage-loading-video" />
+                    <div className="clip-studio-workspace__stage-loading-top">
+                      <Skeleton className="clip-studio-workspace__stage-loading-logo" />
+                      <Skeleton className="clip-studio-workspace__stage-loading-title" />
                     </div>
-                  );
-                })}
+                  </div>
+                )}
+
+                {!sourceVideoUrl && (
+                  <div className="clip-studio-workspace__empty">
+                    <strong>Source video unavailable</strong>
+                    <span>
+                      This clip manifest does not expose a usable source video URL yet.
+                    </span>
+                  </div>
+                )}
+
+                {sourceVideoUrl && videoError && (
+                  <div className="clip-studio-workspace__empty">
+                    <strong>Source video failed to load</strong>
+                    <span>{videoError}</span>
+                  </div>
+                )}
+
+                {sourceVideoUrl &&
+                  !videoError &&
+                  sourceVideoBuffering &&
+                  !sourceVideoLoading && (
+                    <div
+                      className="clip-studio-workspace__buffering"
+                      data-testid="clip-studio-buffering"
+                    >
+                      Buffering source video...
+                    </div>
+                  )}
+
+                {exactLayoutUnavailable && (
+                  <div
+                    className="clip-studio-workspace__authority-overlay"
+                    data-testid="clip-studio-layout-unavailable"
+                  >
+                    <strong>
+                      {layoutAuthorityReason?.includes('Preparing exact layout') ||
+                      layoutAuthorityReason?.includes('Saving exact layout')
+                        ? 'Preparing exact layout'
+                        : 'Exact layout unavailable'}
+                    </strong>
+                    <span>
+                      {layoutAuthorityReason ||
+                        'Studio is waiting for resolver-generated geometry before this canvas can be treated as exact.'}
+                    </span>
+                  </div>
+                )}
+
+                {sourceVideoUrl &&
+                  !videoError &&
+                  stageLayers.map(({ zone, time, resolvedZone }) => {
+                    return (
+                      <div key={zone.id}>
+                        <ZoneRenderer
+                          zone={zone}
+                          scale={scale}
+                          suppressMediaContent={zone.id === sourceLayer?.id}
+                          resolvedZone={resolvedZone}
+                          renderMode="clip"
+                          assetResolving={assetResolving[zone.id] ?? false}
+                          assetFailed={assetFailures[zone.id] ?? false}
+                        />
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           </div>
         </div>
       </div>
-      </div>
 
       {debugEnabled && (
-        <div className="clip-studio-workspace__debug-overlay" data-testid="clip-studio-debug-overlay">
+        <div
+          className="clip-studio-workspace__debug-overlay"
+          data-testid="clip-studio-debug-overlay"
+        >
           <strong>Clip Debug</strong>
           <span>
             fit: {workspaceDebugSnapshot.fit.lastRequestedReason} /{' '}
@@ -2002,9 +2007,7 @@ export default function ClipStudioWorkspace({
               ? `${workspaceDebugSnapshot.viewport.clientWidth}×${workspaceDebugSnapshot.viewport.clientHeight}`
               : 'n/a'}
           </span>
-          {workspaceDebugSnapshot.viewportWidthMismatch && (
-            <span>mismatch: true</span>
-          )}
+          {workspaceDebugSnapshot.viewportWidthMismatch && <span>mismatch: true</span>}
           <span>
             scroll:{' '}
             {workspaceDebugSnapshot.viewport
