@@ -67,6 +67,7 @@ export const endpoints = {
       `/api/v1/jobs/${id}/clips/${clipIndex}/copy-suggestions`,
     exportStudio: (id: string, clipIndex: number) =>
       `/api/v1/jobs/${id}/clips/${clipIndex}/export`,
+    studioRender: (taskId: string) => `/api/v1/jobs/studio/renders/${taskId}`,
     uploadAsset: (id: string) => `/api/v1/jobs/${id}/editor-assets`,
     preview: '/api/v1/jobs/preview',
   },

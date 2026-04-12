@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ClipStudioPage from '@/app/(editor)/studio/jobs/[id]/clips/[clipIndex]/page';
 import { useTemplateStore } from '@/features/editor/store/templateStore';
@@ -26,8 +26,19 @@ vi.mock('@/services/auth', () => ({
 }));
 
 vi.mock('@/features/editor', () => ({
-  TemplateBuilderFeature: ({ mode }: { mode: string }) => (
-    <div data-testid="clip-studio-feature">{mode}</div>
+  TemplateBuilderFeature: ({
+    mode,
+    onClipStudioGeneratePreview,
+  }: {
+    mode: string;
+    onClipStudioGeneratePreview?: () => void;
+  }) => (
+    <div>
+      <div data-testid="clip-studio-feature">{mode}</div>
+      <button type="button" onClick={onClipStudioGeneratePreview}>
+        Generate Clip Preview
+      </button>
+    </div>
   ),
 }));
 
@@ -120,6 +131,14 @@ function makeManifest(overrides?: {
   };
 }
 
+function makeJsonResponse(payload: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => payload,
+  };
+}
+
 describe('ClipStudioPage diagnostics', () => {
   const initialStoreState = useTemplateStore.getState();
 
@@ -131,7 +150,15 @@ describe('ClipStudioPage diagnostics', () => {
     delete window.__SEONE_CLIP_DEBUG_SNAPSHOT__;
     delete window.__SEONE_CLIP_DEBUG_EXPORT__;
     delete window.__SEONE_CLIP_DEBUG_PROVIDERS__;
-    fontCatalogState.fonts = [];
+    fontCatalogState.fonts = [
+      {
+        family: 'NotoSansDevanagari',
+        display: 'Noto Sans Devanagari',
+        weights: [700],
+        scripts: ['devanagari'],
+        source: 'builtin',
+      },
+    ];
     fontCatalogState.isLoading = false;
     useTemplateStore.setState(initialStoreState, true);
     authFetchMock.mockReset();
@@ -258,5 +285,237 @@ describe('ClipStudioPage diagnostics', () => {
     expect(
       authFetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')
     ).toBe(false);
+  });
+
+  it('handles queued preview responses by polling task status until a URL is ready', async () => {
+    authFetchMock.mockImplementation((url: string, options?: { method?: string }) => {
+      if (url === '/api/v1/jobs/job-123/clips/1/studio' && !options?.method) {
+        return Promise.resolve(
+          makeJsonResponse({
+            manifest: makeManifest(),
+            source: 'draft',
+            layout_rebuilt: true,
+          })
+        );
+      }
+
+      if (url === '/api/v1/jobs/preview' && options?.method === 'POST') {
+        return Promise.resolve(
+          makeJsonResponse(
+            {
+              url: null,
+              job_id: 'job-123',
+              clip_index: 1,
+              render_task: {
+                task_id: 'task-preview-1',
+                status: 'pending',
+                requested_kind: 'preview',
+                job_id: 'job-123',
+                clip_index: 1,
+                delivery_fingerprint: 'preview-fp',
+                url: null,
+                filename: null,
+                error_message: null,
+              },
+            },
+            202
+          )
+        );
+      }
+
+      if (url === '/api/v1/jobs/studio/renders/task-preview-1') {
+        return Promise.resolve(
+          makeJsonResponse({
+            task_id: 'task-preview-1',
+            status: 'completed',
+            requested_kind: 'preview',
+            job_id: 'job-123',
+            clip_index: 1,
+            delivery_fingerprint: 'preview-fp',
+            url: '/data/previews/job-123-preview.mp4',
+            filename: null,
+            error_message: null,
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected authFetch call: ${url}`));
+    });
+
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>loading...</div>}>
+          <ClipStudioPage params={Promise.resolve({ id: 'job-123', clipIndex: '1' })} />
+        </Suspense>
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(await screen.findByText('Generate Clip Preview'));
+
+    await waitFor(() => {
+      expect(authFetchMock).toHaveBeenCalledWith(
+        '/api/v1/jobs/studio/renders/task-preview-1'
+      );
+    });
+
+    expect(screen.queryByText('Preview generation failed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Save failed')).not.toBeInTheDocument();
+  });
+
+  it('handles queued export responses without treating them as save failures', async () => {
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+
+    authFetchMock.mockImplementation((url: string, options?: { method?: string }) => {
+      if (url === '/api/v1/jobs/job-123/clips/1/studio' && !options?.method) {
+        return Promise.resolve(
+          makeJsonResponse({
+            manifest: makeManifest(),
+            source: 'draft',
+            layout_rebuilt: true,
+          })
+        );
+      }
+
+      if (url === '/api/v1/jobs/job-123/clips/1/export' && options?.method === 'POST') {
+        return Promise.resolve(
+          makeJsonResponse(
+            {
+              url: null,
+              filename: 'queued-export.mp4',
+              job_id: 'job-123',
+              clip_index: 1,
+              render_task: {
+                task_id: 'task-export-1',
+                status: 'pending',
+                requested_kind: 'export',
+                job_id: 'job-123',
+                clip_index: 1,
+                delivery_fingerprint: 'export-fp',
+                url: null,
+                filename: 'queued-export.mp4',
+                error_message: null,
+              },
+            },
+            202
+          )
+        );
+      }
+
+      if (url === '/api/v1/jobs/studio/renders/task-export-1') {
+        return Promise.resolve(
+          makeJsonResponse({
+            task_id: 'task-export-1',
+            status: 'completed',
+            requested_kind: 'export',
+            job_id: 'job-123',
+            clip_index: 1,
+            delivery_fingerprint: 'export-fp',
+            url: '/data/exports/job-123-export.mp4',
+            filename: 'queued-export.mp4',
+            error_message: null,
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected authFetch call: ${url}`));
+    });
+
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>loading...</div>}>
+          <ClipStudioPage params={Promise.resolve({ id: 'job-123', clipIndex: '1' })} />
+        </Suspense>
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(await screen.findByText('Export MP4'));
+
+    await waitFor(() => {
+      expect(authFetchMock).toHaveBeenCalledWith(
+        '/api/v1/jobs/studio/renders/task-export-1'
+      );
+    });
+
+    expect(clickSpy).toHaveBeenCalled();
+    expect(screen.queryByText('Save failed')).not.toBeInTheDocument();
+  });
+
+  it('shows export failures without polluting save state', async () => {
+    authFetchMock.mockImplementation((url: string, options?: { method?: string }) => {
+      if (url === '/api/v1/jobs/job-123/clips/1/studio' && !options?.method) {
+        return Promise.resolve(
+          makeJsonResponse({
+            manifest: makeManifest(),
+            source: 'draft',
+            layout_rebuilt: true,
+          })
+        );
+      }
+
+      if (url === '/api/v1/jobs/job-123/clips/1/export' && options?.method === 'POST') {
+        return Promise.resolve(
+          makeJsonResponse(
+            {
+              url: null,
+              filename: 'queued-export.mp4',
+              job_id: 'job-123',
+              clip_index: 1,
+              render_task: {
+                task_id: 'task-export-fail',
+                status: 'pending',
+                requested_kind: 'export',
+                job_id: 'job-123',
+                clip_index: 1,
+                delivery_fingerprint: 'export-fp',
+                url: null,
+                filename: 'queued-export.mp4',
+                error_message: null,
+              },
+            },
+            202
+          )
+        );
+      }
+
+      if (url === '/api/v1/jobs/studio/renders/task-export-fail') {
+        return Promise.resolve(
+          makeJsonResponse({
+            task_id: 'task-export-fail',
+            status: 'failed',
+            requested_kind: 'export',
+            job_id: 'job-123',
+            clip_index: 1,
+            delivery_fingerprint: 'export-fp',
+            url: null,
+            filename: 'queued-export.mp4',
+            error_message: 'Worker export failed',
+          })
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected authFetch call: ${url}`));
+    });
+
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>loading...</div>}>
+          <ClipStudioPage params={Promise.resolve({ id: 'job-123', clipIndex: '1' })} />
+        </Suspense>
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    fireEvent.click(await screen.findByText('Export MP4'));
+
+    expect(await screen.findByText('Export failed')).toBeInTheDocument();
+    expect(screen.getByText('Worker export failed')).toBeInTheDocument();
+    expect(screen.queryByText('Save failed')).not.toBeInTheDocument();
   });
 });

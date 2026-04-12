@@ -71,6 +71,22 @@ function hasUsableTemplateAssetRef(asset: {
   return [asset.source_uri, asset.gcs_path, asset.path].some(isUsableTemplateAssetRef);
 }
 
+function normalizeTemplateAssetRefs<T extends { source_uri?: string; gcs_path?: string; path?: string }>(
+  asset: T
+): T {
+  const { path: _rawPath, source_uri: _rawSourceUri, gcs_path: _rawGcsPath, ...rest } = asset;
+  const path = readOptionalAssetRef(_rawPath);
+  const sourceUri = readOptionalAssetRef(_rawSourceUri);
+  const gcsPath = readOptionalAssetRef(_rawGcsPath);
+
+  return {
+    ...rest,
+    ...(path ? { path } : {}),
+    ...(sourceUri ? { source_uri: sourceUri } : {}),
+    ...(gcsPath ? { gcs_path: gcsPath } : {}),
+  } as T;
+}
+
 function resolveBaselineBounds(
   templateZone: TemplateJSON['zones'][number],
   activeManifest: RenderManifest
@@ -106,15 +122,7 @@ export function buildStudioManifest({
   const nextAssets = { ...(activeManifest.assets || {}) };
 
   for (const [assetKey, asset] of Object.entries(templateJson.assets || {})) {
-    const gcsPath = readOptionalAssetRef(asset.gcs_path);
-    const sourceUri = readOptionalAssetRef(asset.source_uri);
-    const path = readOptionalAssetRef(asset.path);
-    templateJson.assets[assetKey] = {
-      ...asset,
-      ...(path ? { path } : {}),
-      ...(sourceUri ? { source_uri: sourceUri } : {}),
-      ...(gcsPath ? { gcs_path: gcsPath } : {}),
-    };
+    templateJson.assets[assetKey] = normalizeTemplateAssetRefs(asset);
   }
 
   for (const [assetKey, asset] of Object.entries(templateJson.assets || {})) {
@@ -122,10 +130,10 @@ export function buildStudioManifest({
     if (canonicalUrl) {
       nextAssets[assetKey] = canonicalUrl;
       if (!hasUsableTemplateAssetRef(asset)) {
-        templateJson.assets[assetKey] = {
+        templateJson.assets[assetKey] = normalizeTemplateAssetRefs({
           ...asset,
           source_uri: canonicalUrl,
-        };
+        });
       }
     } else {
       delete nextAssets[assetKey];

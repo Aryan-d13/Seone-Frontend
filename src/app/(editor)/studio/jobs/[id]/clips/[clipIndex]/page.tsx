@@ -15,6 +15,8 @@ import type {
   StudioExportResponse,
   StudioManifestResponse,
   StudioPersistedManifest,
+  StudioPreviewResponse,
+  StudioRenderTaskState,
   StudioSaveResponse,
 } from '@/features/editor/types/manifest';
 import type { TemplateJSON } from '@/features/editor/types/template';
@@ -196,6 +198,28 @@ const topbarButtonActiveStyle: React.CSSProperties = {
 
 type ClipStudioSaveReason = 'autosave' | 'preview' | 'export' | 'retry' | 'unknown';
 
+const STUDIO_RENDER_POLL_INTERVAL_MS = 1000;
+const STUDIO_RENDER_MAX_POLLS = 180;
+
+function normalizeStudioMediaUrl(path: string | null | undefined): string | null {
+  if (typeof path !== 'string' || !path.trim()) {
+    return null;
+  }
+  return getMediaUrl(path);
+}
+
+function defaultStudioRenderError(
+  kind: 'preview' | 'export',
+  task: Pick<StudioRenderTaskState, 'error_message'> | null | undefined
+): string {
+  const explicit =
+    typeof task?.error_message === 'string' && task.error_message.trim()
+      ? task.error_message.trim()
+      : null;
+  if (explicit) return explicit;
+  return kind === 'preview' ? 'Preview generation failed' : 'Export failed';
+}
+
 function summarizeTemplateZones(template: TemplateJSON | null | undefined) {
   if (!template) return [];
   return template.zones.map(zone => ({
@@ -299,6 +323,11 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [previewTaskState, setPreviewTaskState] = useState<StudioRenderTaskState | null>(
+    null
+  );
+  const [exportTaskState, setExportTaskState] = useState<StudioRenderTaskState | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [savedDraftSignature, setSavedDraftSignature] = useState<string | null>(null);
   const [railTab, setRailTab] = useState<'properties' | 'preview'>('properties');
   const [switchingTemplate, setSwitchingTemplate] = useState(false);
@@ -311,6 +340,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const savePromiseRef = useRef<Promise<void> | null>(null);
   const savingSignatureRef = useRef<string | null>(null);
   const currentStudioManifestSignatureRef = useRef<string | null>(null);
+  const studioRenderPollsRef = useRef<Map<string, Promise<StudioRenderTaskState>>>(
+    new Map()
+  );
   const currentCompatibilityKey =
     template.compatibility_key || activeManifest?.template_ir?.compatibility_key || null;
   const compatibleTemplates = useMemo(() => {
@@ -468,6 +500,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       saveStatus,
       saveError,
       exporting,
+      exportError,
       switchingTemplate,
       railTab,
       studioManifestSignature,
@@ -481,6 +514,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       previewUrl: reRenderState.resultUrl,
       previewError: reRenderState.error,
       previewSignature: reRenderState.signature,
+      previewTaskState,
+      exportTaskState,
       editorState,
       blockers: editorState.blockers,
       template: {
@@ -504,6 +539,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       assetPreviewError,
       clipIndexNumber,
       editorState,
+      exportError,
+      exportTaskState,
       exporting,
       fontIssues,
       fontNormalizationMessage,
@@ -516,6 +553,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       reRenderState.error,
       reRenderState.resultUrl,
       reRenderState.signature,
+      previewTaskState,
       resolvedManifestSignature,
       saveError,
       saveStatus,
@@ -554,6 +592,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       saveStatus,
       saveError,
       exporting,
+      exportError,
+      exportTaskState,
+      previewTaskState,
       railTab,
       studioManifestSignature,
       resolvedManifestSignature,
@@ -579,6 +620,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       saveStatus,
       saveError,
       exporting,
+      exportError,
+      exportTaskState,
+      previewTaskState,
       railTab,
       studioManifestSignature,
       resolvedManifestSignature,
@@ -598,6 +642,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     editorState.previewState,
     editorState.renderValidity,
     exporting,
+    exportError,
+    exportTaskState,
+    previewTaskState,
     railTab,
     resolvedManifestSignature,
     saveError,
@@ -607,6 +654,69 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     studioManifestSignature,
     studioSource,
   ]);
+
+  const pollStudioRenderTask = useCallback(async (taskId: string) => {
+    const existingPoll = studioRenderPollsRef.current.get(taskId);
+    if (existingPoll) {
+      return existingPoll;
+    }
+
+    let pollPromise: Promise<StudioRenderTaskState>;
+    pollPromise = (async () => {
+      let lastTaskState: StudioRenderTaskState | null = null;
+
+      for (let attempt = 0; attempt < STUDIO_RENDER_MAX_POLLS; attempt += 1) {
+        const response = await authFetch(endpoints.jobs.studioRender(taskId));
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(
+            payload?.detail || `Failed to check Studio render status (${response.status})`
+          );
+        }
+
+        const taskState = (await response.json()) as StudioRenderTaskState;
+        lastTaskState = taskState;
+        clipDebugLog('studio-render:poll', {
+          taskId,
+          attempt: attempt + 1,
+          status: taskState.status,
+          requestedKind: taskState.requested_kind,
+        });
+
+        if (taskState.status === 'completed') {
+          return taskState;
+        }
+
+        if (taskState.status === 'failed') {
+          throw new Error(
+            defaultStudioRenderError(
+              taskState.requested_kind === 'export' ? 'export' : 'preview',
+              taskState
+            )
+          );
+        }
+
+        if (attempt < STUDIO_RENDER_MAX_POLLS - 1) {
+          await new Promise(resolve =>
+            window.setTimeout(resolve, STUDIO_RENDER_POLL_INTERVAL_MS)
+          );
+        }
+      }
+
+      throw new Error(
+        lastTaskState?.requested_kind === 'export'
+          ? 'Export timed out while waiting for the worker.'
+          : 'Preview timed out while waiting for the worker.'
+      );
+    })().finally(() => {
+      if (studioRenderPollsRef.current.get(taskId) === pollPromise) {
+        studioRenderPollsRef.current.delete(taskId);
+      }
+    });
+
+    studioRenderPollsRef.current.set(taskId, pollPromise);
+    return pollPromise;
+  }, []);
 
   useEffect(() => {
     if (!Number.isInteger(clipIndexNumber) || clipIndexNumber < 0) {
@@ -627,6 +737,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       setLayoutRebuiltOnLoad(false);
       setLastSaveLayoutRebuilt(false);
       setFontNormalizationMessage(null);
+      setPreviewTaskState(null);
+      setExportTaskState(null);
+      setExportError(null);
       setRailTab('properties');
       hasLoadedStudioRef.current = false;
       setReRenderResult(null, null, null);
@@ -845,6 +958,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     if (editorState.renderValidity === 'BLOCKED') return;
 
     try {
+      setPreviewTaskState(null);
       clipDebugLog('preview:start', {
         signature: studioManifestSignature,
         jobId: id,
@@ -872,11 +986,32 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         throw new Error(errorData.detail || `HTTP ${res.status}`);
       }
 
-      const result = await res.json();
-      const normalizedUrl =
-        typeof result?.url === 'string' && result.url.trim()
-          ? getMediaUrl(result.url)
-          : '';
+      const result = (await res.json()) as StudioPreviewResponse;
+      if (result.render_task) {
+        setPreviewTaskState(result.render_task);
+        clipDebugLog('preview:queued', {
+          signature: studioManifestSignature,
+          taskId: result.render_task.task_id,
+          status: result.render_task.status,
+        });
+        const completedTask = await pollStudioRenderTask(result.render_task.task_id);
+        setPreviewTaskState(completedTask);
+        const normalizedQueuedUrl = normalizeStudioMediaUrl(completedTask.url);
+        if (!normalizedQueuedUrl) {
+          throw new Error('Preview render task completed without a playable URL');
+        }
+
+        setReRenderResult(normalizedQueuedUrl, null, studioManifestSignature);
+        clipDebugLog('preview:success', {
+          signature: studioManifestSignature,
+          taskId: completedTask.task_id,
+          url: normalizedQueuedUrl,
+          async: true,
+        });
+        return;
+      }
+
+      const normalizedUrl = normalizeStudioMediaUrl(result.url);
       if (!normalizedUrl) {
         throw new Error('Preview render returned no playable URL');
       }
@@ -887,13 +1022,24 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         url: normalizedUrl,
       });
     } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Preview generation failed';
+      setPreviewTaskState(current =>
+        current
+          ? {
+              ...current,
+              status: 'failed',
+              error_message: message,
+            }
+          : null
+      );
       clipDebugLog('preview:error', {
         signature: studioManifestSignature,
-        error: error instanceof Error ? error.message : 'Preview generation failed',
+        error: message,
       });
       setReRenderResult(
         null,
-        error instanceof Error ? error.message : 'Preview generation failed',
+        message,
         studioManifestSignature
       );
     }
@@ -902,6 +1048,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     editorState.renderValidity,
     id,
     persistStudioDraft,
+    pollStudioRenderTask,
     setReRenderLoading,
     setReRenderResult,
     studioManifest,
@@ -913,7 +1060,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     if (editorState.renderValidity === 'BLOCKED') return;
 
     setExporting(true);
-    setSaveError(null);
+    setExportError(null);
+    setExportTaskState(null);
 
     try {
       clipDebugLog('export:start', {
@@ -938,15 +1086,34 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       }
 
       const payload = (await response.json()) as StudioExportResponse;
-      const downloadUrl = getMediaUrl(payload.url);
+      let downloadUrl = normalizeStudioMediaUrl(payload.url);
+      let downloadFilename =
+        payload.filename || `${id.slice(0, 8)}_clip_${clipIndexNumber + 1}_studio.mp4`;
+
+      if (!downloadUrl && payload.render_task) {
+        setExportTaskState(payload.render_task);
+        clipDebugLog('export:queued', {
+          signature: studioManifestSignature,
+          taskId: payload.render_task.task_id,
+          status: payload.render_task.status,
+        });
+        const completedTask = await pollStudioRenderTask(payload.render_task.task_id);
+        setExportTaskState(completedTask);
+        downloadUrl = normalizeStudioMediaUrl(completedTask.url);
+        downloadFilename = completedTask.filename || downloadFilename;
+      }
+
+      if (!downloadUrl) {
+        throw new Error('Export completed without a downloadable URL');
+      }
+
       setSavedDraftSignature(studioManifestSignature);
       setStudioSource('draft');
       setSaveStatus('saved');
 
       const anchor = document.createElement('a');
       anchor.href = downloadUrl;
-      anchor.download =
-        payload.filename || `${id.slice(0, 8)}_clip_${clipIndexNumber + 1}_studio.mp4`;
+      anchor.download = downloadFilename;
       anchor.rel = 'noopener';
       document.body.appendChild(anchor);
       anchor.click();
@@ -954,14 +1121,23 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
       clipDebugLog('export:success', {
         signature: studioManifestSignature,
         url: downloadUrl,
-        filename: payload.filename,
+        filename: downloadFilename,
       });
     } catch (err) {
-      setSaveStatus('error');
-      setSaveError(err instanceof Error ? err.message : 'Failed to export clip');
+      const message = err instanceof Error ? err.message : 'Failed to export clip';
+      setExportError(message);
+      setExportTaskState(current =>
+        current
+          ? {
+              ...current,
+              status: 'failed',
+              error_message: message,
+            }
+          : null
+      );
       clipDebugLog('export:error', {
         signature: studioManifestSignature,
-        error: err instanceof Error ? err.message : 'Failed to export clip',
+        error: message,
       });
     } finally {
       setExporting(false);
@@ -970,6 +1146,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
     clipIndexNumber,
     editorState.renderValidity,
     id,
+    pollStudioRenderTask,
     persistStudioDraft,
     studioManifest,
     studioManifestSignature,
@@ -1024,8 +1201,37 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         : editorState.previewState === 'GENERATING'
           ? 'Generating render preview from the latest saved draft.'
           : editorState.previewState === 'FAILED'
-            ? reRenderState.error || 'Render preview failed.'
-            : 'Render preview has not been generated yet.');
+          ? reRenderState.error || 'Render preview failed.'
+          : 'Render preview has not been generated yet.');
+  const effectiveStatusPrimary =
+    editorState.draftState === 'SAVE_FAILED'
+      ? 'Save failed'
+      : exportError
+        ? 'Export failed'
+        : exporting
+          ? exportTaskState?.status === 'pending'
+            ? 'Render queued'
+            : 'Preparing export...'
+          : editorState.previewState === 'FAILED'
+            ? 'Preview generation failed'
+            : editorState.previewState === 'GENERATING'
+              ? previewTaskState?.status === 'pending'
+                ? 'Render queued'
+                : 'Generating preview...'
+              : statusPrimary;
+  const effectiveStatusSecondary =
+    editorState.draftState === 'SAVE_FAILED'
+      ? editorState.blockers[0]?.message ||
+        'Save must succeed before preview or export can continue.'
+      : exportError
+        ? exportError
+        : exporting
+          ? exportTaskState?.status === 'pending'
+            ? 'Export is queued and will download automatically when ready.'
+            : 'Preparing export from the latest saved draft.'
+          : editorState.previewState === 'GENERATING' && previewTaskState?.status === 'pending'
+            ? 'Preview render is queued and waiting for worker capacity.'
+            : statusSecondary;
 
   return (
     <div style={shellStyle}>
@@ -1089,8 +1295,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
 
       <div style={statusRailStyle}>
         <div style={{ minWidth: 0 }}>
-          <div style={statusRailPrimaryStyle}>{statusPrimary}</div>
-          <div style={statusRailSecondaryStyle}>{statusSecondary}</div>
+          <div style={statusRailPrimaryStyle}>{effectiveStatusPrimary}</div>
+          <div style={statusRailSecondaryStyle}>{effectiveStatusSecondary}</div>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
           {editorState.draftState === 'SAVE_FAILED' &&

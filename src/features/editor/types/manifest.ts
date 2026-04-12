@@ -118,11 +118,46 @@ export interface StudioSaveResponse {
   font_normalization_message?: string | null;
 }
 
-export interface StudioExportResponse {
-  url: string;
-  filename: string;
+export type StudioRenderTaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface StudioRecompositionMeta {
+  requested_kind: string;
+  result_mode: string;
+  contract_version: number;
+  pre_text_base_fingerprint?: string | null;
+  delivery_fingerprint: string;
+  degraded?: boolean;
+  degraded_reason?: string | null;
+}
+
+export interface StudioRenderTaskState {
+  task_id: string;
+  status: StudioRenderTaskStatus;
+  requested_kind: string;
   job_id: string;
   clip_index: number;
+  delivery_fingerprint: string;
+  url?: string | null;
+  filename?: string | null;
+  recomposition?: StudioRecompositionMeta | null;
+  error_message?: string | null;
+}
+
+export interface StudioPreviewResponse {
+  url: string | null;
+  job_id: string;
+  clip_index: number;
+  recomposition?: StudioRecompositionMeta | null;
+  render_task?: StudioRenderTaskState | null;
+}
+
+export interface StudioExportResponse {
+  url: string | null;
+  filename?: string | null;
+  job_id: string;
+  clip_index: number;
+  recomposition?: StudioRecompositionMeta | null;
+  render_task?: StudioRenderTaskState | null;
 }
 
 export interface StudioCopySuggestionsResponse {

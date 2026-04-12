@@ -1,4 +1,8 @@
-import { buildStudioManifest } from '@/features/editor/utils/studioManifest';
+import {
+  buildStudioManifest,
+  buildStudioManifestFromLoadedManifest,
+  stableStudioManifestSignature,
+} from '@/features/editor/utils/studioManifest';
 
 describe('buildStudioManifest', () => {
   it('merges live preview text into manifest inputs', () => {
@@ -242,6 +246,66 @@ describe('buildStudioManifest', () => {
     );
     expect(manifest?.template_ir.assets.logo_mark.source_uri).toBe(
       'http://localhost:8000/api/v1/jobs/job-1/clips/1/assets/logo_mark'
+    );
+  });
+
+  it('drops empty optional asset refs so draft and resolved signatures converge', () => {
+    const activeManifest = {
+      manifest_version: '1.0',
+      template_ir: {
+        template_version: '1.0',
+        id: 'clip/test',
+        canvas: { width: 1080, height: 1080, unit: 'px', color_space: 'sRGB' },
+        compositing_mode: 'overlay',
+        zones: [],
+        styles: {},
+        assets: {
+          logo_mark: {
+            type: 'image',
+            source_uri: 'templates/indian_recap_v1/assets/logo.png',
+          },
+        },
+      },
+      render_payload: {
+        template_ref: 'clip/test',
+        inputs: {},
+        source_video_key: 'users/user-123/library/videos/source.mp4',
+      },
+      resolved_zones: [],
+      canvas: { w: 1080, h: 1080 },
+      compositing_mode: 'overlay',
+      assets: {
+        logo_mark: '/api/v1/jobs/job-1/clips/1/assets/logo_mark',
+      },
+    } as const;
+
+    const manifest = buildStudioManifest({
+      template: {
+        template_version: '1.0',
+        id: 'clip/test',
+        canvas: { width: 1080, height: 1080, unit: 'px', color_space: 'sRGB' },
+        compositing_mode: 'overlay',
+        zones: [],
+        styles: {},
+        assets: {
+          logo_mark: {
+            type: 'image',
+            path: '',
+            source_uri: 'templates/indian_recap_v1/assets/logo.png',
+          },
+        },
+      },
+      previewTexts: {},
+      activeManifest,
+      draftGeometryZoneIds: new Set(),
+    });
+
+    expect(manifest?.template_ir.assets.logo_mark).toEqual({
+      type: 'image',
+      source_uri: 'templates/indian_recap_v1/assets/logo.png',
+    });
+    expect(stableStudioManifestSignature(manifest)).toBe(
+      stableStudioManifestSignature(buildStudioManifestFromLoadedManifest(activeManifest))
     );
   });
 
