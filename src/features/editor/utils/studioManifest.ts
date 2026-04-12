@@ -71,10 +71,15 @@ function hasUsableTemplateAssetRef(asset: {
   return [asset.source_uri, asset.gcs_path, asset.path].some(isUsableTemplateAssetRef);
 }
 
-function normalizeTemplateAssetRefs<T extends { source_uri?: string; gcs_path?: string; path?: string }>(
-  asset: T
-): T {
-  const { path: _rawPath, source_uri: _rawSourceUri, gcs_path: _rawGcsPath, ...rest } = asset;
+function normalizeTemplateAssetRefs<
+  T extends { source_uri?: string; gcs_path?: string; path?: string },
+>(asset: T): T {
+  const {
+    path: _rawPath,
+    source_uri: _rawSourceUri,
+    gcs_path: _rawGcsPath,
+    ...rest
+  } = asset;
   const path = readOptionalAssetRef(_rawPath);
   const sourceUri = readOptionalAssetRef(_rawSourceUri);
   const gcsPath = readOptionalAssetRef(_rawGcsPath);

@@ -326,7 +326,9 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
   const [previewTaskState, setPreviewTaskState] = useState<StudioRenderTaskState | null>(
     null
   );
-  const [exportTaskState, setExportTaskState] = useState<StudioRenderTaskState | null>(null);
+  const [exportTaskState, setExportTaskState] = useState<StudioRenderTaskState | null>(
+    null
+  );
   const [exportError, setExportError] = useState<string | null>(null);
   const [savedDraftSignature, setSavedDraftSignature] = useState<string | null>(null);
   const [railTab, setRailTab] = useState<'properties' | 'preview'>('properties');
@@ -1037,11 +1039,7 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         signature: studioManifestSignature,
         error: message,
       });
-      setReRenderResult(
-        null,
-        message,
-        studioManifestSignature
-      );
+      setReRenderResult(null, message, studioManifestSignature);
     }
   }, [
     clipIndexNumber,
@@ -1201,8 +1199,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
         : editorState.previewState === 'GENERATING'
           ? 'Generating render preview from the latest saved draft.'
           : editorState.previewState === 'FAILED'
-          ? reRenderState.error || 'Render preview failed.'
-          : 'Render preview has not been generated yet.');
+            ? reRenderState.error || 'Render preview failed.'
+            : 'Render preview has not been generated yet.');
   const effectiveStatusPrimary =
     editorState.draftState === 'SAVE_FAILED'
       ? 'Save failed'
@@ -1229,7 +1227,8 @@ export default function ClipStudioPage({ params }: ClipStudioPageProps) {
           ? exportTaskState?.status === 'pending'
             ? 'Export is queued and will download automatically when ready.'
             : 'Preparing export from the latest saved draft.'
-          : editorState.previewState === 'GENERATING' && previewTaskState?.status === 'pending'
+          : editorState.previewState === 'GENERATING' &&
+              previewTaskState?.status === 'pending'
             ? 'Preview render is queued and waiting for worker capacity.'
             : statusSecondary;
 
